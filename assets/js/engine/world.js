@@ -161,7 +161,7 @@ export function createWorld(D) {
   W.drawDestination = (rng, from, reason) => {
     const fp = W.byName.get(from);
     const pairs = D.prefs.filter((p) => p.name !== from).map((p) => {
-      let w = p.popShare * Math.exp(4 * p.v.netMigrationRate);
+      let w = p.popShare * Math.exp(2.5 * p.v.netMigrationRate);
       if (p.region === fp.region) w *= 3.2;
       if (reason === 'univ') w = p.popShare * Math.pow(p.v.univCapacityIndex / 100, 1.6) * (p.region === fp.region ? 3 : 1);
       return [p.name, w];

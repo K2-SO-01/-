@@ -80,6 +80,19 @@ for (const pref of ['東京都', '秋田県', '沖縄県']) {
   });
 }
 
+test('重い出来事の頻度が統計の水準から大きく外れていない', () => {
+  const lives = runMany(W, N, { seedPrefix: 'heavy' });
+  const share = (f) => lives.filter(f).length / lives.length;
+  const welfare = share((l) => l.flags.welfare);
+  const futoko = share((l) => l.flags.futoko);
+  const cancer = share((l) => l.health.conditions.cancer);
+  const sv = share((l) => l.flags.sv);
+  assert.ok(welfare < 0.12, `生活保護を受けた人生の割合 ${welfare}`);
+  assert.ok(futoko > 0.05 && futoko < 0.22, `不登校を経験した割合 ${futoko}`);
+  assert.ok(cancer > 0.4 && cancer < 0.66, `がんと診断された割合 ${cancer}（生涯罹患リスク 男65%・女50%）`);
+  near(sv, (W.nat.violence2023.forcedSexF.value + W.nat.violence2023.forcedSexM.value) / 200, 0.025, '性暴力の被害経験（男女平均）');
+});
+
 test('収入の県差：東京都は秋田県より高い（課税対象所得の差の向き）', () => {
   const t = W.pref('東京都')._sim, a = W.pref('秋田県')._sim;
   assert.ok(t && a);

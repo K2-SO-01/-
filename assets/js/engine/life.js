@@ -203,6 +203,8 @@ function log(C, text, o = {}) {
   return it;
 }
 function adj(L, k, d) { L.stats[k] = clamp(L.stats[k] + d, 0, 100); }
+// 出費。18歳未満のうちは家計（親）が負担するので、本人のお金からは引かない
+function pay(L, amt) { if (L.age >= 18) L.money.savings -= amt; }
 
 // ================================================================ 年の進行
 const STEPS = ['reflect', 'family', 'stage', 'events', 'focus', 'money', 'death'];
@@ -287,7 +289,8 @@ STEP.reflect = (C) => {
   const sx = L.sex === 'M' ? '男の子' : '女の子';
   facts.push(`同じ年に${L.birthPref}で生まれた${sx}のうち、${L.age}歳を迎えるのは約${Math.round(surv[L.age] * 1000) / 10}%。`);
   const next = { 5: 15, 15: 30, 30: 50, 50: 70, 70: 85 }[L.age];
-  facts.push(`${next}歳まで生きるのは約${Math.round(surv[next] * 100)}%と見込まれます（${L.birthPref}の生命表）。`);
+  const pn = surv[next] * 100;
+  facts.push(`${next}歳まで生きるのは約${pn >= 99 ? pn.toFixed(1) : Math.round(pn)}%と見込まれます（${L.birthPref}の生命表）。`);
   L.pending = { type: 'reflect', age: L.age, q, facts };
 };
 
@@ -413,14 +416,14 @@ function careP(W, a) {
 
 function childMilestones(C, ch, a) {
   const { L, R, W } = C;
-  const nm = ch.name.mei;
+  const nm = `${ch.sex === 'M' ? '息子' : '娘'}の${ch.name.mei}`;
   if (a === 6) log(C, `${nm}が小学校に入学しました。ランドセルが歩いているようでした。`, { k: 'child' });
   else if (a === 12 && R.chance(0.6)) log(C, `${nm}が中学生になりました。`, { k: 'child' });
   else if (a === 15 && R.chance(0.5)) log(C, `${nm}が高校受験に向けて、夜遅くまで机に向かっています。`, { k: 'child' });
   else if (a === 18) {
     const u = R.chance(W.pref(L.pref).v.univEntryRate / 100);
     ch.edu = u ? 'univ' : 'hs';
-    if (u) { log(C, `${nm}が大学に進みました。`, { k: 'child', big: true }); L.money.savings -= 1500000; }
+    if (u) { log(C, `${nm}が大学に進みました。`, { k: 'child', big: true }); pay(L, 1500000); }
     else log(C, `${nm}が高校を卒業し、${R.chance(0.5) ? '専門学校に進みました' : '働きはじめました'}。`, { k: 'child' });
   } else if (a === 22 + (R.chance(0.5) ? 0 : 1) && !ch.left) {
     ch.left = true;
@@ -750,7 +753,7 @@ STEP.events = (C) => {
     const p = pf.v.childAbusePer100kChildren / 100000 * 0.35 * (q <= 2 ? 1.6 : 0.7);
     if (R.chance(p)) {
       L.flags.abused = true;
-      log(C, '家の中で、大人から暴力を受けるようになりました。', { k: 'heavy', big: true, h: 'abuse' });
+      log(C, '家の中で、親から虐待を受けるようになりました。', { k: 'heavy', big: true, h: 'abuse' });
       adj(L, 'happy', -15); adj(L, 'health', -4); adj(L, 'social', -6);
       if (R.chance(0.5)) log(C, '児童相談所が関わり、一時保護されました。', { k: 'family' });
     }
@@ -774,7 +777,7 @@ STEP.events = (C) => {
     const dmg = R.chance(0.15);
     log(C, `${L.pref}で震度6弱以上の大きな地震がありました。${dmg ? '家が壊れ、しばらく避難所で暮らしました。' : '家具が倒れましたが、家族は無事でした。'}`, { k: 'disaster', big: true, h: dmg ? 'disaster' : undefined, note: `${L.pref}の県庁所在地付近で今後30年に震度6弱以上の揺れに見舞われる確率は約${pf.quake30}%（全国地震動予測地図）。${pf.quakeEstimated ? '※この県の値は推計' : ''}` });
     adj(L, 'happy', dmg ? -10 : -3);
-    if (dmg) { L.money.savings -= 3000000; }
+    if (dmg) { pay(L, 3000000); }
   } else if (R.chance(0.012)) {
     log(C, R.pick(['大雨で近くの川があふれそうになり、避難所で一晩を過ごしました。', '台風で屋根の一部が飛ばされました。', '大雪で、数日家から出られませんでした。']), { k: 'disaster' });
   }
@@ -791,14 +794,17 @@ function schoolEvents(C) {
     const p = E.bullyingAnnual[stage] * (1 - (L.stats.social - 50) / 200);
     if (R.chance(p)) {
       L.flags.bullied = true; L.flags.bulliedYear = curYear(L);
-      log(C, R.pick(['クラスで仲間はずれにされるようになりました。', '持ち物を隠されたり、悪口を言われたりするようになりました。', 'SNS のグループで、自分だけ外されるようになりました。']), { k: 'school', big: true, h: 'bully' });
+      const bt = ['クラスで仲間はずれにされるようになりました。', '持ち物を隠されたり、悪口を言われたりするようになりました。'];
+      if (stage !== 'elem') bt.push('SNS のグループで、自分だけ外されるようになりました。');
+      log(C, R.pick(bt), { k: 'school', big: true, h: 'bully' });
       adj(L, 'happy', -10); adj(L, 'social', -6);
       if (R.chance(0.5)) log(C, R.pick(['担任の先生が気づいて、間に入ってくれました。', '親に打ち明けると、学校と話し合ってくれました。', '学年が変わると、少しずつ落ち着きました。']), { k: 'school' });
     }
   }
   // 不登校
   if (!L.flags.futoko && (stage === 'jhs' || stage === 'elem')) {
-    const p = pf.v.futokoPer1000JHS / 1000 * (stage === 'elem' ? E.elementaryFutokoRatio : 1) * 0.6 * (L.flags.bullied ? 2.5 : 1);
+    // 不登校の統計は「その年に30日以上休んだ生徒」の割合。続く人も多いので、新たに始まる割合はその3分の1ほどとみる（推計）
+    const p = pf.v.futokoPer1000JHS / 1000 * (stage === 'elem' ? E.elementaryFutokoRatio : 1) * 0.33 * (L.flags.bullied ? 2 : 1);
     if (R.chance(p)) {
       L.flags.futoko = true;
       log(C, '学校に行けない日が続くようになりました。', { k: 'school', big: true, note: `${L.pref}では中学生の千人に${Math.round(pf.v.futokoPer1000JHS)}人ほどが、年間30日以上学校を休んでいます（不登校）。` });
@@ -861,7 +867,7 @@ function adultEvents(C) {
   // 配偶者からの暴力（内閣府調査の生涯経験率に合わせた年あたりの確率）
   if (sp && sp.alive && !sp.divorced && !L.flags.dv) {
     const life = W.nat.violence2023.spousePhysical[L.sex] / 100;
-    if (R.chance(life / 30)) {
+    if (R.chance(life / 36)) {
       L.flags.dv = true;
       log(C, `${sp.sex === 'M' ? '夫' : '妻'}から暴力を受けるようになりました。`, { k: 'heavy', big: true, h: 'dv' });
       adj(L, 'happy', -15); adj(L, 'health', -5);
@@ -918,7 +924,8 @@ function adultEvents(C) {
     log(C, R.pick(pool), { k: 'life' });
   }
   // 貧困
-  if (L.money.savings < -1000000 && !L.flags.welfare && L.work.status !== 'employed' && R.chance(0.3)) {
+  const lowInc = (L.work.income + (L.work.pensionM || 0) * 12 + (L.family.spouse?.income || 0)) < 1600000;
+  if (L.age >= 20 && lowInc && L.money.debt > 3000000 && L.money.savings < 100000 && !L.flags.welfare && L.work.status !== 'employed' && !['univ', 'voc', 'jc', 'grad'].includes(L.edu.stage) && R.chance(0.06)) {
     L.flags.welfare = true;
     log(C, '暮らしが立ち行かなくなり、生活保護を受けることになりました。', { k: 'heavy', big: true, h: 'poverty', note: `${L.pref}の生活保護を受ける世帯は、一般世帯千あたり約${W.pref(L.pref).v.welfareHouseholdsPer1000.toFixed(1)}世帯（被保護者調査）。` });
     L.money.savings = 0; L.money.debt = Math.max(0, L.money.debt - 1000000);
@@ -932,7 +939,7 @@ function seniorEvents(C) {
   // 認知症（年齢別有病率の差分から推計した発症率）
   if (!L.health.dementia && a >= 65) {
     const prev = dementiaPrev(W, L.sex, a), prev1 = dementiaPrev(W, L.sex, a + 1);
-    const inc = Math.max(0.002, (prev1 - prev) / (1 - prev)) * (L.focus === 'brain' ? 0.75 : 1);
+    const inc = Math.max(0.002, (prev1 - prev) / (1 - prev)) * 0.85 * (L.focus === 'brain' ? 0.75 : 1);
     if (R.chance(inc)) {
       L.health.dementia = true;
       log(C, '物忘れが増え、認知症と診断されました。', { k: 'health', big: true });
@@ -966,9 +973,10 @@ function dementiaPrev(W, sex, a) {
   return Math.min(0.85, t['85+'][sex] / 100 + (a - 87) * 0.015);
 }
 // がんの罹患率（生涯罹患リスク 男65%・女50% に合うように年齢の形を置いた推計）
+const CANCER_K = { M: 2.1, F: 2.1 }; // 生涯罹患リスク（男65%・女50%）に合わせる倍率（シミュレーションで確認）
 function cancerHazard(sex, a) {
   if (a < 20) return 0;
-  return sex === 'M' ? 0.00017 * Math.exp(0.081 * (a - 20)) : 0.00045 * Math.exp(0.054 * (a - 20));
+  return CANCER_K[sex] * (sex === 'M' ? 0.00017 * Math.exp(0.081 * (a - 20)) : 0.00045 * Math.exp(0.054 * (a - 20)));
 }
 function cancerSite(R, sex, a) {
   return sex === 'M' ? R.weighted([['前立腺', 0.17], ['大腸', 0.16], ['胃', 0.14], ['肺', 0.15], ['肝臓', 0.05], ['すい臓', 0.04], ['食道', 0.03], ['腎臓', 0.03], ['血液の', 0.04], ['ほかの', 0.19]])
@@ -1076,13 +1084,19 @@ STEP.money = (C) => {
   const pf = W.pref(L.pref);
   const kids = L.family.children.filter((c) => c.alive && personAge(L, c) < 22).length;
   const adults = 1 + (sp && sp.alive && !sp.divorced ? 1 : 0);
-  let living = (1500000 + 900000 * (adults - 1) + 800000 * kids) * (pf.v.priceIndex / 100);
-  if (L.home.withParents && a < 30) living *= 0.45;
-  if (!L.home.own && !L.home.withParents) living += pf.v.rentPer3_3m2 * 15 * 12 * (adults + kids > 2 ? 1.4 : 1);
+  // 生活費：最低限の費用（人数・県の物価・家賃）を下限に、手取りの7割ほどを使う（推計）
+  const disposable = total * 0.8;
+  let sub = (1100000 + 600000 * (adults - 1) + 500000 * kids) * (pf.v.priceIndex / 100);
+  if (!L.home.own && !L.home.withParents) sub += pf.v.rentPer3_3m2 * 12 * 12 * (adults + kids > 2 ? 1.4 : 1) * 0.6;
+  let living = Math.max(sub, disposable * 0.78 + sub * 0.12);
+  if (L.home.withParents && a < 30) living *= 0.5;
   if (L.home.own && L.home.mortgage > 0) { const pay = Math.min(L.home.mortgage, 1200000); L.home.mortgage -= pay; living += pay; }
   if (L.focus === 'health') living += 100000;
   if (L.health.smoker) living += 200000;
-  let net = total * 0.8 - living;
+  let net = disposable - living;
+  if (L.flags.welfare) net = Math.max(net, 0);
+  // 学生のあいだは家族の仕送りや奨学金で生活費の多くをまかなう
+  if (['univ', 'voc', 'jc', 'grad', 'ronin'].includes(L.edu.stage)) net = Math.max(net, -150000 * (6 - L.household.quintile) / 3);
   if (L.focus === 'work' && net > 0) net *= 1.05;
   if (a < 18) net = Math.min(net, w.income);
   M.savings = Math.round(M.savings + net);
@@ -1167,7 +1181,7 @@ DEC.jhsExam = {
   apply(C, c, i) {
     const { L, R } = C;
     if (i === 1) { log(C, '地元の中学校に進むことにしました。', { k: 'school' }); return; }
-    adj(L, 'know', 4); adj(L, 'happy', -4); L.money.savings -= 1000000;
+    adj(L, 'know', 4); adj(L, 'happy', -4); pay(L, 1000000);
     const ok = R.chance(clamp(0.35 + (L.stats.know - KMEAN(11)) / 40, 0.1, 0.9));
     if (ok) { L.edu.privateJhs = true; L.talent += 0.1; log(C, '中学受験に合格しました。', { k: 'school', big: true }); adj(L, 'happy', 6); }
     else log(C, '中学受験は不合格でした。地元の中学校に進みます。', { k: 'school' });
@@ -1395,7 +1409,7 @@ DEC.afterUniv = {
 DEC.uturnJob = {
   cat: 'big',
   build(C) { const { L } = C; return { title: 'どこで働く？', body: `大学のある${L.pref}に残るか、生まれた${L.birthPref}に戻るか。`, options: [{ label: `${L.pref}で就職する`, hint: '' }, { label: `${L.birthPref}に戻って就職する`, hint: '家族の近く' }, { label: '東京で就職する', hint: '仕事の選択肢が多い · 家賃が高い' }] }; },
-  auto(C) { const { L, R } = C; return L.pref === '東京都' ? (R.chance(0.3) ? 1 : 0) : R.weighted([[0, 0.4], [1, 0.32], [2, 0.28]]); },
+  auto(C) { const { L, R } = C; return L.pref === '東京都' ? (R.chance(0.3) ? 1 : 0) : R.weighted([[0, 0.45], [1, 0.38], [2, 0.17]]); },
   apply(C, c, i) {
     const { L } = C;
     if (i === 1) moveTo(C, L.birthPref, 'Uターン就職');
@@ -1566,7 +1580,7 @@ DEC.house = {
     const pf = W.pref(L.pref);
     const price = Math.round((pf.v.rentPer3_3m2 / 5000) * 30000000 * C.R.range(0.75, 1.25));
     const down = Math.min(L.money.savings * 0.5, price * 0.2);
-    L.money.savings -= down; L.home.own = true; L.home.mortgage = price - down; L.home.withParents = false;
+    pay(L, down); L.home.own = true; L.home.mortgage = price - down; L.home.withParents = false;
     log(C, `およそ${yen(price)}の家を買いました。住宅ローンは${yen(L.home.mortgage)}です。`, { k: 'money', big: true });
     adj(L, 'happy', 4);
   },
@@ -1626,8 +1640,8 @@ DEC.care = {
     const { L, R } = C;
     L.flags.caring = true;
     if (i === 0) { log(C, `${c.who}を家に迎えて、介護を始めました。`, { k: 'family', big: true }); adj(L, 'happy', -6); adj(L, 'health', -3); if (L.work.status === 'employed' && R.chance(0.15)) quitJob(C, '介護のために仕事を辞めました。'); }
-    if (i === 1) { log(C, `週末ごとに${c.who}のもとへ通うようになりました。`, { k: 'family' }); adj(L, 'happy', -3); L.money.savings -= 300000; }
-    if (i === 2) { log(C, `${c.who}は介護施設に入りました。`, { k: 'family' }); L.money.savings -= 1500000; adj(L, 'happy', -2); }
+    if (i === 1) { log(C, `週末ごとに${c.who}のもとへ通うようになりました。`, { k: 'family' }); adj(L, 'happy', -3); pay(L, 300000); }
+    if (i === 2) { log(C, `${c.who}は介護施設に入りました。`, { k: 'family' }); pay(L, 1500000); adj(L, 'happy', -2); }
     if (i === 3) { log(C, `${c.who}の介護は、きょうだいが中心になって担うことになりました。`, { k: 'family' }); adj(L, 'social', -3); }
   },
 };
@@ -1664,7 +1678,7 @@ DEC.treatMental = {
     const d = L.health.conditions.depression;
     if (R.chance([0.75, 0.55, 0.2][i])) { d.treated = true; log(C, '時間はかかりましたが、少しずつ眠れるようになり、気持ちが戻ってきました。', { k: 'health' }); adj(L, 'happy', 8); }
     else log(C, 'つらい日々が続きました。', { k: 'health', h: 'mental' });
-    if (i === 0 && L.work.status === 'employed') L.money.savings -= 800000;
+    if (i === 0 && L.work.status === 'employed') pay(L, 800000);
   },
 };
 DEC.cancer = {
@@ -1677,7 +1691,7 @@ DEC.cancer = {
     const cureP = [0.62, 0.64, 0.3][i] * (L.age < 70 ? 1.1 : 0.85);
     if (i === 2) { log(C, '積極的な治療は受けず、痛みを和らげながら暮らすことにしました。', { k: 'health' }); cs.untreated = true; return; }
     log(C, i === 1 ? '別の病院の意見も聞いたうえで、治療を始めました。' : '手術と薬の治療を受けました。', { k: 'health' });
-    L.money.savings -= 400000;
+    pay(L, 400000);
     if (R.chance(cureP)) { cs.cured = true; adj(L, 'health', 8); log(C, '治療はうまくいきました。', { k: 'health' }); }
   },
 };
@@ -1724,7 +1738,7 @@ DEC.seniorHome = {
     const { L } = C;
     if (i === 0) log(C, '住み慣れた家で暮らし続けることにしました。', { k: 'life' });
     if (i === 1) log(C, '子どもの家の近くに移り、顔を合わせる日が増えました。', { k: 'life' });
-    if (i === 2) { log(C, '高齢者施設に入りました。', { k: 'life', big: true }); L.money.savings -= 3000000; }
+    if (i === 2) { log(C, '高齢者施設に入りました。', { k: 'life', big: true }); pay(L, 3000000); }
   },
 };
 
