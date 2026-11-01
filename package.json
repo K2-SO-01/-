@@ -1,0 +1,13 @@
+{
+  "name": "47-bun-no-1",
+  "version": "1.0.0",
+  "private": true,
+  "description": "日本の47都道府県のどこかに生まれて、一度きりの人生を最後まで生きる人生シミュレーション（静的サイト）",
+  "type": "module",
+  "scripts": {
+    "build:data": "node scripts/build-data.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "start": "node scripts/serve.mjs"
+  },
+  "license": "UNLICENSED"
+}

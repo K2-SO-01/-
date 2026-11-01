@@ -1,0 +1,389 @@
+{
+ "_meta": {
+  "retrieved_via": "GitHub Yaginuma-S/japan-population-analysis data/raw/population_prefecture.json（e-Stat 統計ダッシュボード API GET_STATS の生レスポンス, 2026-07-30 取得）",
+  "indicator": "0201010000000010000 総人口（総数）",
+  "stat": "国勢調査／人口推計（各年10月1日現在）"
+ },
+ "population": {
+  "2024": {
+   "北海道": {
+    "value": 5043000,
+    "provisional": false
+   },
+   "青森県": {
+    "value": 1165000,
+    "provisional": false
+   },
+   "岩手県": {
+    "value": 1145000,
+    "provisional": false
+   },
+   "宮城県": {
+    "value": 2248000,
+    "provisional": false
+   },
+   "秋田県": {
+    "value": 897000,
+    "provisional": false
+   },
+   "山形県": {
+    "value": 1011000,
+    "provisional": false
+   },
+   "福島県": {
+    "value": 1743000,
+    "provisional": false
+   },
+   "茨城県": {
+    "value": 2806000,
+    "provisional": false
+   },
+   "栃木県": {
+    "value": 1885000,
+    "provisional": false
+   },
+   "群馬県": {
+    "value": 1890000,
+    "provisional": false
+   },
+   "埼玉県": {
+    "value": 7332000,
+    "provisional": false
+   },
+   "千葉県": {
+    "value": 6251000,
+    "provisional": false
+   },
+   "東京都": {
+    "value": 14178000,
+    "provisional": false
+   },
+   "神奈川県": {
+    "value": 9225000,
+    "provisional": false
+   },
+   "新潟県": {
+    "value": 2099000,
+    "provisional": false
+   },
+   "富山県": {
+    "value": 997000,
+    "provisional": false
+   },
+   "石川県": {
+    "value": 1098000,
+    "provisional": false
+   },
+   "福井県": {
+    "value": 739000,
+    "provisional": false
+   },
+   "山梨県": {
+    "value": 791000,
+    "provisional": false
+   },
+   "長野県": {
+    "value": 1987000,
+    "provisional": false
+   },
+   "岐阜県": {
+    "value": 1916000,
+    "provisional": false
+   },
+   "静岡県": {
+    "value": 3527000,
+    "provisional": false
+   },
+   "愛知県": {
+    "value": 7460000,
+    "provisional": false
+   },
+   "三重県": {
+    "value": 1711000,
+    "provisional": false
+   },
+   "滋賀県": {
+    "value": 1402000,
+    "provisional": false
+   },
+   "京都府": {
+    "value": 2520000,
+    "provisional": false
+   },
+   "大阪府": {
+    "value": 8757000,
+    "provisional": false
+   },
+   "兵庫県": {
+    "value": 5337000,
+    "provisional": false
+   },
+   "奈良県": {
+    "value": 1285000,
+    "provisional": false
+   },
+   "和歌山県": {
+    "value": 880000,
+    "provisional": false
+   },
+   "鳥取県": {
+    "value": 531000,
+    "provisional": false
+   },
+   "島根県": {
+    "value": 642000,
+    "provisional": false
+   },
+   "岡山県": {
+    "value": 1831000,
+    "provisional": false
+   },
+   "広島県": {
+    "value": 2714000,
+    "provisional": false
+   },
+   "山口県": {
+    "value": 1281000,
+    "provisional": false
+   },
+   "徳島県": {
+    "value": 685000,
+    "provisional": false
+   },
+   "香川県": {
+    "value": 917000,
+    "provisional": false
+   },
+   "愛媛県": {
+    "value": 1276000,
+    "provisional": false
+   },
+   "高知県": {
+    "value": 656000,
+    "provisional": false
+   },
+   "福岡県": {
+    "value": 5092000,
+    "provisional": false
+   },
+   "佐賀県": {
+    "value": 788000,
+    "provisional": false
+   },
+   "長崎県": {
+    "value": 1252000,
+    "provisional": false
+   },
+   "熊本県": {
+    "value": 1697000,
+    "provisional": false
+   },
+   "大分県": {
+    "value": 1085000,
+    "provisional": false
+   },
+   "宮崎県": {
+    "value": 1033000,
+    "provisional": false
+   },
+   "鹿児島県": {
+    "value": 1532000,
+    "provisional": false
+   },
+   "沖縄県": {
+    "value": 1466000,
+    "provisional": false
+   }
+  },
+  "2025": {
+   "北海道": {
+    "value": 4985419,
+    "provisional": true
+   },
+   "青森県": {
+    "value": 1140395,
+    "provisional": true
+   },
+   "岩手県": {
+    "value": 1125502,
+    "provisional": true
+   },
+   "宮城県": {
+    "value": 2227240,
+    "provisional": true
+   },
+   "秋田県": {
+    "value": 882100,
+    "provisional": true
+   },
+   "山形県": {
+    "value": 993127,
+    "provisional": true
+   },
+   "福島県": {
+    "value": 1711937,
+    "provisional": true
+   },
+   "茨城県": {
+    "value": 2791207,
+    "provisional": true
+   },
+   "栃木県": {
+    "value": 1864833,
+    "provisional": true
+   },
+   "群馬県": {
+    "value": 1867582,
+    "provisional": true
+   },
+   "埼玉県": {
+    "value": 7287169,
+    "provisional": true
+   },
+   "千葉県": {
+    "value": 6258512,
+    "provisional": true
+   },
+   "東京都": {
+    "value": 14246219,
+    "provisional": true
+   },
+   "神奈川県": {
+    "value": 9193657,
+    "provisional": true
+   },
+   "新潟県": {
+    "value": 2068476,
+    "provisional": true
+   },
+   "富山県": {
+    "value": 985675,
+    "provisional": true
+   },
+   "石川県": {
+    "value": 1088221,
+    "provisional": true
+   },
+   "福井県": {
+    "value": 729386,
+    "provisional": true
+   },
+   "山梨県": {
+    "value": 779912,
+    "provisional": true
+   },
+   "長野県": {
+    "value": 1954950,
+    "provisional": true
+   },
+   "岐阜県": {
+    "value": 1891489,
+    "provisional": true
+   },
+   "静岡県": {
+    "value": 3468845,
+    "provisional": true
+   },
+   "愛知県": {
+    "value": 7449403,
+    "provisional": true
+   },
+   "三重県": {
+    "value": 1694896,
+    "provisional": true
+   },
+   "滋賀県": {
+    "value": 1392439,
+    "provisional": true
+   },
+   "京都府": {
+    "value": 2502747,
+    "provisional": true
+   },
+   "大阪府": {
+    "value": 8764578,
+    "provisional": true
+   },
+   "兵庫県": {
+    "value": 5323825,
+    "provisional": true
+   },
+   "奈良県": {
+    "value": 1269180,
+    "provisional": true
+   },
+   "和歌山県": {
+    "value": 864262,
+    "provisional": true
+   },
+   "鳥取県": {
+    "value": 523732,
+    "provisional": true
+   },
+   "島根県": {
+    "value": 629460,
+    "provisional": true
+   },
+   "岡山県": {
+    "value": 1808664,
+    "provisional": true
+   },
+   "広島県": {
+    "value": 2683399,
+    "provisional": true
+   },
+   "山口県": {
+    "value": 1264006,
+    "provisional": true
+   },
+   "徳島県": {
+    "value": 675489,
+    "provisional": true
+   },
+   "香川県": {
+    "value": 907725,
+    "provisional": true
+   },
+   "愛媛県": {
+    "value": 1260088,
+    "provisional": true
+   },
+   "高知県": {
+    "value": 643437,
+    "provisional": true
+   },
+   "福岡県": {
+    "value": 5081879,
+    "provisional": true
+   },
+   "佐賀県": {
+    "value": 781214,
+    "provisional": true
+   },
+   "長崎県": {
+    "value": 1232190,
+    "provisional": true
+   },
+   "熊本県": {
+    "value": 1678090,
+    "provisional": true
+   },
+   "大分県": {
+    "value": 1076875,
+    "provisional": true
+   },
+   "宮崎県": {
+    "value": 1018904,
+    "provisional": true
+   },
+   "鹿児島県": {
+    "value": 1512969,
+    "provisional": true
+   },
+   "沖縄県": {
+    "value": 1468220,
+    "provisional": true
+   }
+  }
+ }
+}

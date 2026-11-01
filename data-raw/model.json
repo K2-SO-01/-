@@ -1,0 +1,752 @@
+{
+  "_meta": {
+    "note": "公表統計を直接取得できなかった部分を補う推計・モデル上の仮定。すべて estimated:true。可能な範囲で公表値（national.* の値）と整合するように設定し、tests/ のシミュレーションで照合する。"
+  },
+  "causeOfDeath": {
+    "estimated": true,
+    "reason": "人口動態統計の「性・年齢（5歳階級）別 死因順位・構成割合」の表本体を今回の環境で取得できなかったため、公表されている事実（主な死因の総数と割合、年齢層ごとの第1位の死因、年齢別の自殺者数と死亡数）に合うように年齢・性別の構成割合を推計した。都道府県差は自殺（県別自殺死亡率）と交通事故（県別交通事故死者数）のみ反映。",
+    "constraints": [
+      "全死亡に占める割合：悪性新生物23.9%・心疾患14.1%・老衰12.9%・脳血管疾患6.4%（令和6年概数）",
+      "男：5〜9歳と45〜94歳は悪性新生物、10〜44歳は自殺、95歳以上は老衰が第1位",
+      "女：5〜9歳と35〜89歳は悪性新生物、10〜34歳は自殺、90歳以上は老衰が第1位",
+      "10〜29歳の自殺の割合は、警察庁の年齢別自殺者数 ÷ 人口動態統計の年齢別死亡数（約45〜58%）と同程度"
+    ],
+    "labels": {
+      "cancer": "がん（悪性新生物）",
+      "heart": "心臓の病気",
+      "senility": "老衰",
+      "stroke": "脳卒中（脳血管疾患）",
+      "pneumonia": "肺炎",
+      "aspiration": "誤嚥性肺炎",
+      "traffic": "交通事故",
+      "accident": "不慮の事故（転倒・窒息・溺水など）",
+      "suicide": "自殺",
+      "homicide": "他殺",
+      "kidney": "腎不全",
+      "dementia": "認知症",
+      "congenital": "生まれつきの病気（先天奇形など）",
+      "perinatal": "生まれる前後の病気（周産期の病態）",
+      "sids": "乳幼児突然死症候群",
+      "liver": "肝臓の病気",
+      "diabetes": "糖尿病",
+      "infection": "感染症",
+      "other": "その他の病気"
+    },
+    "bands": [
+      0,
+      1,
+      5,
+      10,
+      15,
+      20,
+      25,
+      30,
+      35,
+      40,
+      45,
+      50,
+      55,
+      60,
+      65,
+      70,
+      75,
+      80,
+      85,
+      90,
+      95,
+      100
+    ],
+    "M": [
+      {
+        "congenital": 35,
+        "perinatal": 30,
+        "sids": 5,
+        "accident": 4,
+        "homicide": 1,
+        "other": 25
+      },
+      {
+        "congenital": 22,
+        "cancer": 10,
+        "accident": 10,
+        "traffic": 4,
+        "heart": 5,
+        "pneumonia": 4,
+        "homicide": 2,
+        "infection": 3,
+        "other": 40
+      },
+      {
+        "cancer": 24,
+        "congenital": 10,
+        "accident": 9,
+        "traffic": 6,
+        "heart": 4,
+        "homicide": 1,
+        "infection": 2,
+        "other": 44
+      },
+      {
+        "suicide": 30,
+        "cancer": 18,
+        "accident": 7,
+        "traffic": 5,
+        "congenital": 6,
+        "heart": 4,
+        "homicide": 0.5,
+        "other": 29.5
+      },
+      {
+        "suicide": 48,
+        "traffic": 12,
+        "accident": 7,
+        "cancer": 10,
+        "heart": 4,
+        "homicide": 0.5,
+        "other": 18.5
+      },
+      {
+        "suicide": 52,
+        "traffic": 9,
+        "accident": 6,
+        "cancer": 9,
+        "heart": 5,
+        "homicide": 0.5,
+        "liver": 0.5,
+        "other": 18
+      },
+      {
+        "suicide": 48,
+        "traffic": 6,
+        "accident": 5,
+        "cancer": 12,
+        "heart": 6,
+        "stroke": 2,
+        "homicide": 0.5,
+        "liver": 0.5,
+        "other": 20
+      },
+      {
+        "suicide": 40,
+        "cancer": 16,
+        "heart": 9,
+        "traffic": 4,
+        "accident": 5,
+        "stroke": 3,
+        "liver": 2,
+        "homicide": 0.5,
+        "other": 20.5
+      },
+      {
+        "suicide": 32,
+        "cancer": 22,
+        "heart": 11,
+        "stroke": 4,
+        "traffic": 3,
+        "accident": 4,
+        "liver": 3,
+        "homicide": 0.3,
+        "other": 20.7
+      },
+      {
+        "suicide": 25,
+        "cancer": 24,
+        "heart": 13,
+        "stroke": 6,
+        "liver": 4,
+        "accident": 3,
+        "traffic": 2,
+        "diabetes": 1,
+        "homicide": 0.2,
+        "other": 21.8
+      },
+      {
+        "cancer": 30,
+        "suicide": 17,
+        "heart": 14,
+        "stroke": 7,
+        "liver": 5,
+        "accident": 3,
+        "traffic": 2,
+        "diabetes": 1,
+        "kidney": 1,
+        "other": 20
+      },
+      {
+        "cancer": 35,
+        "heart": 15,
+        "suicide": 11,
+        "stroke": 8,
+        "liver": 5,
+        "accident": 3,
+        "traffic": 1.5,
+        "diabetes": 1,
+        "kidney": 1,
+        "other": 19.5
+      },
+      {
+        "cancer": 40,
+        "heart": 15,
+        "stroke": 8,
+        "suicide": 7,
+        "liver": 4,
+        "accident": 3,
+        "traffic": 1,
+        "kidney": 1,
+        "diabetes": 1,
+        "pneumonia": 1,
+        "other": 19
+      },
+      {
+        "cancer": 44,
+        "heart": 15,
+        "stroke": 8,
+        "suicide": 4,
+        "liver": 3,
+        "accident": 3,
+        "traffic": 1,
+        "pneumonia": 2,
+        "kidney": 1,
+        "diabetes": 1,
+        "other": 18
+      },
+      {
+        "cancer": 44,
+        "heart": 15,
+        "stroke": 8,
+        "pneumonia": 3,
+        "aspiration": 1,
+        "liver": 2,
+        "kidney": 2,
+        "accident": 3,
+        "traffic": 1,
+        "suicide": 2,
+        "diabetes": 1,
+        "infection": 1,
+        "other": 17
+      },
+      {
+        "cancer": 40,
+        "heart": 15,
+        "stroke": 8,
+        "pneumonia": 4,
+        "aspiration": 2,
+        "kidney": 2,
+        "accident": 3,
+        "traffic": 1,
+        "suicide": 1,
+        "senility": 0.5,
+        "liver": 1.5,
+        "diabetes": 1,
+        "infection": 2,
+        "other": 19
+      },
+      {
+        "cancer": 34,
+        "heart": 12.8,
+        "stroke": 8,
+        "pneumonia": 6,
+        "aspiration": 3,
+        "kidney": 2,
+        "senility": 2,
+        "dementia": 1.6,
+        "accident": 3,
+        "traffic": 0.7,
+        "suicide": 0.8,
+        "diabetes": 1,
+        "infection": 2,
+        "other": 19.5
+      },
+      {
+        "cancer": 27,
+        "heart": 12.8,
+        "stroke": 8,
+        "pneumonia": 7,
+        "aspiration": 5,
+        "senility": 5,
+        "dementia": 2.4,
+        "kidney": 2,
+        "accident": 3,
+        "traffic": 0.5,
+        "suicide": 0.5,
+        "diabetes": 1,
+        "infection": 3,
+        "other": 19
+      },
+      {
+        "cancer": 20,
+        "heart": 12.8,
+        "senility": 14,
+        "stroke": 7,
+        "pneumonia": 8,
+        "aspiration": 6,
+        "dementia": 2.4,
+        "kidney": 2,
+        "accident": 3,
+        "traffic": 0.3,
+        "suicide": 0.3,
+        "diabetes": 1,
+        "infection": 3,
+        "other": 19.4
+      },
+      {
+        "cancer": 17,
+        "heart": 12.8,
+        "senility": 19,
+        "pneumonia": 9,
+        "aspiration": 7,
+        "stroke": 6,
+        "dementia": 2.4,
+        "kidney": 2,
+        "accident": 2,
+        "suicide": 0.2,
+        "infection": 3,
+        "other": 19.8
+      },
+      {
+        "senility": 31,
+        "heart": 12.8,
+        "cancer": 10,
+        "pneumonia": 10,
+        "aspiration": 8,
+        "stroke": 5,
+        "dementia": 2.4,
+        "kidney": 2,
+        "accident": 2,
+        "infection": 3,
+        "other": 15
+      },
+      {
+        "senility": 43,
+        "heart": 11.2,
+        "pneumonia": 10,
+        "aspiration": 8,
+        "cancer": 5,
+        "stroke": 4,
+        "dementia": 1.6,
+        "kidney": 2,
+        "accident": 2,
+        "infection": 3,
+        "other": 12
+      }
+    ],
+    "F": [
+      {
+        "congenital": 36,
+        "perinatal": 29,
+        "sids": 5,
+        "accident": 3,
+        "homicide": 1,
+        "other": 26
+      },
+      {
+        "congenital": 24,
+        "cancer": 10,
+        "accident": 8,
+        "traffic": 3,
+        "heart": 5,
+        "pneumonia": 4,
+        "homicide": 2,
+        "infection": 3,
+        "other": 41
+      },
+      {
+        "cancer": 24,
+        "congenital": 11,
+        "accident": 6,
+        "traffic": 5,
+        "heart": 4,
+        "homicide": 1,
+        "infection": 2,
+        "other": 47
+      },
+      {
+        "suicide": 34,
+        "cancer": 18,
+        "accident": 5,
+        "traffic": 4,
+        "congenital": 6,
+        "heart": 4,
+        "homicide": 0.5,
+        "other": 28.5
+      },
+      {
+        "suicide": 55,
+        "traffic": 7,
+        "accident": 4,
+        "cancer": 12,
+        "heart": 3,
+        "homicide": 0.5,
+        "other": 18.5
+      },
+      {
+        "suicide": 58,
+        "traffic": 5,
+        "accident": 3,
+        "cancer": 12,
+        "heart": 3,
+        "homicide": 0.7,
+        "other": 18.3
+      },
+      {
+        "suicide": 50,
+        "traffic": 3,
+        "accident": 3,
+        "cancer": 18,
+        "heart": 4,
+        "stroke": 2,
+        "homicide": 0.7,
+        "other": 19.3
+      },
+      {
+        "suicide": 35,
+        "cancer": 28,
+        "heart": 5,
+        "traffic": 2,
+        "accident": 3,
+        "stroke": 3,
+        "liver": 1,
+        "homicide": 0.5,
+        "other": 22.5
+      },
+      {
+        "cancer": 36,
+        "suicide": 24,
+        "heart": 6,
+        "stroke": 4,
+        "traffic": 2,
+        "accident": 2,
+        "liver": 1,
+        "homicide": 0.4,
+        "other": 24.6
+      },
+      {
+        "cancer": 45,
+        "suicide": 16,
+        "heart": 7,
+        "stroke": 6,
+        "liver": 2,
+        "accident": 2,
+        "traffic": 1,
+        "homicide": 0.3,
+        "other": 20.7
+      },
+      {
+        "cancer": 50,
+        "suicide": 12,
+        "heart": 8,
+        "stroke": 7,
+        "liver": 2,
+        "accident": 2,
+        "traffic": 1,
+        "diabetes": 0.5,
+        "kidney": 0.5,
+        "other": 17
+      },
+      {
+        "cancer": 52,
+        "heart": 9,
+        "suicide": 7,
+        "stroke": 7,
+        "liver": 2,
+        "accident": 2,
+        "traffic": 1,
+        "diabetes": 1,
+        "kidney": 1,
+        "other": 18
+      },
+      {
+        "cancer": 53,
+        "heart": 10,
+        "stroke": 7,
+        "suicide": 4,
+        "liver": 2,
+        "accident": 2,
+        "traffic": 1,
+        "kidney": 1,
+        "diabetes": 1,
+        "pneumonia": 1,
+        "other": 18
+      },
+      {
+        "cancer": 52,
+        "heart": 11,
+        "stroke": 7,
+        "suicide": 3,
+        "liver": 2,
+        "accident": 2,
+        "traffic": 1,
+        "pneumonia": 1,
+        "kidney": 1,
+        "diabetes": 1,
+        "other": 19
+      },
+      {
+        "cancer": 48,
+        "heart": 12,
+        "stroke": 7,
+        "pneumonia": 2,
+        "aspiration": 1,
+        "liver": 1,
+        "kidney": 2,
+        "accident": 2,
+        "traffic": 1,
+        "suicide": 2,
+        "diabetes": 1,
+        "infection": 1,
+        "other": 20
+      },
+      {
+        "cancer": 40,
+        "heart": 14,
+        "stroke": 8,
+        "pneumonia": 3,
+        "aspiration": 1,
+        "kidney": 2,
+        "accident": 2,
+        "traffic": 0.7,
+        "suicide": 1,
+        "senility": 0.5,
+        "liver": 1,
+        "diabetes": 1,
+        "infection": 2,
+        "other": 23.8
+      },
+      {
+        "cancer": 30,
+        "heart": 12.8,
+        "stroke": 8,
+        "pneumonia": 4,
+        "aspiration": 2,
+        "kidney": 2,
+        "senility": 2,
+        "dementia": 2.4,
+        "accident": 3,
+        "traffic": 0.5,
+        "suicide": 0.7,
+        "diabetes": 1,
+        "infection": 2,
+        "other": 25.8
+      },
+      {
+        "cancer": 22,
+        "heart": 13.6,
+        "stroke": 8,
+        "pneumonia": 5,
+        "aspiration": 3,
+        "senility": 6,
+        "dementia": 3.2,
+        "kidney": 2,
+        "accident": 3,
+        "traffic": 0.3,
+        "suicide": 0.4,
+        "diabetes": 1,
+        "infection": 3,
+        "other": 25.3
+      },
+      {
+        "cancer": 15,
+        "heart": 14.4,
+        "senility": 17,
+        "stroke": 7,
+        "pneumonia": 6,
+        "aspiration": 5,
+        "dementia": 4.0,
+        "kidney": 2,
+        "accident": 3,
+        "suicide": 0.2,
+        "diabetes": 1,
+        "infection": 3,
+        "other": 20.8
+      },
+      {
+        "senility": 28,
+        "heart": 15.2,
+        "cancer": 9,
+        "pneumonia": 6,
+        "aspiration": 6,
+        "stroke": 6,
+        "dementia": 4.0,
+        "kidney": 2,
+        "accident": 2,
+        "infection": 3,
+        "other": 18
+      },
+      {
+        "senility": 40,
+        "heart": 14.4,
+        "cancer": 5,
+        "pneumonia": 7,
+        "aspiration": 6,
+        "stroke": 5,
+        "dementia": 3.2,
+        "kidney": 2,
+        "accident": 2,
+        "infection": 3,
+        "other": 13
+      },
+      {
+        "senility": 52,
+        "heart": 12.0,
+        "pneumonia": 7,
+        "aspiration": 6,
+        "cancer": 3,
+        "stroke": 4,
+        "dementia": 1.6,
+        "kidney": 1,
+        "accident": 2,
+        "infection": 3,
+        "other": 10
+      }
+    ]
+  },
+  "earnings": {
+    "estimated": true,
+    "reason": "賃金センサスの年齢階級別の全表を取得できなかったため、公表されている男女別の全年齢平均（年収）と、男女それぞれの賃金ピーク（月額と20〜24歳比の指数）から年齢カーブを内挿",
+    "ageIndex": {
+      "M": {
+        "18": 88,
+        "20": 100,
+        "25": 117,
+        "30": 133,
+        "35": 150,
+        "40": 163,
+        "45": 174,
+        "50": 184,
+        "55": 189.6,
+        "60": 150,
+        "65": 125,
+        "70": 112
+      },
+      "F": {
+        "18": 92,
+        "20": 100,
+        "25": 111,
+        "30": 117,
+        "35": 122,
+        "40": 126,
+        "45": 129.2,
+        "50": 128,
+        "55": 125,
+        "60": 108,
+        "65": 98,
+        "70": 92
+      }
+    },
+    "nonRegularShare": {
+      "M": 0.22,
+      "F": 0.53,
+      "note": "労働力調査の非正規の職員・従業員の割合の水準（未照合）"
+    },
+    "nonRegularRelative": {
+      "M": 0.58,
+      "F": 0.62
+    },
+    "educationFactor": {
+      "none": 0.75,
+      "jhs": 0.78,
+      "hs": 0.88,
+      "voc": 0.93,
+      "jc": 0.92,
+      "univ": 1.18,
+      "grad": 1.38
+    },
+    "personalSigma": 0.28,
+    "prefFactorExponent": 0.7,
+    "prefFactorNote": "県別の賃金水準は、課税対象所得（納税義務者1人当たり）の全国比を0.7乗して弱めたもの"
+  },
+  "education": {
+    "estimated": true,
+    "reason": "全国の専門学校進学率・短大の比率・大学院進学率・高校中退率を今回取得できなかったため、学校基本調査の近年の水準を仮定",
+    "hsNonEntry": 0.012,
+    "hsDropout": 0.015,
+    "vocShareOfNonUniv": 0.52,
+    "juniorCollegeShareOfUnivF": 0.1,
+    "juniorCollegeShareOfUnivM": 0.02,
+    "gradSchool": {
+      "M": 0.14,
+      "F": 0.06
+    },
+    "roninShare": 0.06,
+    "elementaryFutokoRatio": 0.3,
+    "bullyingAnnual": {
+      "elem": 0.08,
+      "jhs": 0.05,
+      "hs": 0.015
+    }
+  },
+  "family": {
+    "estimated": true,
+    "reason": "婚姻・出生・離婚のタイミングは公表された全国値（50歳時未婚割合、平均初婚年齢、合計特殊出生率、婚姻・離婚件数）に合うように年齢別の確率を設定し、県差は婚姻率・離婚率・合計特殊出生率の全国比で調整",
+    "outOfWedlockBirthShare": 0.024,
+    "birthOrder": {
+      "first": 0.45,
+      "second": 0.36,
+      "third": 0.14,
+      "fourth": 0.05
+    },
+    "motherAgeAtBirth": {
+      "mean": 32.0,
+      "sd": 4.6
+    },
+    "fatherAgeGap": {
+      "mean": 2.3,
+      "sd": 3.5
+    },
+    "spouseAgeGap": {
+      "mean": 1.8,
+      "sd": 3.5
+    },
+    "divorceShareOfMarriages": 0.35,
+    "remarriageAnnual": 0.04,
+    "motherKeepsWorkingAfterBirth": 0.69
+  },
+  "health": {
+    "estimated": true,
+    "reason": "県別の喫煙率・飲酒・依存症の有病率は今回取得できなかったため全国値または近年の調査水準を使用",
+    "smokingStartCalibrated": true,
+    "alcoholDependenceLifetime": {
+      "M": 0.019,
+      "F": 0.002
+    },
+    "gamblingProblem": {
+      "M": 0.028,
+      "F": 0.006
+    },
+    "depressionLifetime": {
+      "M": 0.04,
+      "F": 0.08
+    },
+    "cancerFiveYearSurvival": 0.64,
+    "careNeedByAge": {
+      "65": 0.03,
+      "75": 0.1,
+      "80": 0.22,
+      "85": 0.45,
+      "90": 0.7
+    },
+    "fractureByAge": {
+      "65": 0.006,
+      "75": 0.012,
+      "85": 0.025
+    }
+  },
+  "migration": {
+    "estimated": true,
+    "reason": "年齢別の都道府県間移動率は今回取得できなかったため、2025年の都道府県間移動者数（約251.6万人）と整合するように年齢別の転居確率を設定。進学・就職・結婚・転勤・Uターンを分けて扱う",
+    "annualByAge": {
+      "0": 0.012,
+      "18": 0.06,
+      "22": 0.07,
+      "25": 0.05,
+      "30": 0.035,
+      "35": 0.025,
+      "40": 0.017,
+      "50": 0.01,
+      "60": 0.008,
+      "70": 0.006,
+      "80": 0.006
+    },
+    "returnHomeShare": 0.3
+  }
+}
