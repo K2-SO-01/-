@@ -1,7 +1,7 @@
 // 生存曲線と人生地図（SVG / HTML、ライブラリなし）
 import { esc } from './common.js';
 
-export function survivalChart(W, { pref, sex, age, compare }) {
+export function survivalChart(W, { pref, sex, age, compare, national }) {
   const w = 320, h = 170, pl = 30, pr = 8, pt = 10, pb = 24;
   const X = (a) => pl + (a / 105) * (w - pl - pr);
   const Y = (v) => pt + (1 - v) * (h - pt - pb);
@@ -10,11 +10,16 @@ export function survivalChart(W, { pref, sex, age, compare }) {
   let s = `<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(pref)}で同じ年に生まれた人のうち、各年齢で生きている人の割合">`;
   for (const v of [0, 0.5, 1]) s += `<line class="axis" x1="${pl}" x2="${w - pr}" y1="${Y(v)}" y2="${Y(v)}"/><text x="2" y="${Y(v) + 4}">${v * 100}%</text>`;
   for (const a of [0, 20, 40, 60, 80, 100]) s += `<text x="${X(a) - 6}" y="${h - 6}">${a}</text>`;
+  if (national) {
+    const q = W.nat.lifeTablePrefWeighted[sex].q; const ln = [1];
+    for (let a = 0; a < 110; a++) ln.push(ln[a] * (1 - q[a]));
+    s += `<path class="curve3" d="${line(ln)}"/>`;
+  }
   if (compare && compare !== pref) s += `<path class="curve2" d="${line(W.survival(compare, sex))}"/>`;
   s += `<path class="curve" d="${line(l)}"/>`;
   if (age != null && age <= 105) s += `<circle class="dot" cx="${X(age)}" cy="${Y(l[Math.min(110, age)])}" r="4"/>`;
   s += '</svg>';
-  const legend = compare && compare !== pref ? `<small>実線：${esc(pref)}　点線：${esc(compare)}（あなたの出身県）</small>` : `<small>${esc(pref)}の生命表（${sex === 'M' ? '男' : '女'}）</small>`;
+  const legend = `<small>実線：${esc(pref)}の生命表（${sex === 'M' ? '男' : '女'}）${national ? '　細い点線：全国平均' : ''}${compare && compare !== pref ? `　赤い点線：${esc(compare)}（あなたの出身県）` : ''}</small>`;
   return `<div class="chart">${s}${legend}</div>`;
 }
 

@@ -286,3 +286,58 @@ table.stats tr:hover td { background: var(--bg3); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
+
+/* ---------- v2：出来事のトーン（よい・つらい・重い・ふつう）を記号と色で区別 */
+:root { --good-line: #3c7a52; --good-bg: #e8f3ec; --bad-line: #c0563c; --bad-bg: #fbece7; }
+:root[data-theme="dark"] { --good-line: #7fbf95; --good-bg: #17271e; --bad-line: #e58a72; --bad-bg: #2d1c17; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --good-line: #7fbf95; --good-bg: #17271e; --bad-line: #e58a72; --bad-bg: #2d1c17; } }
+.log li .mk, .legend .mk { display: inline-flex; align-items: center; justify-content: center; width: 1.25em; height: 1.25em; border-radius: 50%; margin-right: .35em; font-size: .78rem; font-weight: 800; line-height: 1; vertical-align: 1px; }
+.log li.t-g { border-left: 3px solid var(--good-line); padding-left: 10px; }
+.log li.t-g .mk, .legend .t-g .mk { background: var(--good-line); color: var(--bg); }
+.log li.t-b { border-left: 3px solid var(--bad-line); padding-left: 10px; background: linear-gradient(90deg, var(--bad-bg), transparent 60%); }
+.log li.t-b .mk, .legend .t-b .mk { background: var(--bad-line); color: var(--bg); }
+.log li.t-h .mk, .legend .t-h .mk { background: var(--heavy-line); color: var(--ink); }
+.log li.t-n .mk, .legend .t-n .mk { color: var(--ink3); }
+.log li.t-g:first-child { background: linear-gradient(90deg, var(--good-bg), transparent 60%); }
+.loghead { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; margin: 14px 0 4px; }
+.loghead .lh { font-size: 1.1rem; margin: 0; }
+.loghead .lh small { font-weight: 400; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: .8rem; color: var(--ink3); }
+.peer .pe.t-g { color: var(--good-line); }
+.peer .pe.t-b { color: var(--bad-line); }
+.oh .pos { color: var(--good-line); font-weight: 600; }
+.oh .neg { color: var(--bad-line); font-weight: 600; }
+
+/* 年の進みぐあい */
+.yearrow { display: flex; align-items: center; gap: 10px; padding-top: 0 !important; padding-bottom: 6px !important; }
+.yearbar { flex: 1; height: 4px; background: var(--bar-bg); border-radius: 4px; overflow: hidden; }
+.yearbar i { display: block; height: 100%; width: 0; background: var(--warm); transition: width .1s linear; }
+
+/* わたしの記録 */
+.idcard { border-top: 4px solid var(--warm); padding-top: 10px; }
+.idhead { display: flex; justify-content: space-between; font-size: .82rem; color: var(--ink3); letter-spacing: .08em; }
+.idname { font-size: 1.6rem; font-weight: 800; line-height: 1.3; margin: 4px 0 6px; }
+.idname small { display: block; font-size: .85rem; font-weight: 400; color: var(--ink3); }
+.iddl { display: grid; grid-template-columns: 6.5em 1fr; gap: 2px 12px; margin: 6px 0; font-size: .95rem; }
+.iddl dt { color: var(--ink3); }
+.iddl dd { margin: 0; }
+.dots { letter-spacing: .15em; color: var(--accent); }
+.sh { font-size: .9rem; color: var(--ink2); margin: 14px 0 6px; }
+.hoblist { list-style: none; padding: 0; margin: 0; display: grid; gap: 4px; }
+.hoblist li { display: grid; grid-template-columns: 1fr 120px 2.2em; align-items: center; gap: 8px; font-size: .95rem; }
+.hoblist .skill { height: 6px; background: var(--bar-bg); border-radius: 4px; overflow: hidden; }
+.hoblist .skill i { display: block; height: 100%; background: var(--good-line); }
+.hoblist small { text-align: right; }
+
+/* お金 */
+.spendgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+.spendgrid .btn.spend { justify-content: space-between; text-align: left; font-weight: 500; }
+.spendgrid .btn.spend small { color: var(--ink3); font-size: .8rem; }
+.spendgrid .row { border: 1px solid var(--line); border-radius: 12px; padding: 4px 12px; min-height: 48px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+
+/* 県の統計 */
+.statdl { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px 16px; margin: 0; }
+.statdl div { display: flex; justify-content: space-between; gap: 8px; border-bottom: 1px dashed var(--line); padding: 4px 0; font-size: .92rem; }
+.statdl dt { color: var(--ink3); }
+.statdl dd { margin: 0; font-variant-numeric: tabular-nums; text-align: right; }
+.chart .curve3 { fill: none; stroke: var(--ink3); stroke-width: 1.5; stroke-dasharray: 2 3; }

@@ -17,6 +17,8 @@ const manual = raw('manual.json');
 const names = raw('names.json');
 const prefsBase = raw('prefs.json').list;
 const model = raw('model.json');
+const factsRaw = raw('facts.json');
+const facts = Object.fromEntries(Object.entries(factsRaw).filter(([k]) => k !== '_meta'));
 
 const PREF_NAMES = prefsBase.map((p) => p.name);
 const round = (x, d = 4) => Math.round(x * 10 ** d) / 10 ** d;
@@ -70,6 +72,8 @@ src('names2025', { title: manual.givenNames2025.title, publisher: manual.givenNa
 src('names_common', { title: 'ランキング外の一般的な名前と読み・親世代の名前の例', publisher: '作者作成', scope: 'national', estimated: true, note: names.givenNamesCommon.note + '。' + names.parentGenerationNames.note });
 src('map', { title: '日本地図（都道府県）', publisher: 'Victor Cazanave「svg-maps」@svg-maps/japan（CC BY 4.0）', url: 'https://github.com/VictorCazanave/svg-maps/tree/master/packages/japan' });
 src('model', { title: 'このゲームの推計・仮定（死因の年齢別構成、賃金カーブ、進学・婚姻・出生・移動のモデルなど）', publisher: '作者', estimated: true, note: model._meta.note });
+
+for (const [k, f] of Object.entries(facts)) src('fact_' + k, { title: f.text, publisher: f.source, url: f.url, via: f.via, year: f.year, scope: 'national', kind: 'fact' });
 
 function pick(o, keys) { const r = {}; for (const k of keys) if (o[k] !== undefined) r[k] = o[k]; return r; }
 
@@ -327,6 +331,7 @@ const out = {
   names: { nationalSurnames, rareSurnames: names.rareSurnames, okinawaExtra, given: givenNames, husbandSurnameShare: nat.marriage.husbandSurnameShare2023.value / 100 },
   model: { earnings: model.earnings, education: model.education, family: model.family, health: model.health, migration: model.migration, causeNote: { estimated: true, reason: causes.reason, constraints: causes.constraints } },
   hotlines: manual.hotlines,
+  facts,
 };
 
 const json = JSON.stringify(out);

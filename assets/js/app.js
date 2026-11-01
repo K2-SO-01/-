@@ -1,6 +1,8 @@
 // トップ → 出生地の抽選 → 出生届 → 人生 → 最期の記録
 import { Rng, newSeed } from './engine/rng.js';
-import { createLife, beginYear, continueYear, nextYear, answer, setFocus, setAuto, summarize, REFLECT_AGES, curYear, personAge, JOB } from './engine/life.js';
+import { createLife, beginYear, continueYear, nextYear, answer, setFocus, setAuto, summarize, REFLECT_AGES, curYear, personAge, JOB, spendNow, setAutoSpend, setNisa, setIdeco, spendAvailable, migrateLife } from './engine/life.js';
+import { SPEND, NISA_STEPS } from './engine/spend.js';
+import { HOBBY } from './engine/hobbies.js';
 import { FOCUS, focusGroup, QUINTILE, EDU_LABEL, TEMPER } from './engine/content.js';
 import { yen, oneIn, pct } from './engine/util.js';
 import { TITLE, loadWorld, store, applyTheme, cycleTheme, themeLabel, mapSVG, markMap, hotlineHTML, esc, footerHTML } from './ui/common.js';
@@ -196,6 +198,7 @@ function startLife() {
 
 function resume(saved) {
   G = saved;
+  migrateLife(G.L); for (const p of G.peers) migrateLife(p);
   G.paused = false; G.turbo = false;
   G.yearSec = (G.settings.pace * 60) / W.lifeExp(G.L.birthPref, G.L.sex);
   G.queue = G.queue || [];
@@ -239,6 +242,8 @@ function tick() {
     if (G.turbo && it.big && (it.h === 'grief' || it.k === 'death')) G.turbo = false;
   }
   if (shown) renderLog(), renderTop();
+  const yb = document.getElementById('p-yearbar');
+  if (yb) yb.style.width = `${Math.min(100, (G.yearElapsed / G.yearSec) * 100).toFixed(1)}%`;
   if (G.queue.length) return;
   if (L.pending) { openPending(); return; }
   if (!L.alive) { finish(); return; }
@@ -270,12 +275,14 @@ function renderPlay() {
     <div class="agebig" id="p-age" aria-live="off">0歳</div>
     <div class="who"><div class="nm" id="p-name"></div><div class="sub" id="p-sub"></div></div>
     <button class="iconbtn" id="btn-menu" type="button" aria-label="メニュー" aria-haspopup="dialog">⋯</button>
-  </div></header>
+  </div><div class="wrap wide yearrow"><div class="yearbar" aria-hidden="true"><i id="p-yearbar"></i></div><span class="small" id="p-pace"></span></div></header>
   <div class="wrap wide">
     <div class="statstrip" id="p-stats" aria-label="状態（0〜100）"></div>
     <div class="moneyline" id="p-money"></div>
     <div class="layout">
       <div>
+        <div class="loghead"><h2 class="lh">人生の記録 <small>新しい順 · ☆で覚えておく</small></h2>
+          <div class="legend" aria-label="記号の意味"><span class="lg t-g"><b class="mk">＋</b>よい出来事</span><span class="lg t-b"><b class="mk">－</b>つらい出来事</span><span class="lg t-h"><b class="mk">！</b>重い出来事</span><span class="lg t-n"><b class="mk">・</b>ふつう</span></div></div>
         <ul class="log" id="p-log" aria-live="polite" aria-relevant="additions" aria-label="人生の記録（新しい順）"></ul>
         <div class="more"><button class="linkbtn" id="btn-more" type="button">以前の記録をもっと見る</button></div>
         <div id="p-panels"></div>
@@ -327,6 +334,8 @@ function renderTop() {
   $('#p-name').textContent = `${L.name.sei} ${L.name.mei}`;
   const moved = L.pref !== L.birthPref ? `${L.pref}で暮らす（${L.birthPref}生まれ）` : `${L.pref}`;
   $('#p-sub').textContent = `${moved} · ${L.sex === 'M' ? '男' : '女'} · ${curYear(L)}年${G.L.auto ? ' · おまかせ中' : ''}`;
+  const pace = $('#p-pace');
+  if (pace) pace.textContent = `1年 ≈ ${Math.max(1, Math.round(G.yearSec / (G.turbo ? TURBO : G.speed)))}秒`;
   const st = L.stats;
   const bar = (lab, v) => `<div class="stat"><span>${lab}</span><span class="v">${Math.round(v)}</span><div class="bar" role="meter" aria-label="${lab}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(v)}"><i style="width:${v}%"></i></div></div>`;
   $('#p-stats').innerHTML = bar('健康', st.health) + bar('幸福', st.happy) + bar('知識', st.know) + bar('人間関係', st.social);
@@ -383,8 +392,10 @@ function renderLog() {
     const idx = L.log.indexOf(it);
     const text = gentle && it.h && it.g ? it.g : it.t;
     const heavy = it.h && !(gentle && it.g && it.k !== 'death') ? ' heavy' : '';
+    const tone = it.o || 'n';
+    const mk = { g: ['＋', 'よい出来事'], b: ['－', 'つらい出来事'], h: ['！', '重い出来事'], n: ['・', ''] }[tone] || ['・', ''];
     const help = it.h && i < 8 ? hotlineHTML(W, it.h === 'death' ? (it.k === 'death' ? 'grief' : 'default') : it.h) : '';
-    return `<li class="${it.big ? 'big' : ''}${heavy}${it.k === 'death' ? ' death' : ''}${it.k === 'note' ? ' note' : ''}${i === 0 && it.a === lastAge ? ' enter' : ''}"><span class="age">${it.a}歳 · ${it.y}年</span>${esc(text)}${it.note ? `<span class="lnote">ⓘ ${esc(it.note)}</span>` : ''}${help}<button class="star" type="button" data-i="${idx}" aria-pressed="${it.s ? 'true' : 'false'}" aria-label="覚えておく瞬間に${it.s ? 'しない' : 'する'}">${it.s ? '★' : '☆'}</button></li>`;
+    return `<li class="t-${tone} ${it.big ? 'big' : ''}${heavy}${it.k === 'death' ? ' death' : ''}${it.k === 'note' ? ' note' : ''}${i === 0 && it.a === lastAge ? ' enter' : ''}"><span class="age"><b class="mk" ${mk[1] ? `aria-label="${mk[1]}"` : 'aria-hidden="true"'}>${mk[0]}</b>${it.a}歳 · ${it.y}年</span>${esc(text)}${it.note ? `<span class="lnote">ⓘ ${esc(it.note)}</span>` : ''}${help}<button class="star" type="button" data-i="${idx}" aria-pressed="${it.s ? 'true' : 'false'}" aria-label="覚えておく瞬間に${it.s ? 'しない' : 'する'}">${it.s ? '★' : '☆'}</button></li>`;
   }).join('');
   $('#btn-more').parentElement.classList.toggle('hidden', G.showAll || total <= 60);
 }
@@ -405,7 +416,9 @@ function renderPeers() {
     const last = [...p.log].reverse().find((it) => it.big && !(gentle && it.h && !it.g) && it.k !== 'birth');
     const text = last ? (gentle && last.h && last.g ? last.g : last.t) : '生まれたばかりです。';
     const status = p.alive ? `${p.age}歳 · ${p.pref}${p.pref !== p.birthPref ? `（${p.birthPref}生まれ）` : ''}` : `${p.deathAge}歳で永眠 · ${p.birthPref}生まれ`;
-    return `<div class="peer${p.alive ? '' : ' dead'}"><div class="ph"><span class="pn">${esc(p.name.sei)}${esc(p.name.mei)}</span><span class="pp">${p.sex === 'M' ? '男' : '女'}</span></div><div class="pp">${esc(status)}</div><div class="pe">${esc(text)}</div></div>`;
+    const stage = !p.alive ? '' : p.age < 6 ? '乳幼児期' : p.age < 13 ? '学童期' : p.age < 18 ? '思春期' : p.age < 30 ? '青年期' : p.age < 50 ? '壮年期' : p.age < 65 ? '中年期' : '老年期';
+    const job = p.alive && p.work.status === 'employed' ? ` · ${p.work.title}` : '';
+    return `<div class="peer${p.alive ? '' : ' dead'}"><div class="ph"><span class="pn">${esc(p.name.sei)}${esc(p.name.mei)}</span><span class="pp">${p.sex === 'M' ? '男' : '女'}${stage ? ' · ' + stage : ''}</span></div><div class="pp">${esc(status + job)}</div><div class="pe t-${last?.o || 'n'}">${esc(text)}</div></div>`;
   }).join('');
 }
 
@@ -429,8 +442,8 @@ function renderPanels() {
   const ageOf = (p) => personAge(L, p);
   const fam = [];
   const add = (label, p, extra = '') => fam.push(`<li class="${p.alive === false ? 'gone' : ''}">${esc(label)}${p.name?.mei ? ` ${esc(p.name.mei)}` : ''}${p.alive === false ? `（${p.diedAt || ''}年に他界）` : `（${ageOf(p)}歳${extra}）`}</li>`);
-  if (F.mother) add('母', F.mother, F.mother.care ? '・要介護' : '');
-  if (F.father) add('父', F.father, F.father.care ? '・要介護' : '');
+  if (F.mother) add('母', F.mother, F.mother.care ? '・要介護' : F.mother.jobId ? `・${JOB[F.mother.jobId]?.t || ''}` : '');
+  if (F.father) add('父', F.father, F.father.care ? '・要介護' : F.father.jobId ? `・${JOB[F.father.jobId]?.t || ''}` : '');
   for (const s of F.siblings) add(s.rel, s);
   for (const g of F.grand) if (g.alive || L.age < 20) add(g.rel, g);
   if (F.spouse) add(F.spouse.rel, F.spouse, F.spouse.jobId ? `・${JOB[F.spouse.jobId]?.t || ''}` : '');
@@ -438,50 +451,100 @@ function renderPanels() {
   for (const ex of F.exSpouses) fam.push(`<li class="gone">元${esc(ex.rel)} ${esc(ex.name.mei)}</li>`);
   for (const c of F.children) add(c.sex === 'M' ? '息子' : '娘', c);
   if (L.grandkids) fam.push(`<li>孫 ${L.grandkids}人</li>`);
+  if (L.pet) fam.push(`<li class="${L.pet.alive === false ? 'gone' : ''}">${esc(L.pet.kind)}の${esc(L.pet.name)}</li>`);
   const conds = Object.keys(L.health.conditions).map((k) => ({ cancer: 'がん', hypertension: '高血圧', diabetes: '糖尿病', heart: '心臓の病気', stroke: '脳卒中のあと', depression: 'うつ病' }[k])).filter(Boolean);
   if (L.health.dementia) conds.push('認知症');
   if (L.health.care) conds.push('要介護');
   const real = G.settings.realPref;
+  const pf = W.pref(L.pref);
+  const dots = (q) => '●'.repeat(q) + '○'.repeat(5 - q);
+  const stage = { home: '家で過ごす', preschool: '保育園・幼稚園', elem: '小学生', jhs: '中学生', hs: '高校生', univ: '大学生', grad: '大学院生', voc: '専門学校生', jc: '短大生', ronin: '浪人中' }[L.edu.stage];
+  const hob = L.hobbies.map((h) => `<li>${esc(HOBBY[h.id]?.name || h.id)}<span class="skill" role="meter" aria-label="${esc(HOBBY[h.id]?.name || '')}の腕前" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(h.skill)}"><i style="width:${Math.round(h.skill)}%"></i></span><small>${Math.round(h.skill)}</small></li>`).join('');
+  // お金
+  const M = L.money;
+  const adult = L.age >= 18;
+  const cats = {};
+  for (const s of SPEND) { if (s.invest) continue; (cats[s.cat] ||= []).push(s); }
+  const spendHTML = Object.entries(cats).map(([cat, list]) => {
+    const rows = list.filter((s) => spendAvailable(W, L, s)).map((s) => {
+      if (s.auto) return `<label class="row check"><span>${esc(s.l)}</span><input type="checkbox" data-auto="${s.id}" ${L.spend.auto[s.id] ? 'checked' : ''}></label>`;
+      return `<button class="btn small spend" data-spend="${s.id}" type="button">${esc(s.l)}${s.cost ? `<small>約${esc(yen(s.cost))}</small>` : ''}</button>`;
+    }).join('');
+    return rows ? `<h4 class="sh">${esc(cat)}</h4><div class="spendgrid">${rows}</div>` : '';
+  }).join('');
+  const assets = [`貯金 ${yen(M.savings)}`, M.invest ? `NISA ${yen(M.invest)}` : '', M.ideco ? `iDeCo ${yen(M.ideco)}` : '', M.stocks ? `株 ${yen(M.stocks)}` : '', M.debt ? `借金 ${yen(M.debt)}` : '', M.scholarship ? `奨学金の残り ${yen(M.scholarship)}` : '', L.home.mortgage ? `住宅ローン ${yen(L.home.mortgage)}` : ''].filter(Boolean).join('・');
+  const nisaSel = `<label class="row"><span>NISAで毎月積み立てる</span><select class="sel" id="nisa-sel" style="width:auto">${NISA_STEPS.map((v) => `<option value="${v}" ${(M.nisaMonthly || (M.investOn ? 30000 : 0)) === v ? 'selected' : ''}>${v ? yen(v) + '/月' : 'しない'}</option>`).join('')}</select></label>
+    <label class="row check"><span>iDeCo（月2.3万円・60歳まで引き出せない）</span><input type="checkbox" id="ideco-chk" ${M.idecoOn ? 'checked' : ''}></label>`;
+  const stat = (lab, v, unit = '') => `<div><dt>${esc(lab)}</dt><dd>${esc(String(v))}${unit}</dd></div>`;
   $('#p-panels').innerHTML = `
+  <details class="panel" open><summary>わたしの記録</summary><div class="pbody idcard">
+    <div class="idhead"><span>わたしの記録 · ${esc(pf.short)}</span><span>${L.startYear}</span></div>
+    <div class="idname">${esc(L.name.sei)} ${esc(L.name.mei)}<small>${esc(L.name.seiKana || '')} ${esc(L.name.meiKana || '')}</small></div>
+    <dl class="iddl">
+      <dt>性別</dt><dd>${L.sex === 'M' ? '男性' : '女性'}</dd>
+      <dt>出生</dt><dd>${esc(L.birthPref)} · ${L.startYear}年${L.birthMonth}月</dd>
+      <dt>住んでいる県</dt><dd>${esc(L.pref)}</dd>
+      <dt>生まれた家庭</dt><dd><span class="dots" aria-label="5段階の${L.wealthAtBirth}">${dots(L.wealthAtBirth)}</span></dd>
+      <dt>学歴</dt><dd>${esc(stage || EDU_LABEL[L.edu.level] || '—')}</dd>
+      <dt>仕事</dt><dd>${esc(L.work.status === 'employed' ? L.work.title : { retired: '引退', unemployed: '求職中' }[L.work.status] || '—')}</dd>
+      ${L.temperLabel ? `<dt>気質</dt><dd>${esc(TEMPER[L.temperLabel].label)}</dd>` : ''}
+    </dl>
+    ${hob ? `<h4 class="sh">趣味（腕前）</h4><ul class="hoblist">${hob}</ul>` : '<p class="small">趣味はまだありません。</p>'}
+  </div></details>
   <details class="panel"><summary>家族と暮らし</summary><div class="pbody">
     <ul class="famlist">${fam.join('') || '<li>—</li>'}</ul>
-    <p class="small">住まい：${L.home.own ? '持ち家' : L.home.withParents ? '実家' : '賃貸'}　学歴：${esc(EDU_LABEL[L.edu.level] || '—')}${L.temperLabel ? `　気質：${esc(TEMPER[L.temperLabel].label)}` : ''}${L.hobby ? `　趣味：${esc(L.hobby)}` : ''}${L.health.smoker ? '　喫煙' : ''}</p>
+    <p class="small">住まい：${L.home.own ? '持ち家' : L.home.withParents ? '実家' : '賃貸'}${L.flags.car ? '・車あり' : ''}${L.health.smoker ? '・喫煙' : ''}</p>
     <p class="small">健康のこと：${conds.length ? esc(conds.join('・')) : '大きな病気はありません'}</p>
   </div></details>
   <details class="panel"><summary>お金を使う · 投資</summary><div class="pbody">
-    <p class="small">貯金 ${yen(L.money.savings)}・積立 ${yen(L.money.invest)}${L.money.debt ? `・借金 ${yen(L.money.debt)}` : ''}${L.money.scholarship ? `・奨学金の残り ${yen(L.money.scholarship)}` : ''}${L.home.mortgage ? `・住宅ローン ${yen(L.home.mortgage)}` : ''}</p>
-    <div style="display:grid;gap:8px">
-      <button class="btn small" data-spend="dinner" type="button" ${L.age < 18 ? 'disabled' : ''}>家族や友人にごちそうする（約3万円 · 人間関係↑）</button>
-      <button class="btn small" data-spend="trip" type="button" ${L.age < 18 ? 'disabled' : ''}>旅行に行く（約15万円 · 幸福↑）</button>
-      <button class="btn small" data-spend="checkup" type="button" ${L.age < 18 ? 'disabled' : ''}>人間ドックを受ける（約4万円 · 健康↑）</button>
-      <button class="btn small" data-spend="invest" type="button" ${L.age < 18 ? 'disabled' : ''}>${L.money.investOn ? '積立投資をやめる' : '積立投資を始める'}</button>
-    </div>
+    ${adult ? `<p class="small">${esc(assets)}</p>${spendHTML}<h4 class="sh">お金を育てる</h4><div class="menu-list">${nisaSel}</div>
+    <p class="small">「毎年」のものはチェックを入れると毎年続けます。貯金が足りない年は自動で見送ります。投資の値動きは毎年変わり、減ることもあります。</p>` : '<p class="small">18歳になると、自分のお金の使い道を決められるようになります。いまは家計を親が担っています。</p>'}
+  </div></details>
+  <details class="panel"><summary>${esc(L.pref)}の統計</summary><div class="pbody">
+    <dl class="statdl">
+      ${stat('平均寿命 女 / 男', `${pf.v.lifeExpectancyF} / ${pf.v.lifeExpectancyM}`, '歳')}
+      ${stat('年間出生数', pf.births.toLocaleString('ja-JP'), '人')}
+      ${stat('人口', (pf.population / 10000).toFixed(1), '万人')}
+      ${stat('1人当たり県民所得', yen(pf.v.prefIncomePerCapita * 1000))}
+      ${stat('大学等進学率', pf.v.univEntryRate, '%')}
+      ${stat('県外の大学へ', (100 - pf.v.inPrefUnivShare).toFixed(1), '%')}
+      ${stat('合計特殊出生率', pf.v.tfr)}
+      ${stat('婚姻率 / 離婚率（千人当たり）', `${pf.v.marriageRate} / ${pf.v.divorceRate}`)}
+      ${stat('第1次産業で働く人', pf.industry[0], '%')}
+      ${stat('完全失業率', pf.v.unemploymentRate, '%')}
+      ${stat('医師（10万人当たり）', pf.v.doctorsPer100k, '人')}
+      ${stat('持ち家比率', pf.v.homeOwnershipRate, '%')}
+      ${stat('自殺死亡率（10万人当たり）', pf.v.suicideRate)}
+      ${stat('交通事故死（10万人当たり）', pf.v.trafficDeathsPer100k)}
+      ${stat('30年以内に震度6弱以上', pf.quake30 + (pf.quakeEstimated ? '（推計）' : ''), '%')}
+    </dl>
+    <p class="small">出典：令和2年都道府県別生命表、住民基本台帳人口動態、国勢調査・人口推計、県民経済計算、学校基本調査、人口動態統計、全国地震動予測地図ほか（e-Stat 経由）。<a href="stats.html#pref-${pf.code}" target="_blank" rel="noopener">くわしい値と出典</a></p>
   </div></details>
   <details class="panel"><summary>人生地図</summary><div class="pbody">${lifeMapHTML(W, L)}</div></details>
-  <details class="panel"><summary>生存曲線</summary><div class="pbody">${survivalChart(W, { pref: L.birthPref, sex: L.sex, age: L.age, compare: real })}<p class="small">同じ年に${esc(L.birthPref)}で生まれた${L.sex === 'M' ? '男の子' : '女の子'}のうち、各年齢で生きている人の割合（生命表）。点がいまの年齢です。</p></div></details>
+  <details class="panel"><summary>生存曲線</summary><div class="pbody">${survivalChart(W, { pref: L.birthPref, sex: L.sex, age: L.age, compare: real, national: true })}<p class="small">同じ年に${esc(L.birthPref)}で生まれた${L.sex === 'M' ? '男の子' : '女の子'}のうち、各年齢で生きている人の割合（生命表）。点がいまの年齢です。</p></div></details>
   <details class="panel"><summary>状態は何を表している？</summary><div class="pbody small">
     <p><b>健康</b>：亡くなるリスクや、働き続けられるかどうかに影響します。運動や健康づくりで上がり、年齢とともに下がります。</p>
-    <p><b>幸福</b>：暮らしへの満足感です。収入、家族や友人、健康、借金などが影響します。</p>
+    <p><b>幸福</b>：暮らしへの満足感です。収入、家族や友人、健康、借金、趣味やペットなどが影響します。</p>
     <p><b>知識</b>：受験や仕事、最初の収入に影響します。ただし家の暮らし向きや県の進学率のほうが大きく効きます。</p>
     <p><b>人間関係</b>：家族や友人とのつながりです。結婚や離婚、いじめにあう可能性、老後の孤独に影響します。</p>
     <p>どれも可能性を動かすだけで、結果を決めるわけではありません。運や境遇も一緒に働きます。</p>
   </div></details>`;
-  for (const b of $('#p-panels').querySelectorAll('[data-spend]')) b.addEventListener('click', () => spend(b.dataset.spend));
+  const P = $('#p-panels');
+  for (const b of P.querySelectorAll('[data-spend]')) b.addEventListener('click', () => spend(b.dataset.spend));
+  for (const c of P.querySelectorAll('[data-auto]')) c.addEventListener('change', () => { setAutoSpend(L, c.dataset.auto, c.checked); save(); });
+  const ns = $('#nisa-sel'); if (ns) ns.addEventListener('change', () => { setNisa(L, Number(ns.value)); renderTop(); save(); });
+  const ic = $('#ideco-chk'); if (ic) ic.addEventListener('change', () => { setIdeco(L, ic.checked); save(); });
+  // 開いているパネルを覚えておく
+  for (const d of P.querySelectorAll('details')) {
+    const key = d.querySelector('summary').textContent;
+    if (G.openPanels && key in G.openPanels) d.open = G.openPanels[key];
+    d.addEventListener('toggle', () => { (G.openPanels ||= {})[key] = d.open; });
+  }
 }
 
-function spend(kind) {
+function spend(id) {
   const { L } = G;
-  const M = L.money;
-  const cost = { dinner: 30000, trip: 150000, checkup: 40000 }[kind] || 0;
-  const add = (t) => { const it = { a: L.age, y: curYear(L), t, k: 'money' }; L.log.push(it); };
-  if (kind === 'invest') { M.investOn = !M.investOn; add(M.investOn ? '積立投資を始めました。' : '積立投資をやめました。'); }
-  else {
-    if (M.savings < cost) { alert('いまの貯金では足りません。'); return; }
-    M.savings -= cost;
-    if (kind === 'dinner') { L.stats.social = Math.min(100, L.stats.social + 4); L.stats.happy = Math.min(100, L.stats.happy + 2); add('家族や友人に、ちょっといい夕食をごちそうしました。'); }
-    if (kind === 'trip') { L.stats.happy = Math.min(100, L.stats.happy + 5); add(`${['北海道', '沖縄', '京都', '金沢', '長崎', '箱根', '伊勢', '松山'][Math.floor(Math.random() * 8)]}へ旅行に行きました。`); }
-    if (kind === 'checkup') { L.stats.health = Math.min(100, L.stats.health + 3); add('人間ドックを受けました。'); }
-  }
+  spendNow(W, L, id);
   renderTop(); renderLog(); renderPanels(); save();
 }
 
@@ -499,11 +562,14 @@ function openPending() {
     <h2 id="dec-t">${esc(P.title)}</h2>
     ${P.body ? `<p class="body">${esc(P.body)}</p>` : ''}
     ${P.note ? `<p class="small">ⓘ ${esc(P.note)}</p>` : ''}
-    <div class="opts">${P.options.map((o, i) => `<button class="opt" type="button" data-i="${i}"><kbd>${i + 1}</kbd><span class="ol">${esc(o.label)}</span>${o.hint ? `<span class="oh">${esc(o.hint)}</span>` : ''}</button>`).join('')}</div>
+    <div class="opts">${P.options.map((o, i) => `<button class="opt" type="button" data-i="${i}"><kbd>${i + 1}</kbd><span class="ol">${esc(o.label)}</span>${o.hint ? `<span class="oh">${hintHTML(o.hint)}</span>` : ''}</button>`).join('')}</div>
     <p class="small" style="margin:0">選んでいるあいだ、時間は止まっています。</p>
   </div></div>`;
   ov.querySelector('.opt').focus();
   for (const b of ov.querySelectorAll('.opt')) b.addEventListener('click', () => choose(Number(b.dataset.i)));
+}
+function hintHTML(h) {
+  return h.split(' · ').map((x) => `<span class="${/[−↓]/.test(x) ? 'neg' : /[+＋↑]/.test(x) ? 'pos' : ''}">${esc(x)}</span>`).join(' · ');
 }
 function choose(i) {
   const { L } = G;
@@ -650,6 +716,8 @@ function renderEnd() {
       <dt>家族</dt><dd>${S.married ? '結婚した' : '結婚しなかった'}・子ども${S.children}人${S.childrenLost ? `（うち${S.childrenLost}人に先立たれる）` : ''}${S.grandkids ? `・孫${S.grandkids}人` : ''}</dd>
       <dt>最も稼いだ年</dt><dd>${S.maxIncome ? `${S.maxIncome.age}歳・世帯で${yen(S.maxIncome.v)}` : '—'}</dd>
       <dt>下した決断</dt><dd>${S.decisions}回</dd>
+      ${S.hobbies.length ? `<dt>趣味</dt><dd>${esc(S.hobbies.map((h) => `${h.name}（腕前${h.skill}）`).join('・'))}</dd>` : ''}
+      ${S.pet ? `<dt>ペット</dt><dd>${esc(S.pet)}</dd>` : ''}
     </dl>
     <p class="small">同じ年に${esc(L.birthPref)}で生まれた${L.sex === 'M' ? '男の子' : '女の子'}のうち、この人より長生きするのは約${Math.round(outlive * 100)}%です。</p>
   </div>
@@ -660,7 +728,7 @@ function renderEnd() {
   ${fy.length ? `<h2>大人になってから時間を注いだこと</h2><p>${fy.map(([k, v]) => `${esc(focusLabel(k))} ${v}年`).join(' · ')}</p>` : ''}
 
   <h2>主な出来事</h2>
-  <ul class="log">${big.map((it) => `<li class="${it.s ? 'big' : ''}"><span class="age">${it.a}歳 · ${it.y}年</span>${it.s ? '★ ' : ''}${esc(gentle && it.h && it.g ? it.g : it.t)}</li>`).join('')}</ul>
+  <ul class="log">${big.map((it) => `<li class="t-${it.o || 'n'} ${it.s ? 'big' : ''}"><span class="age"><b class="mk" aria-hidden="true">${{ g: '＋', b: '－', h: '！' }[it.o] || '・'}</b>${it.a}歳 · ${it.y}年</span>${it.s ? '★ ' : ''}${esc(gentle && it.h && it.g ? it.g : it.t)}</li>`).join('')}</ul>
 
   ${notes.length ? `<h2>残したメモ</h2><ul class="log">${notes.map(([a, t]) => `<li><span class="age">ひと息 · ${a}歳</span>「${esc(t)}」</li>`).join('')}</ul>` : ''}
 

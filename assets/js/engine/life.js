@@ -4,7 +4,16 @@ import { Rng } from './rng.js';
 import { drawSurname, drawGivenName, drawOlderName } from './names.js';
 import { sigmoid, UNIV_COEF } from './world.js';
 import { clamp, yen, pct, fill } from './util.js';
-import { FOCUS, focusGroup, TEMPER, TODDLER_CARDS, MAJORS, VOC_TRACKS, JOBS, EDU_RANK, EDU_LABEL, QUINTILE, HOBBIES, CLUBS, REFLECTIONS, ordinalChild } from './content.js';
+import { FOCUS, focusGroup, TEMPER, TODDLER_CARDS, MAJORS, VOC_TRACKS, JOBS, EDU_RANK, EDU_LABEL, QUINTILE, HOBBIES, CLUBS, REFLECTIONS, ordinalChild, LADDERS, jobTitle } from './content.js';
+import { EVENTS as EVENTS_A, HOBBY_EVENTS } from './events.js';
+import { EVENTS_MORE } from './events_more.js';
+import { CHOICES as CHOICES_A } from './choices.js';
+import { CHOICES_MORE } from './choices_more.js';
+const EVENTS = [...EVENTS_A, ...EVENTS_MORE];
+const CHOICES = [...CHOICES_A, ...CHOICES_MORE];
+export const CONTENT_COUNTS = { events: EVENTS.length, choices: CHOICES.length };
+import { HOBBY, HOBBY_LIST, HOBBY_MILESTONES, HOBBY_THRESHOLDS, PRO, MAX_HOBBIES } from './hobbies.js';
+import { SPEND_BY_ID, PLACES, ABROAD, FURUSATO_GIFTS } from './spend.js';
 
 export const REFLECT_AGES = [5, 15, 30, 50, 70];
 const SEX_RATIO_M = 0.512; // 出生性比 約105（推計）
@@ -28,10 +37,10 @@ export function createLife(W, opts = {}) {
     household: { quintile: 3, income: 0 },
     edu: { stage: 'home', level: 'none', major: null, voc: null, hsType: null, univPref: null, gradAt: null, ronin: 0 },
     work: { status: 'none', jobId: null, nonreg: false, income: 0, years: 0, boost: 0, pensionM: 0, regularYears: 0, retiredAt: null, everWorked: false },
-    money: { savings: 0, debt: 0, invest: 0, investOn: false, scholarship: 0 },
+    money: { savings: 0, debt: 0, invest: 0, investOn: false, scholarship: 0, nisaMonthly: 0, ideco: 0, idecoOn: false, stocks: 0 },
     home: { own: false, mortgage: 0, withParents: true },
     health: { smoker: false, everSmoked: false, alcohol: false, gambling: false, conditions: {}, care: false, dementia: false },
-    flags: {}, hobby: null, club: null,
+    flags: {}, hobby: null, club: null, hobbies: [], spend: { auto: {} }, cool: {}, pet: null,
     focus: null, focusAuto: true, focusYears: {},
     moved: [], log: [], notes: {}, finalWord: '', decisions: 0,
     pending: null, step: 0, yearDone: false,
@@ -171,6 +180,7 @@ function drawJob(W, R, prefName, sex, edu, major, voc, opts = {}) {
   const er = EDU_RANK[edu] ?? 0;
   const pairs = [];
   for (const j of JOBS) {
+    if (j.dream || !j.w) continue;
     if (opts.exclude && opts.exclude.includes(j.id)) continue;
     const need = EDU_RANK[j.edu] ?? 0;
     if (er < need) continue;
@@ -198,6 +208,7 @@ function log(C, text, o = {}) {
   if (o.big) it.big = 1;
   if (o.note) it.note = o.note;
   if (o.gentle) it.g = o.gentle; // 「怖い場面を除く」で代わりに出す文
+  it.o = o.o || inferTone(text, o); // g よい / b つらい / n ふつう / h 重い
   C.out.push(it);
   L.log.push(it);
   return it;
@@ -209,7 +220,17 @@ function pay(L, amt) { if (L.age >= 18) L.money.savings -= amt; }
 // ================================================================ 年の進行
 const STEPS = ['reflect', 'family', 'stage', 'events', 'focus', 'money', 'death'];
 
-function ctx(W, L) { return { W, L, R: new Rng(L.rng), out: [] }; }
+// 以前のバージョンで保存した人生にも、新しい項目を補う
+export function migrateLife(L) {
+  if (!L.hobbies) { L.hobbies = []; if (L.hobby) { const h = HOBBY_LIST.find((x) => x.name === L.hobby); if (h) L.hobbies.push({ id: h.id, skill: 30, since: L.age, ms: 1 }); } }
+  L.spend ||= { auto: {} }; L.spend.auto ||= {};
+  L.cool ||= {};
+  if (L.pet === undefined) L.pet = null;
+  const M = L.money; M.nisaMonthly ??= M.investOn ? 30000 : 0; M.ideco ??= 0; M.idecoOn ??= false; M.stocks ??= 0;
+  for (const it of L.log) if (!it.o) it.o = inferTone(it.t, it);
+  return L;
+}
+function ctx(W, L) { migrateLife(L); return { W, L, R: new Rng(L.rng), out: [] }; }
 function done(C) { C.L.rng = C.R.state(); return C.out; }
 
 export function beginYear(W, L) {
@@ -316,6 +337,8 @@ STEP.family = (C) => {
         adj(L, 'happy', L.age < 25 ? -18 : -10);
         if (L.age < 18) afterParentLoss(C, p);
         L.flags.lostParentYear = curYear(L);
+        const other = p === F.mother ? F.father : F.mother;
+        if (L.age >= 40 && !L.isPeer && (!other || !other.alive) && R.chance(W.pref(p.pref || L.birthPref).v.homeOwnershipRate / 100)) { offerCard(C, 'c_inherit'); if (L.pending) return; }
       } else {
         log(C, `${who}が${a}歳で亡くなりました。`, { k: 'family', big: true, h: 'grief' });
         adj(L, 'happy', -12);
@@ -545,7 +568,7 @@ function adultStage(C) {
       if (L.sex === 'M' && L.work.status === 'employed' && !L.work.nonreg) h *= 1.15;
       if (L.sex === 'M' && (L.work.status !== 'employed' || L.work.nonreg)) h *= 0.62;
       h *= 1 + (L.stats.social - 58) / 200;
-      if (L.sex === 'F' && first) h *= 1.14; // 50歳時未婚割合に合わせる補正（シミュレーションで確認）
+      if (L.sex === 'F' && first) h *= 1.07; // 50歳時未婚割合に合わせる補正（シミュレーションで確認）
       if (L.flags.declinedMarriage) h *= 0.6;
       if (R.chance(h)) { meetAndPropose(C); if (L.pending) return; }
       else if (a < 40 && !F.partner && R.chance(0.06)) {
@@ -577,7 +600,8 @@ function adultStage(C) {
     if (a < 80 && R.chance(h)) { offer(C, 'crisis'); if (L.pending) return; }
   }
   // 家を買う
-  if (!L.home.own && a >= 28 && a <= 55 && L.work.status === 'employed') {
+  const hhInc = (L.work.income || 0) + (sp && sp.alive && !sp.divorced ? (sp.income || 0) : 0);
+  if (!L.home.own && a >= 28 && a <= 55 && L.work.status === 'employed' && hhInc >= 3500000 && L.money.savings >= 1500000 && L.money.debt < 1000000) {
     const pf = W.pref(L.pref);
     const p = (pf.v.homeOwnershipRate / 100) * 0.06 * (sp && sp.alive && !sp.divorced ? 1.6 : 0.5) * (F.children.length ? 1.3 : 1);
     if (R.chance(p)) { offer(C, 'house'); if (L.pending) return; }
@@ -595,7 +619,6 @@ function adultStage(C) {
   }
   if ((L.isPeer || L.auto) && !L.money.investAsked && a >= 25 && L.money.savings > 2000000 && R.chance(0.1)) { L.money.investAsked = true; L.money.investOn = R.chance(0.35); }
   // 趣味
-  if (a >= 25 && !L.hobby && R.chance(0.05)) { offer(C, 'hobby'); if (L.pending) return; }
   // 運転免許の返納
   if (a >= 75 && !L.flags.licenseAsked && R.chance(0.25)) { L.flags.licenseAsked = true; offer(C, 'license'); if (L.pending) return; }
   // 遺言書
@@ -626,8 +649,18 @@ function haveChild(C) {
   const ch = { sex: s, name: { sei: L.name.sei, mei, meiKana: kana }, by: curYear(L), alive: true, pref: L.pref, withSpouse: sp?.id };
   F.children.push(ch);
   const n = F.children.length;
-  log(C, `${ordinalChild(n - 1)}の${s === 'M' ? '男の子' : '女の子'}、${mei}（${kana}）が生まれました。`, { k: 'family', big: true, note: n === 1 ? `${L.pref}の合計特殊出生率は ${W.pref(L.pref).v.tfr}（人口動態統計）。` : undefined });
+  const player = !L.isPeer && !L.auto;
+  log(C, player ? `${ordinalChild(n - 1)}の${s === 'M' ? '男の子' : '女の子'}が生まれました。` : `${ordinalChild(n - 1)}の${s === 'M' ? '男の子' : '女の子'}、${mei}（${kana}）が生まれました。`, { k: 'family', o: 'g', big: true, note: n === 1 ? `${L.pref}の合計特殊出生率は ${W.pref(L.pref).v.tfr}（人口動態統計）。${factNote(W, 'births2025')}` : undefined });
   adj(L, 'happy', 8); adj(L, 'social', 4); adj(L, 'health', L.sex === 'F' ? -3 : -1);
+  const then = L.sex === 'F' && L.work.status === 'employed' ? 'keepWorking' : null;
+  const card = L.sex === 'M' && L.work.status === 'employed' ? 'c_paternity' : null;
+  if (player) {
+    const cands = [[mei, kana]];
+    for (let i = 0; i < 12 && cands.length < 3; i++) { const x = drawGivenName(W, R, s); if (!cands.some((y) => y[0] === x[0])) cands.push(x); }
+    offer(C, 'childName', { idx: n - 1, cands, then, card });
+    return;
+  }
+  if (card && !L.isPeer) { offerCard(C, card); return; }
   if (L.sex === 'F' && L.work.status === 'employed' && !L.isPeer && !L.auto) { offer(C, 'keepWorking'); return; }
   if (L.sex === 'F' && L.work.status === 'employed' && (L.isPeer || L.auto)) {
     if (!R.chance(W.model.family.motherKeepsWorkingAfterBirth)) { quitJob(C, '子育てのために仕事を辞めました。'); L.work.homemaker = true; }
@@ -652,6 +685,20 @@ function quitJob(C, text) {
   if (text) log(C, text, { k: 'work' });
 }
 
+function rankUp(C, offered) {
+  const { L } = C;
+  const w = L.work;
+  const job = JOB[w.jobId];
+  const lad = LADDERS[job?.lad || 'none'] || [''];
+  if ((w.rank || 0) >= lad.length - 1) return;
+  w.rank = (w.rank || 0) + 1;
+  w.boost = Math.min(0.5, w.boost + 0.05);
+  w.title = jobTitle(job, w.rank);
+  const label = lad[w.rank];
+  if (label) log(C, `${label}${offered ? 'になりました' : 'に昇進しました'}。`, { k: 'work', o: 'g', big: w.rank >= 3 });
+  adj(L, 'happy', 3);
+}
+
 function startJob(C, job, opts = {}) {
   const { L, W, R } = C;
   L.work.status = 'employed';
@@ -661,7 +708,8 @@ function startJob(C, job, opts = {}) {
   if (job.self) L.work.nonreg = false;
   L.work.years = 0;
   L.work.everWorked = true;
-  L.work.title = job.t;
+  L.work.rank = 0;
+  L.work.title = jobTitle(job, 0);
   if (!L.work.firstJob) L.work.firstJob = { title: job.t, age: L.age };
   const type = job.self ? '' : L.work.nonreg ? '（非正規）' : '（正社員）';
   const inc = wageOf(W, { ...L.work, sex: L.sex, edu: L.edu.level, wageZ: L.wageZ }, L.age, L.pref);
@@ -703,13 +751,7 @@ function workYear(C) {
       return;
     }
     // 昇進
-    if (!w.nonreg && !job.self && w.years > 3 && L.age < 58 && R.chance(0.05 + (L.focus === 'work' ? 0.05 : 0))) {
-      w.boost = Math.min(0.45, w.boost + 0.06);
-      w.rank = (w.rank || 0) + 1;
-      const t = ['主任になりました。', '係長に昇進しました。', '課長に昇進しました。', '部長になりました。'][Math.min(3, w.rank - 1)];
-      log(C, t, { k: 'work', big: w.rank >= 3 });
-      adj(L, 'happy', 3);
-    }
+    if (!w.nonreg && !job.self && w.years > 2 && L.age < 60 && R.chance(0.06 + (L.focus === 'work' ? 0.05 : 0) - 0.008 * (w.rank || 0))) rankUp(C, false);
     // 非正規から正社員へ
     if (w.nonreg && L.age < 55 && R.chance(0.04 + (L.focus === 'learn' ? 0.03 : 0))) {
       w.nonreg = false; log(C, '正社員として登用されました。', { k: 'work', big: true }); adj(L, 'happy', 5);
@@ -742,12 +784,12 @@ STEP.events = (C) => {
   const q = L.household.quintile;
   // 子ども時代
   if (a >= 1 && a <= 5) {
-    if (R.chance(0.25)) log(C, R.pick(['高い熱を出して、一晩じゅう家族が付き添いました。', '公園で転んで、ひざをすりむきました。', `${pf.nature === '雪' ? '初めての雪に手を伸ばしました。' : '水たまりを見つけるたびに飛びこみました。'}`, '絵本を何度も読んでとせがみました。', 'お気に入りのぬいぐるみを、どこへでも連れて行きました。']), { k: 'baby' });
+    if (R.chance(0.08)) log(C, R.pick(['高い熱を出して、一晩じゅう家族が付き添いました。', '公園で転んで、ひざをすりむきました。', `${pf.nature === '雪' ? '初めての雪に手を伸ばしました。' : '水たまりを見つけるたびに飛びこみました。'}`, '絵本を何度も読んでとせがみました。', 'お気に入りのぬいぐるみを、どこへでも連れて行きました。']), { k: 'baby' });
     if (R.chance(0.02)) { log(C, '肺炎で数日入院しました。', { k: 'health' }); adj(L, 'health', -4); }
   }
   if (a >= 6 && a <= 17) schoolEvents(C);
   // 祭りや地元の行事
-  if (a >= 4 && R.chance(0.06)) log(C, R.pick([`家族で「${pf.festival}」を見に行きました。`, `${L.pref === L.birthPref ? '地元' : L.pref}の名物「${pf.food}」を囲みました。`]), { k: 'life' });
+  if (a >= 4 && R.chance(0.03)) log(C, R.pick([`家族で「${pf.festival}」を見に行きました。`, `${L.pref === L.birthPref ? '地元' : L.pref}の名物「${pf.food}」を囲みました。`]), { k: 'life' });
   // 虐待（児童相談所への相談対応件数にもとづく）
   if (a >= 1 && a < 18 && !L.flags.abused) {
     const p = pf.v.childAbusePer100kChildren / 100000 * 0.35 * (q <= 2 ? 1.6 : 0.7);
@@ -761,6 +803,10 @@ STEP.events = (C) => {
   // 大人
   if (a >= 18) { adultEvents(C); if (L.pending) return; }
   if (a >= 60) seniorEvents(C);
+  // カタログの出来事・決断・趣味
+  runCatalogEvents(C); if (L.pending) return;
+  if (a >= 6 && L.hobbies.length < MAX_HOBBIES && R.chance(a < 18 ? 0.1 : a < 65 ? 0.05 : 0.06)) { offer(C, 'newHobby'); if (L.pending) return; }
+  maybeChoice(C); if (L.pending) return;
   // 犯罪の被害（刑法犯の認知件数にもとづく。大半は窃盗）
   if (a >= 10 && R.chance(pf.v.crimePer1000 / 1000 * 0.8)) {
     const t = a >= 70 && R.chance(0.35) ? '「息子」を名乗る電話にだまされそうになり、家族が止めました。' : R.pick(['自転車を盗まれました。', '財布をなくし、戻ってきませんでした。', '留守のあいだに空き巣に入られました。', '駐車場で車に傷をつけられました。']);
@@ -814,7 +860,7 @@ function schoolEvents(C) {
   }
   // 学校の日々
   const r = R.next();
-  if (r < 0.35) {
+  if (r < 0.12) {
     const pool = stage === 'elem'
       ? ['運動会のリレーで、最後まで走りきりました。', '夏休みの自由研究で、アサガオの観察日記をつけました。', '遠足で、友だちとお弁当を交換しました。', '図書室の本を、片っ端から読みました。', '九九を全部言えるようになりました。', '学芸会で、木の役を一生懸命演じました。', '放課後、暗くなるまで校庭で遊びました。']
       : stage === 'jhs'
@@ -913,14 +959,13 @@ function adultEvents(C) {
     log(C, '脳梗塞で倒れました。リハビリを続け、少しずつ歩けるようになりました。', { k: 'health', big: true, h: 'illness' }); adj(L, 'health', -18);
   }
   // 小さな出来事
-  if (a < 60 && R.chance(0.3)) {
+  if (a < 60 && R.chance(0.1)) {
     const pool = [
       '久しぶりに学生時代の友人と集まりました。', '体調を崩して、一週間寝こみました。', '思いきって新しい服を買いました。', '有給休暇をとって、温泉に行きました。',
       '眠れない夜に、昔の写真を眺めました。', '近所の人に野菜をもらいました。', '駅の階段で、見知らぬ人の荷物を運ぶのを手伝いました。', 'スマートフォンを買い替えました。',
     ];
     if (L.work.status === 'employed') pool.push('残業が続き、終電で帰る日が増えました。', '職場の飲み会で、初めて本音で話せる同僚ができました。', '大きな仕事をやり遂げ、同僚と乾杯しました。', '上司と意見がぶつかりました。');
     if (L.family.children.length) pool.push('子どもの運動会で、場所取りのために朝早く家を出ました。', '子どもの寝顔を見ながら、一日を振り返りました。');
-    if (L.hobby) pool.push(`${L.hobby}の腕が少し上がりました。`);
     log(C, R.pick(pool), { k: 'life' });
   }
   // 貧困
@@ -956,7 +1001,7 @@ function seniorEvents(C) {
   if (a >= 65 && R.chance(a >= 85 ? 0.025 : a >= 75 ? 0.012 : 0.006)) {
     log(C, '家の中で転んで、足の付け根の骨を折りました。', { k: 'health', big: true }); adj(L, 'health', -12);
   }
-  if (R.chance(0.25)) {
+  if (R.chance(0.08)) {
     const pool = ['老眼鏡を新しくしました。', '同窓会の案内が届きました。', '朝の散歩が日課になりました。', '庭の手入れをしました。', '病院の待合室で、顔なじみが増えました。', '若いころの友人の訃報が届きました。', 'テレビの音量が少しずつ大きくなっています。', '近所の子どもたちに、昔の町の話をしました。'];
     if (L.grandkids) pool.push('孫が遊びに来て、家がにぎやかになりました。', '孫にお年玉を渡しました。');
     log(C, R.pick(pool), { k: 'life' });
@@ -984,7 +1029,7 @@ function cancerSite(R, sex, a) {
 }
 
 // ---------------------------------------------------------------- 重点と状態
-const KNOW18 = 57; // 18歳の知識の平均（シミュレーションで測った値）
+const KNOW18 = 62; // 18歳の知識の平均（シミュレーションで測った値）
 const KMEAN = (a) => (a <= 18 ? 4 + a * (KNOW18 - 4) / 18 : KNOW18);
 STEP.focus = (C) => {
   const { L, W, R } = C;
@@ -1026,9 +1071,11 @@ STEP.focus = (C) => {
   const target = 52 + (L.stats.health - 60) * 0.18 + (L.stats.social - 50) * 0.22 + incomeHappy(W, L)
     + (L.family.spouse && L.family.spouse.alive && !L.family.spouse.divorced ? 3 : 0) + (L.family.children.length ? 2 : 0)
     + (f === 'hobby' || f === 'rest' ? 3 : 0) + (f === 'friends' ? 2 : 0) + (f === 'study' ? -2 : 0) + (L.money.debt > 3000000 ? -6 : 0)
-    + (L.health.conditions.depression && !L.health.conditions.depression.treated ? -8 : 0);
+    + (L.health.conditions.depression && !L.health.conditions.depression.treated ? -8 : 0)
+    + Math.min(3, (L.hobbies || []).length * 1.2) + (L.pet && L.pet.alive ? 1.5 : 0);
   adj(L, 'happy', (target - L.stats.happy) * 0.22 + R.normal(0, 2.2));
   if (f === 'work' && L.work.status === 'employed') L.work.boost = Math.min(0.45, L.work.boost + 0.01);
+  hobbyYear(C);
   // 記録
   L.hist.happy[a] = Math.round(L.stats.happy);
   L.hist.health[a] = Math.round(L.stats.health);
@@ -1090,7 +1137,7 @@ STEP.money = (C) => {
   if (!L.home.own && !L.home.withParents) sub += pf.v.rentPer3_3m2 * 12 * 12 * (adults + kids > 2 ? 1.4 : 1) * 0.6;
   let living = Math.max(sub, disposable * 0.78 + sub * 0.12);
   if (L.home.withParents && a < 30) living *= 0.5;
-  if (L.home.own && L.home.mortgage > 0) { const pay = Math.min(L.home.mortgage, 1200000); L.home.mortgage -= pay; living += pay; }
+  if (L.home.own && L.home.mortgage > 0) { const pay = Math.min(L.home.mortgage, 1200000); L.home.mortgage -= pay; living += pay; if (L.home.mortgage <= 0 && !L.isPeer) triggerEvent(C, 'm_mortgage_done'); }
   if (L.focus === 'health') living += 100000;
   if (L.health.smoker) living += 200000;
   let net = disposable - living;
@@ -1100,11 +1147,7 @@ STEP.money = (C) => {
   if (L.focus === 'work' && net > 0) net *= 1.05;
   if (a < 18) net = Math.min(net, w.income);
   M.savings = Math.round(M.savings + net);
-  if (M.investOn && M.savings > 500000) {
-    const put = Math.min(1200000, M.savings * 0.2);
-    M.savings -= put; M.invest += put;
-  }
-  if (M.invest > 0) M.invest = Math.round(M.invest * (1 + R.normal(0.04, 0.13)));
+  yearlySpending(C);
   // 借金：貯金がマイナスなら借金として扱う
   if (M.savings < 0 && L.age >= 18) { M.debt += -M.savings; M.savings = 0; }
   if (M.debt > 0 && M.savings > 0) { const pay = Math.min(M.debt, M.savings * 0.5); M.debt -= pay; M.savings -= pay; }
@@ -1196,7 +1239,8 @@ DEC.club = {
     const { L, R } = C;
     if (i === 0) { L.club = R.pick(CLUBS.sports); adj(L, 'health', 3); adj(L, 'social', 3); }
     if (i === 1) { L.club = R.pick(CLUBS.culture); adj(L, 'happy', 3); }
-    log(C, i === 2 ? '部活には入らず、放課後は自由に過ごすことにしました。' : `${L.club}に入りました。`, { k: 'school' });
+    log(C, i === 2 ? '部活には入らず、放課後は自由に過ごすことにしました。' : `${L.club}に入りました。`, { k: 'school', o: i === 2 ? 'n' : 'g' });
+    if (L.club && CLUB_HOBBY[L.club]) addHobby(C, CLUB_HOBBY[L.club]);
   },
 };
 
@@ -1247,7 +1291,7 @@ DEC.highschool = {
 // 県ごとの大学等進学率に平均が一致する切片。家計の5分位は全国基準なので、その県の家計の分布で解く
 const ZS = [-2.5, -2, -1.5, -1, -0.5, 0, 0.5, 1, 1.5, 2, 2.5];
 const ZWT = ZS.map((z) => Math.exp(-z * z / 2));
-const UNIV_OFFSET = 0.32; // 高校の種類・家計の変化による平均のずれ（シミュレーションで確認）
+const UNIV_OFFSET = 0.5; // 高校の種類・家計の変化による平均のずれ（シミュレーションで確認）
 function prefQuintiles(W, pref) {
   W._pq ||= {};
   if (W._pq[pref]) return W._pq[pref];
@@ -1388,7 +1432,6 @@ DEC.major = {
     L.edu.major = m.id;
     if (m.id === 'med' && L.stats.know > 72 && R.chance(0.3)) { L.flags.medSchool = true; L.edu.gradAt = L.age + 6; log(C, '医学部に入りました。6年間の勉強が始まります。', { k: 'school', big: true }); return; }
     log(C, `${m.label}を学ぶことにしました。`, { k: 'school' });
-    if (R.chance(0.5)) L.hobby = L.hobby || null;
   },
 };
 
@@ -1514,8 +1557,9 @@ DEC.marry = {
     else if (L.sex === 'M' && !takeHusband) { L.name = { ...L.name, sei: sp.name.sei, seiKana: sp.name.seiKana }; nameNote = `妻の名字「${sp.name.sei}」を名乗ることにしました。`; }
     else if (L.sex === 'F') nameNote = `夫が名字「${L.name.sei}」を名乗ることになりました。`;
     for (const ch of L.family.children) if (ch.alive && personAge(L, ch) < 18) ch.name.sei = L.name.sei;
-    log(C, `${sp.name.sei}${sp.name.mei}さんと結婚しました。${nameNote}`, { k: 'family', big: true, note: `結婚した夫婦の約${Math.round(W.D.names.husbandSurnameShare * 1000) / 10}%が夫の名字を選んでいます（人口動態統計 2023年）。` });
+    log(C, `${sp.name.sei}${sp.name.mei}さんと結婚しました。${nameNote}`, { k: 'family', o: 'g', big: true, note: `結婚した夫婦の約${Math.round(W.D.names.husbandSurnameShare * 1000) / 10}%が夫の名字を選んでいます（人口動態統計 2023年）。` });
     adj(L, 'happy', 10); adj(L, 'social', 5);
+    if (!L.isPeer) offerCard(C, L.age < 60 ? 'c_wedding' : 'c_honeymoon');
   },
 };
 
@@ -1742,6 +1786,395 @@ DEC.seniorHome = {
   },
 };
 
+// ================================================================ 出来事・決断カード・趣味・お金のカタログ
+const POS_WORDS = ['生まれました', '合格', '結婚しました', '昇進', '入賞', '卒業しました', '回復', 'うまくいき', '当たりました', '受賞', '仲直り', 'できました', 'なりました。', '始めました', 'とりとめ', '再発はありませんでした', '登用', '返し終え', '入学しました'];
+const NEG_WORDS = ['亡くなりました', '失いました', '離婚', '不合格', '落ち', 'けが', '入院', '倒れ', '壊れ', '盗まれ', '被害', 'が見つかりました', '診断され', '骨を折', '中退', '届かず', '別れ', '借金', '苦しく', '暴力', 'いじめ', '仲間はずれ', '行けない日', '避難所', '畳む', '外され', '見送りました', 'できませんでした', '空き巣', '傷を', '要介護', '介護が必要'];
+function inferTone(text, o) {
+  if (o.h && o.h !== 'illness' && o.h !== 'accident' && o.h !== 'disaster') return 'h';
+  if (o.k === 'death') return 'h';
+  for (const w of NEG_WORDS) if (text.includes(w)) return 'b';
+  for (const w of POS_WORDS) if (text.includes(w)) return 'g';
+  return 'n';
+}
+
+function makeQ(L, W) {
+  const pf = W.pref(L.pref);
+  const F = L.family;
+  const sp = F.spouse;
+  const married = !!(sp && sp.alive && !sp.divorced);
+  const kidAges = F.children.filter((c) => c.alive).map((c) => personAge(L, c));
+  return {
+    snowy: pf.nature === '雪', coastal: ['海', '瀬戸内の海', '有明海'].includes(pf.nature) || pf.name === '沖縄県',
+    urban: pf.industry[2] >= 75,
+    youngerSib: F.siblings.some((s) => !s.older && personAge(L, s) <= 2),
+    grandAlive: F.grand.some((g) => g.alive),
+    married, marriedYears: married ? curYear(L) - sp.since : 0,
+    babyAt0: kidAges.includes(0),
+    kidAge: (a, b) => kidAges.some((k) => k >= a && k <= b),
+    allKidsGrown: kidAges.length > 0 && kidAges.every((k) => k >= 22),
+    parentAlive: [F.mother, F.father].some((p) => p && p.alive),
+    ladderJob: !!(L.work.jobId && (LADDERS[JOB[L.work.jobId]?.lad] || []).length > 2),
+    familyBusiness: [F.father, F.mother].some((p) => p && p.alive && p.jobId && JOB[p.jobId]?.self),
+  };
+}
+
+function fillText(C, text, extra = {}) {
+  const { L, W, R } = C;
+  const pf = W.pref(L.pref);
+  const F = L.family;
+  const kids = F.children.filter((c) => c.alive);
+  const kid = extra.child || (kids.length ? kids[kids.length - 1] : null);
+  const h = L.hobbies && L.hobbies.length ? HOBBY[L.hobbies[0].id] : null;
+  const map = {
+    pref: L.pref, birthPref: L.birthPref, food: pf.food, festival: pf.festival, capital: pf.capital, nature: pf.nature, region: pf.region,
+    mei: L.name.mei, sei: L.name.sei,
+    spouse: F.spouse ? F.spouse.name.mei : '', child: kid ? kid.name.mei : '',
+    sib: F.siblings.length ? F.siblings[0].name.mei : '',
+    hobby: extra.hobby || (h ? h.name : '趣味'), club: L.club || '部活',
+    job: L.work.title || '', job2: JOBS.filter((j) => !j.dream && j.w > 0.005)[Math.floor(R.next() * 40)]?.t || '近所のお店',
+    pet: L.pet ? `${L.pet.kind}の${L.pet.name}` : '', friend: extra.friend || drawGivenName(W, R, R.chance(0.5) ? 'M' : 'F')[0],
+    place: R.pick(PLACES), abroad: R.pick(ABROAD), gift: R.pick(FURUSATO_GIFTS),
+  };
+  return text.replace(/\{(\w+)\}/g, (_, k) => (map[k] != null ? map[k] : ''));
+}
+
+export function factNote(W, key) {
+  const f = W.D.facts?.[key];
+  return f ? `${f.text}（${f.source}）` : undefined;
+}
+
+function fxApply(C, fx = {}, money = 0) {
+  const { L } = C;
+  for (const [k, v] of Object.entries(fx)) if (k in L.stats) adj(L, k, v);
+  if (money < 0) pay(L, -money);
+  else if (money > 0 && L.age >= 16) L.money.savings += money;
+}
+
+function logEvent(C, ev, extra = {}) {
+  const { L, R, W } = C;
+  const text = fillText(C, R.pick(ev.t), extra);
+  if (!text) return;
+  log(C, text, { k: ev.k || 'life', o: ev.tone, h: ev.h, big: ev.big, note: ev.note ? factNote(W, ev.note) : undefined, gentle: ev.h ? `${L.age}歳、つらい時期がありました。` : undefined });
+  fxApply(C, ev.fx, ev.money);
+  if (ev.set) Object.assign(L.flags, ev.set);
+  if (ev.act) doAct(C, ev.act);
+  L.cool[ev.id] = L.age;
+  if (ev.then) offerCard(C, ev.then);
+}
+
+const EVENT_BY_ID = Object.fromEntries(EVENTS.map((e) => [e.id, e]));
+function triggerEvent(C, id, extra) { const ev = EVENT_BY_ID[id]; if (ev) logEvent(C, ev, extra); }
+
+function eligible(L, Q, ev) {
+  if (L.age < ev.a0 || L.age > ev.a1) return false;
+  const last = L.cool[ev.id];
+  if (last != null && (ev.once || L.age - last < (ev.cd || 1))) return false;
+  if (ev.req && !ev.req(L, Q)) return false;
+  return true;
+}
+
+function runCatalogEvents(C) {
+  const { L, W, R } = C;
+  const Q = makeQ(L, W);
+  const hits = [];
+  for (const ev of EVENTS) {
+    if (ev.trigger || !ev.p) continue;
+    if (!eligible(L, Q, ev)) continue;
+    if (R.chance(ev.p)) hits.push([ev, {}]);
+  }
+  for (const hb of L.hobbies || []) {
+    const h = HOBBY[hb.id];
+    for (const ev of HOBBY_EVENTS) {
+      const key = ev.id + ':' + hb.id;
+      const last = L.cool[key];
+      if (L.age < ev.a0 || L.age > ev.a1 || (last != null && L.age - last < 3)) continue;
+      if (R.chance(ev.p)) hits.push([{ ...ev, id: key }, { hobby: h.name }]);
+    }
+  }
+  const max = L.isPeer ? 1 : L.age < 6 ? 2 : 3;
+  for (const [ev, extra] of R.shuffle(hits).slice(0, max)) {
+    logEvent(C, ev, extra);
+    if (L.pending) return;
+  }
+}
+
+// ---------------------------------------------------------------- 決断カード（カタログ）
+const CHOICE_BY_ID = Object.fromEntries(CHOICES.map((c) => [c.id, c]));
+function fxHint(o) {
+  const parts = [];
+  const lab = { health: '健康', happy: '幸福', know: '知識', social: '人間関係' };
+  for (const [k, v] of Object.entries(o.fx || {})) if (lab[k] && v) parts.push(`${lab[k]} ${v > 0 ? '+' : '−'}${Math.abs(v)}`);
+  if (o.money) parts.push(`お金 ${o.money > 0 ? '+' : '−'}${yen(Math.abs(o.money))}`);
+  if (o.roll) parts.push('結果は運しだい');
+  return parts.join(' · ');
+}
+function offerCard(C, id, extra = {}) {
+  const card = CHOICE_BY_ID[id];
+  if (!card) return;
+  C.L.cool[id] = C.L.age;
+  offer(C, 'card', { id, ...extra });
+}
+function maybeChoice(C) {
+  const { L, W, R } = C;
+  if (L.age < 4) return;
+  const Q = makeQ(L, W);
+  const hits = [];
+  for (const card of CHOICES) {
+    if (!card.p) continue;
+    if (!eligible(L, Q, card)) continue;
+    if (R.chance(card.p)) hits.push(card);
+  }
+  if (!hits.length) return;
+  offerCard(C, R.pick(hits).id);
+}
+DEC.card = {
+  cat: 'small',
+  build(C, c) {
+    const card = CHOICE_BY_ID[c.id];
+    this.cat = card.cat;
+    return {
+      title: fillText(C, card.title), body: card.body ? fillText(C, card.body) : '', note: card.note ? factNote(C.W, card.note) : '',
+      options: card.options.map((o) => ({ label: fillText(C, o.l), hint: o.hint || fxHint(o) })),
+    };
+  },
+  auto(C, c) {
+    const card = CHOICE_BY_ID[c.id];
+    return C.R.weighted(card.options.map((o, i) => [i, o.w ?? 1]));
+  },
+  apply(C, c, i) {
+    const card = CHOICE_BY_ID[c.id];
+    const o = card.options[i] || card.options[0];
+    applyOption(C, card, o, c);
+    if (card.next && !C.L.pending) offerCard(C, card.next);
+  },
+};
+function applyOption(C, card, o, c) {
+  const { L, R } = C;
+  fxApply(C, o.fx, o.money);
+  if (o.set) Object.assign(L.flags, o.set);
+  if (o.t) log(C, fillText(C, o.t), { k: 'choice', o: o.tone || toneOfFx(o) });
+  if (o.act) doAct(C, o.act, c);
+  if (o.roll) {
+    const r = R.weighted(o.roll.map((x, j) => [j, x[0]]));
+    const res = o.roll[r][1];
+    if (res.t) log(C, fillText(C, res.t), { k: 'choice', o: res.tone || toneOfFx(res), big: Math.abs(res.money || 0) >= 1e8 });
+    fxApply(C, res.fx, res.money);
+    if (res.act) doAct(C, res.act, c);
+  }
+}
+function toneOfFx(o) {
+  const s = Object.values(o.fx || {}).reduce((a, b) => a + b, 0);
+  return s > 1 ? 'g' : s < -1 ? 'b' : 'n';
+}
+function doAct(C, act, c = {}) {
+  const { L, W, R } = C;
+  const [k, arg] = act.split(':');
+  if (k === 'hobby') addHobby(C, arg);
+  else if (k === 'pet') { L.pet = { kind: arg, name: R.pick(PET_NAMES[arg] || PET_NAMES.犬), by: curYear(L), alive: true }; log(C, `${arg}の${L.pet.name}が家族になりました。`, { k: 'family', o: 'g' }); }
+  else if (k === 'abroad') L.flags.abroad = (L.flags.abroad || 0) + 1;
+  else if (k === 'dropout') { L.edu.stage = 'done'; L.edu.level = 'hs'; jobHunt(C); }
+  else if (k === 'boost') L.work.boost = Math.min(0.5, L.work.boost + Number(arg));
+  else if (k === 'rankup') rankUp(C, true);
+  else if (k === 'jobchange') { const j = JOB[jobOffers(C, 1)[0]]; if (j) startJob(C, j, { text: `${j.t}として新しい職場で働きはじめました。` }); }
+  else if (k === 'job') startJob(C, JOB[arg], { nonreg: false, text: `${JOB[arg].t}として歩みはじめました。` });
+  else if (k === 'unemployed') { L.work.status = 'unemployed'; L.work.jobId = null; L.work.income = 0; L.work.unempSince = curYear(L); }
+  else if (k === 'inherit_job') {
+    const p = [L.family.father, L.family.mother].find((x) => x && x.jobId && JOB[x.jobId]?.self);
+    if (L.pref !== L.birthPref) moveTo(C, L.birthPref, '家業を継ぐため');
+    startJob(C, JOB[p?.jobId || 'shopowner'], { text: `実家の${JOB[p?.jobId || 'shopowner'].t}の仕事を継ぎました。` });
+  } else if (k === 'marriage_boost') L.flags.konkatsu = true;
+  else if (k === 'auto') { L.spend.auto[arg] = true; }
+  else if (k === 'house_inherit') { L.home.own = true; L.home.withParents = false; const pp = [L.family.mother, L.family.father].find((p) => p)?.pref || L.birthPref; if (pp !== L.pref) moveTo(C, pp, '親の家を継ぐため'); }
+  else if (k === 'early_detect') L.flags.early = true;
+  else if (k === 'move' && arg === 'birth') moveTo(C, L.birthPref, '老後を故郷で');
+  else if (k === 'move' && arg === 'any') moveTo(C, W.drawDestination(R, L.pref), '転勤');
+  else if (k === 'quintile') L.household.quintile = clamp(L.household.quintile + Number(arg), 1, 5);
+}
+const PET_NAMES = { 犬: ['ポチ', 'ココ', 'モモ', 'ハル', 'ソラ', 'マロン', 'コタロウ', 'チョコ', 'むぎ', 'リク'], 猫: ['タマ', 'ミケ', 'レオ', 'ルナ', 'きなこ', 'ソラ', 'モカ', 'こむぎ', 'ノラ', 'クロ'], 金魚: ['きんちゃん', 'ひらり', 'あか', 'しろ', 'ぎょぴ'] };
+
+// ---------------------------------------------------------------- 趣味
+function addHobby(C, id) {
+  const { L } = C;
+  const h = HOBBY[id];
+  if (!h || L.hobbies.some((x) => x.id === id)) return;
+  if (L.hobbies.length >= MAX_HOBBIES) {
+    const low = L.hobbies.slice().sort((a, b) => a.skill - b.skill)[0];
+    L.hobbies = L.hobbies.filter((x) => x !== low);
+    log(C, `${HOBBY[low.id].name}は、しばらくお休みすることにしました。`, { k: 'hobby', o: 'n' });
+  }
+  L.hobbies.push({ id, skill: 4, since: L.age, ms: 0 });
+  log(C, `${h.name}を始めました。`, { k: 'hobby', o: 'g' });
+  adj(L, 'happy', 2);
+}
+function hobbyYear(C) {
+  const { L, R, W } = C;
+  for (const hb of L.hobbies) {
+    const h = HOBBY[hb.id];
+    // 腕前：重点を「趣味」にした年は大きく伸び、そうでない年はゆっくり。上手になるほど伸びにくい
+    const main = L.hobbies[0] === hb || L.hobbies.length === 1;
+    let g = (L.focus === 'hobby' ? (main ? 20 : 9) : L.focus === 'sports' && h.kind === 'sport' ? 15 : L.focus === 'friends' && L.age < 18 ? 2.5 : 1.3) + 1.2 * L.talent + (L.spend.auto.hobby_gear ? 3 : 0) + R.normal(0, 1);
+    if (L.age >= 70 && h.kind === 'sport') g -= 1.5;
+    hb.skill = clamp(hb.skill + Math.max(-1, g) * (1 - hb.skill / 105), 0, 100);
+    while (hb.ms < HOBBY_THRESHOLDS.length && hb.skill >= HOBBY_THRESHOLDS[hb.ms]) {
+      const t = (HOBBY_MILESTONES[h.kind] || HOBBY_MILESTONES.media)[hb.ms].replace(/\{h\}/g, h.name);
+      hb.ms++;
+      log(C, t, { k: 'hobby', o: 'g', big: hb.ms >= 3 });
+      adj(L, 'happy', 2 + hb.ms);
+    }
+    const pro = h.pro && PRO[h.pro];
+    if (pro && !hb.tried && L.age >= pro.ages[0] && L.age <= pro.ages[1] && hb.skill >= pro.skill && !(pro.job && L.work.jobId === pro.job)) {
+      hb.tried = true;
+      offer(C, 'pro', { hid: hb.id });
+      if (L.pending) return;
+    }
+  }
+}
+DEC.pro = {
+  cat: 'big',
+  build(C, c) {
+    const h = HOBBY[c.hid]; const pro = PRO[h.pro];
+    return { title: pro.ask, body: `${h.name}を続けてきて、${pro.title}への道が見えてきました。挑戦すれば、ほかの道は一度あきらめることになります。`, note: pro.fact ? factNote(C.W, pro.fact) : '', options: [{ label: '挑戦する', hint: `${pro.title}をめざす · 結果は腕前と運しだい` }, { label: '趣味として続ける', hint: '' }] };
+  },
+  auto(C, c) { return C.R.chance(0.35) ? 0 : 1; },
+  apply(C, c, i) {
+    const { L, R } = C;
+    const hb = L.hobbies.find((x) => x.id === c.hid); const h = HOBBY[c.hid]; const pro = PRO[h.pro];
+    if (i === 1) { log(C, `${h.name}は、これからも趣味として続けることにしました。`, { k: 'hobby', o: 'n' }); return; }
+    if (pro.cost) pay(L, pro.cost);
+    const p = clamp(pro.p * (0.6 + (hb.skill - pro.skill) / (100 - pro.skill + 1)), 0.01, 0.9);
+    if (R.chance(p)) {
+      log(C, pro.ok, { k: 'work', o: 'g', big: true });
+      adj(L, 'happy', 10);
+      if (L.edu.stage !== 'done' && L.age >= 18) L.edu.stage = 'done';
+      startJob(C, JOB[pro.job], { nonreg: false, text: `${JOB[pro.job].t}としての日々が始まりました。` });
+    } else {
+      log(C, pro.fail, { k: 'hobby', o: 'b', big: true });
+      adj(L, 'happy', -5);
+    }
+  },
+};
+DEC.newHobby = {
+  cat: 'small',
+  build(C, c) {
+    const { L, R } = C;
+    if (!c.opts) c.opts = R.shuffle(HOBBY_LIST.filter((h) => L.age >= h.minAge && !L.hobbies.some((x) => x.id === h.id))).slice(0, 3).map((h) => h.id);
+    const now = L.hobbies.map((x) => HOBBY[x.id].name).join('・');
+    return { title: '新しい趣味を始めてみる？', body: now ? `今の趣味：${now}（趣味は3つまで。増やすと、いちばん腕前の低いものをお休みします）` : '時間ができたとき、何をしよう。', options: [...c.opts.map((id) => ({ label: HOBBY[id].name, hint: `年に約${yen(HOBBY[id].cost)} · 幸福↑` })), { label: now ? '今の趣味で十分' : '特に何もしない', hint: '' }] };
+  },
+  auto(C, c) { const { L, R } = C; if (!c.opts) c.opts = R.shuffle(HOBBY_LIST.filter((h) => L.age >= h.minAge && !L.hobbies.some((x) => x.id === h.id))).slice(0, 3).map((h) => h.id); return R.chance(0.6) ? R.int(0, 2) : 3; },
+  apply(C, c, i) { if (i < 3 && c.opts[i]) addHobby(C, c.opts[i]); },
+};
+const CLUB_HOBBY = { サッカー部: 'soccer', 野球部: 'baseball', バスケットボール部: 'basketball', バレーボール部: 'volleyball', 陸上部: 'run', ソフトテニス部: 'tennis', 卓球部: 'tabletennis', 剣道部: 'kendo', 水泳部: 'swim', バドミントン部: 'badminton', 吹奏楽部: 'brass', 美術部: 'draw', 科学部: 'astronomy', 合唱部: 'chorus', パソコン部: 'videogame', 写真部: 'photo', 文芸部: 'write', 茶道部: 'tea', 放送部: 'acting', 将棋部: 'shogi', 漫画研究部: 'manga', 軽音楽部: 'band', 演劇部: 'acting', ダンス部: 'dance' };
+
+// ---------------------------------------------------------------- 子どもの名前
+DEC.childName = {
+  cat: 'family',
+  build(C, c) {
+    const ch = C.L.family.children[c.idx];
+    return { title: `${ch.sex === 'M' ? '男の子' : '女の子'}の名前をどうする？`, body: '2025年生まれの名前のランキングから、候補を3つ挙げました。', note: factNote(C.W, 'names2025'), options: c.cands.map(([k, r]) => ({ label: `${k}（${r}）`, hint: '' })) };
+  },
+  auto(C, c) { return 0; },
+  apply(C, c, i) {
+    const { L } = C;
+    const ch = L.family.children[c.idx];
+    const [k, r] = c.cands[i] || c.cands[0];
+    ch.name.mei = k; ch.name.meiKana = r;
+    log(C, `名前は「${k}（${r}）」に決めました。`, { k: 'family', o: 'g' });
+    if (c.then) offer(C, c.then);
+    else if (c.card) offerCard(C, c.card);
+  },
+};
+
+// ---------------------------------------------------------------- お金を使う・投資
+export function spendNow(W, L, id, arg) {
+  const C = ctx(W, L);
+  doSpend(C, id, arg);
+  return done(C);
+}
+export function setAutoSpend(L, id, on) { L.spend.auto[id] = !!on; }
+export function setNisa(L, monthly) { L.money.nisaMonthly = monthly; L.money.investOn = monthly > 0; }
+export function setIdeco(L, on) { L.money.idecoOn = !!on; }
+export function spendAvailable(W, L, s) {
+  const Q = makeQ(L, W);
+  if (L.age < 18) return false;
+  const kidsN = (a, b) => L.family.children.filter((c) => c.alive && personAge(L, c) >= a && personAge(L, c) <= b).length;
+  switch (s.req) {
+    case 'parentAlive': return Q.parentAlive;
+    case 'hasHobby': return L.hobbies.length > 0;
+    case 'kidsSchool': return kidsN(10, 17) > 0;
+    case 'kidsYoung': return kidsN(4, 12) > 0;
+    case 'income300': return (L.work.income || 0) >= 3000000;
+    case 'hasStock': return (L.money.stocks || 0) > 0;
+    case 'hasMortgage': return (L.home.mortgage || 0) > 0;
+    case 'hasDebt': return (L.money.debt || 0) > 0;
+    default: return true;
+  }
+}
+function spendCost(L, s) {
+  if (!s.kids) return s.cost || 0;
+  const n = L.family.children.filter((c) => c.alive && personAge(L, c) >= s.kids[0] && personAge(L, c) <= s.kids[1]).length;
+  return (s.cost || 0) * n;
+}
+function doSpend(C, id, arg, yearly = false) {
+  const { L, R, W } = C;
+  const s = SPEND_BY_ID[id];
+  if (!s) return false;
+  const cost = spendCost(L, s);
+  const M = L.money;
+  if (s.act === 'repay') { const p = Math.min(M.debt, M.savings); M.debt -= p; M.savings -= p; log(C, `借金を${yen(p)}返しました。`, { k: 'money', o: 'g' }); return true; }
+  if (s.act === 'sell_stock') { const v = Math.round(M.stocks); M.savings += v; M.stocks = 0; log(C, `持っていた株を売りました。受け取ったのは${yen(v)}。`, { k: 'money', o: v >= (M.stockCost || v) ? 'g' : 'b' }); M.stockCost = 0; return true; }
+  if (cost > M.savings) { if (!yearly) log(C, `${s.l.replace(/（.*?）/g, '')}には、いまの貯金では足りませんでした。`, { k: 'money', o: 'n' }); return false; }
+  M.savings -= cost;
+  fxApply(C, s.fx || {}, 0);
+  if (s.act === 'checkup') { L.flags.early = true; if (L.health.conditions.cancer && !L.health.conditions.cancer.cured) L.health.conditions.cancer.early = true; }
+  if (s.act === 'boost') L.work.boost = Math.min(0.5, L.work.boost + 0.01);
+  if (s.act === 'hobbySkill') for (const hb of L.hobbies) hb.skill = Math.min(100, hb.skill + 1.5);
+  if (s.act === 'stock') { M.stocks = (M.stocks || 0) + cost; M.stockCost = (M.stockCost || 0) + cost; }
+  if (s.act === 'prepay') { L.home.mortgage = Math.max(0, L.home.mortgage - cost); }
+  if (s.act === 'jumbo') {
+    const r = R.next();
+    if (r < 0.0000015) { M.savings += 700000000; log(C, '年末ジャンボで1等が当たりました。手が震えて、当選券を三回落としました。', { k: 'money', o: 'g', big: true }); adj(L, 'happy', 15); }
+    else if (r < 0.03) { M.savings += 10000; log(C, '年末ジャンボで1万円が当たりました。', { k: 'money', o: 'g' }); }
+    else log(C, '年末ジャンボは、300円が3枚当たりました。夢は来年に持ち越しです。', { k: 'money', o: 'n', note: factNote(W, 'jumbo') });
+    return true;
+  }
+  if (s.act === 'furusato') { if (!yearly || R.chance(0.35)) log(C, `ふるさと納税の返礼品の${fillText(C, '{gift}')}が届き、冷凍庫がいっぱいになりました。`, { k: 'money', o: 'g', note: yearly ? undefined : factNote(W, 'furusato2025') }); return true; }
+  if (!yearly && s.t) log(C, fillText(C, s.t), { k: 'money', o: toneOfFx(s) === 'b' ? 'n' : 'g' });
+  return true;
+}
+function yearlySpending(C) {
+  const { L, W, R } = C;
+  const M = L.money;
+  for (const [id, on] of Object.entries(L.spend.auto || {})) {
+    if (!on) continue;
+    const s = SPEND_BY_ID[id];
+    if (!s || !spendAvailable(W, L, s)) continue;
+    if (!doSpend(C, id, null, true)) { L.spend.auto[id] = false; log(C, `家計が苦しく、${s.l.replace(/（.*?）/g, '')}をしばらく見送ることにしました。`, { k: 'money', o: 'b' }); }
+  }
+  // 投資の積み立てと値動き
+  const nisaM = M.nisaMonthly || (M.investOn ? 30000 : 0);
+  if (nisaM > 0 && L.age >= 18) {
+    const put = nisaM * 12;
+    if (M.savings >= put) { M.savings -= put; M.invest += put; }
+  }
+  if (M.idecoOn && L.age >= 20 && L.age < 60 && L.work.status === 'employed') {
+    const put = 23000 * 12;
+    if (M.savings >= put) { M.savings -= put; M.ideco = (M.ideco || 0) + put; }
+  }
+  if (M.invest > 0) M.invest = Math.round(M.invest * (1 + R.normal(0.04, 0.14)));
+  if (M.ideco > 0) M.ideco = Math.round(M.ideco * (1 + R.normal(0.04, 0.14)));
+  if (M.stocks > 0) M.stocks = Math.round(M.stocks * (1 + R.normal(0.05, 0.3)));
+  if (L.age === 65 && M.ideco > 0) { M.savings += M.ideco; log(C, `iDeCoで積み立ててきた${yen(M.ideco)}を受け取りました。`, { k: 'money', o: 'g' }); M.ideco = 0; }
+  // おまかせ・並走：統計にそって少しだけお金の使い道を選ぶ
+  if ((L.auto || L.isPeer) && L.age === 30 && !L.flags.autoSpendSet) {
+    L.flags.autoSpendSet = true;
+    if (R.chance(0.3)) M.nisaMonthly = R.pick([10000, 30000, 50000]);
+    if (R.chance(0.12)) M.idecoOn = true;
+    if (R.chance(0.15) && (L.work.income || 0) >= 3000000) L.spend.auto.furusato = true;
+    if (R.chance(0.12)) L.spend.auto.gym = true;
+  }
+}
+
 // ================================================================ 誕生
 function birthLog(W, R, L, out) {
   const C = { W, L, R, out };
@@ -1769,6 +2202,8 @@ export function summarize(W, L) {
     married: !!(F.spouse || F.exSpouses.length), grandkids: L.grandkids || 0,
     maxIncome: L.maxIncome || null, decisions: L.decisions, focusYears: L.focusYears,
     quintile: L.wealthAtBirth,
+    hobbies: (L.hobbies || []).map((h) => ({ name: HOBBY[h.id]?.name, skill: Math.round(h.skill) })),
+    pet: L.pet ? `${L.pet.kind}の${L.pet.name}` : null,
   };
 }
 
