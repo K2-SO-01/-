@@ -9,6 +9,8 @@ import { TITLE, loadWorld, store, applyTheme, cycleTheme, themeLabel, mapSVG, ma
 import { musicOn, musicOff, musicIsOn } from './ui/audio.js';
 import { survivalChart, lifeMapHTML } from './ui/charts.js';
 import { shareText, shareImage } from './ui/share.js';
+import { sceneSVG, sceneKey } from './ui/scene.js';
+import { REL, FRIEND_RELS } from './engine/people.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const SPEEDS = [1, 2, 4, 8, 16];
@@ -109,7 +111,7 @@ function renderPast() {
 function pushPast(L, unfinished = false) {
   const S = summarize(W, L);
   const past = store.get('past', []);
-  past.unshift({ name: S.name, sex: L.sex, birthPref: L.birthPref, years: S.years, age: S.age, cause: S.cause, unfinished, finalWord: L.finalWord || '', at: Date.now() });
+  past.unshift({ name: S.name, sex: L.sex, birthPref: L.birthPref + W.muniShort(L.birthMuni || ''), years: S.years, age: S.age, cause: S.cause, unfinished, finalWord: L.finalWord || '', at: Date.now() });
   store.set('past', past.slice(0, 10));
 }
 
@@ -139,7 +141,7 @@ function born(s) {
       setTimeout(step, 90 + (14 - n) * 12);
     } else {
       markMap(svg, { [L.birthPref]: 'glow' });
-      $('#b-msg').textContent = `${L.birthPref}に生まれました。`;
+      $('#b-msg').textContent = `${L.birthPref}${W.muniShort(L.birthMuni)}に生まれました。`;
       renderCert();
     }
   };
@@ -153,7 +155,7 @@ function renderCert() {
   const l = W.survival(L.birthPref, L.sex);
   const parents = [F.mother && `母 ${F.mother.name.mei}（${personAge(L, F.mother)}歳）`, F.father ? `父 ${F.father.name.mei}（${personAge(L, F.father)}歳）` : '父はそばにいません'].filter(Boolean).join('・');
   const sibs = F.siblings.length ? F.siblings.map((x) => `${x.rel}（${personAge(L, x)}歳）`).join('・') : '第一子';
-  const shareBirth = `わたしは${L.startYear}年${L.birthMonth}月、${L.birthPref}に${L.sex === 'M' ? '男の子' : '女の子'}として生まれた。いま日本で生まれる赤ちゃんの${oneIn(pf.birthShare)}。5歳までに亡くなる確率は${pct(1 - l[5], 2)}。あなたはどこに生まれるだろう？ #47分の1`;
+  const shareBirth = `わたしは${L.startYear}年${L.birthMonth}月、${L.birthPref}${W.muniShort(L.birthMuni)}に${L.sex === 'M' ? '男の子' : '女の子'}として生まれた。いま日本で生まれる赤ちゃんの${oneIn(pf.birthShare)}。5歳までに亡くなる確率は${pct(1 - l[5], 2)}。あなたはどこに生まれるだろう？ #47分の1`;
   const real = s.realPref && s.realPref !== L.birthPref ? W.pref(s.realPref) : null;
   $('#b-cert').innerHTML = `
   <div class="card cert" aria-labelledby="cert-h">
@@ -161,17 +163,18 @@ function renderCert() {
     <div class="name">${esc(L.name.sei)} ${esc(L.name.mei)}</div>
     <div class="kana">${esc(L.name.seiKana)} ${esc(L.name.meiKana)}</div>
     <dl>
-      <dt>生まれた場所</dt><dd>${esc(L.birthPref)}（${esc(pf.region)}）</dd>
+      <dt>生まれた場所</dt><dd>${esc(L.birthPref)}${esc(L.birthMuni)}（${esc(pf.region)}）</dd>
       <dt>性別</dt><dd>${L.sex === 'M' ? '男の子' : '女の子'}</dd>
       <dt>両親</dt><dd>${esc(parents)}</dd>
       <dt>きょうだい</dt><dd>${esc(sibs)}</dd>
       <dt>生まれた家</dt><dd>${esc(QUINTILE[L.household.quintile])}<br><small>親の仕事と収入から見た、全国の家計の中での位置（5段階の${L.household.quintile}番目）</small></dd>
       <dt>この県に生まれる確率</dt><dd>${oneIn(pf.birthShare)}（${pct(pf.birthShare, 2)}）</dd>
+      <dt>${esc(W.muniShort(L.birthMuni))}に生まれる確率</dt><dd>${oneIn(W.muniShare(L.birthPref, L.birthMuni, L.mode))}<br><small>住民基本台帳（令和6年）の${L.mode === 'births' ? '0〜4歳人口' : '人口'}の割合から</small></dd>
       <dt>5歳までに亡くなる確率</dt><dd>${pct(1 - l[5], 2)}</dd>
       <dt>${esc(L.birthPref)}の平均寿命</dt><dd>${L.sex === 'M' ? '男' : '女'} ${W.lifeExp(L.birthPref, L.sex)}歳${real ? `<br><small>あなたの生まれた${esc(real.name)}は ${W.lifeExp(real.name, L.sex)}歳</small>` : ''}</dd>
     </dl>
     <div><b>同じ日に生まれた4人</b>
-      <div class="peers-born">${peers.map((p) => `<div>${esc(p.name.sei)}${esc(p.name.mei)}（${p.sex === 'M' ? '男' : '女'}）— ${esc(p.birthPref)}</div>`).join('')}</div>
+      <div class="peers-born">${peers.map((p) => `<div>${esc(p.name.sei)}${esc(p.name.mei)}（${p.sex === 'M' ? '男' : '女'}）— ${esc(p.birthPref)}${esc(W.muniShort(p.birthMuni))}</div>`).join('')}</div>
       <small>4人とも、生まれる場所を選んではいません。</small>
     </div>
   </div>
@@ -242,6 +245,7 @@ function tick() {
     if (G.turbo && it.big && (it.h === 'grief' || it.k === 'death')) G.turbo = false;
   }
   if (shown) renderLog(), renderTop();
+  renderScene();
   const yb = document.getElementById('p-yearbar');
   if (yb) yb.style.width = `${Math.min(100, (G.yearElapsed / G.yearSec) * 100).toFixed(1)}%`;
   if (G.queue.length) return;
@@ -277,6 +281,7 @@ function renderPlay() {
     <button class="iconbtn" id="btn-menu" type="button" aria-label="メニュー" aria-haspopup="dialog">⋯</button>
   </div><div class="wrap wide yearrow"><div class="yearbar" aria-hidden="true"><i id="p-yearbar"></i></div><span class="small" id="p-pace"></span></div></header>
   <div class="wrap wide">
+    <div class="scene" id="p-scene" role="img" aria-label=""></div>
     <div class="statstrip" id="p-stats" aria-label="状態（0〜100）"></div>
     <div class="moneyline" id="p-money"></div>
     <div class="layout">
@@ -328,11 +333,31 @@ function renderControls() {
   $('#p-log').setAttribute('aria-live', G.turbo || G.speed > 2 ? 'off' : 'polite');
 }
 
+// いまの月：誕生月から、1年のうちどこまで進んだかで決める
+function monthNow() {
+  const { L } = G;
+  const prog = Math.min(0.999, Math.max(0, G.yearElapsed / G.yearSec));
+  return ((L.birthMonth - 1 + Math.floor(prog * 12)) % 12) + 1;
+}
+function renderScene(force = false) {
+  const el = document.getElementById('p-scene');
+  if (!el || !G) return;
+  const m = monthNow();
+  const key = sceneKey(G.L, m);
+  if (!force && el.dataset.key === key) return;
+  el.dataset.key = key;
+  const sc = sceneSVG(W, G.L, m);
+  el.innerHTML = sc.svg;
+  el.setAttribute('aria-label', sc.label);
+}
+
 function renderTop() {
   const { L } = G;
+  renderScene();
   $('#p-age').textContent = `${L.age}歳`;
   $('#p-name').textContent = `${L.name.sei} ${L.name.mei}`;
-  const moved = L.pref !== L.birthPref ? `${L.pref}で暮らす（${L.birthPref}生まれ）` : `${L.pref}`;
+  const here = `${L.pref}${W.muniShort(L.muni)}`;
+  const moved = L.pref !== L.birthPref || L.muni !== L.birthMuni ? `${here}で暮らす（${L.birthPref}${L.pref === L.birthPref ? W.muniShort(L.birthMuni) : ''}生まれ）` : here;
   $('#p-sub').textContent = `${moved} · ${L.sex === 'M' ? '男' : '女'} · ${curYear(L)}年${G.L.auto ? ' · おまかせ中' : ''}`;
   const pace = $('#p-pace');
   if (pace) pace.textContent = `1年 ≈ ${Math.max(1, Math.round(G.yearSec / (G.turbo ? TURBO : G.speed)))}秒`;
@@ -415,7 +440,7 @@ function renderPeers() {
   $('#p-peers').innerHTML = G.peers.map((p) => {
     const last = [...p.log].reverse().find((it) => it.big && !(gentle && it.h && !it.g) && it.k !== 'birth');
     const text = last ? (gentle && last.h && last.g ? last.g : last.t) : '生まれたばかりです。';
-    const status = p.alive ? `${p.age}歳 · ${p.pref}${p.pref !== p.birthPref ? `（${p.birthPref}生まれ）` : ''}` : `${p.deathAge}歳で永眠 · ${p.birthPref}生まれ`;
+    const status = p.alive ? `${p.age}歳 · ${p.pref}${W.muniShort(p.muni)}${p.pref !== p.birthPref ? `（${p.birthPref}生まれ）` : ''}` : `${p.deathAge}歳で永眠 · ${p.birthPref}${W.muniShort(p.birthMuni)}生まれ`;
     const stage = !p.alive ? '' : p.age < 6 ? '乳幼児期' : p.age < 13 ? '学童期' : p.age < 18 ? '思春期' : p.age < 30 ? '青年期' : p.age < 50 ? '壮年期' : p.age < 65 ? '中年期' : '老年期';
     const job = p.alive && p.work.status === 'employed' ? ` · ${p.work.title}` : '';
     return `<div class="peer${p.alive ? '' : ' dead'}"><div class="ph"><span class="pn">${esc(p.name.sei)}${esc(p.name.mei)}</span><span class="pp">${p.sex === 'M' ? '男' : '女'}${stage ? ' · ' + stage : ''}</span></div><div class="pp">${esc(status + job)}</div><div class="pe t-${last?.o || 'n'}">${esc(text)}</div></div>`;
@@ -482,8 +507,8 @@ function renderPanels() {
     <div class="idname">${esc(L.name.sei)} ${esc(L.name.mei)}<small>${esc(L.name.seiKana || '')} ${esc(L.name.meiKana || '')}</small></div>
     <dl class="iddl">
       <dt>性別</dt><dd>${L.sex === 'M' ? '男性' : '女性'}</dd>
-      <dt>出生</dt><dd>${esc(L.birthPref)} · ${L.startYear}年${L.birthMonth}月</dd>
-      <dt>住んでいる県</dt><dd>${esc(L.pref)}</dd>
+      <dt>出生</dt><dd>${esc(L.birthPref)}${esc(L.birthMuni || '')} · ${L.startYear}年${L.birthMonth}月</dd>
+      <dt>住んでいるところ</dt><dd>${esc(L.pref)}${esc(L.muni || '')}</dd>
       <dt>生まれた家庭</dt><dd><span class="dots" aria-label="5段階の${L.wealthAtBirth}">${dots(L.wealthAtBirth)}</span></dd>
       <dt>学歴</dt><dd>${esc(stage || EDU_LABEL[L.edu.level] || '—')}</dd>
       <dt>仕事</dt><dd>${esc(L.work.status === 'employed' ? L.work.title : { retired: '引退', unemployed: '求職中' }[L.work.status] || '—')}</dd>
@@ -496,6 +521,9 @@ function renderPanels() {
     <p class="small">住まい：${L.home.own ? '持ち家' : L.home.withParents ? '実家' : '賃貸'}${L.flags.car ? '・車あり' : ''}${L.health.smoker ? '・喫煙' : ''}</p>
     <p class="small">健康のこと：${conds.length ? esc(conds.join('・')) : '大きな病気はありません'}</p>
   </div></details>
+  <details class="panel"><summary>友人・知人</summary><div class="pbody">
+    ${peopleHTML(L)}
+  </div></details>
   <details class="panel"><summary>お金を使う · 投資</summary><div class="pbody">
     ${adult ? `<p class="small">${esc(assets)}</p>${spendHTML}<h4 class="sh">お金を育てる</h4><div class="menu-list">${nisaSel}</div>
     <p class="small">「毎年」のものはチェックを入れると毎年続けます。貯金が足りない年は自動で見送ります。投資の値動きは毎年変わり、減ることもあります。</p>` : '<p class="small">18歳になると、自分のお金の使い道を決められるようになります。いまは家計を親が担っています。</p>'}
@@ -506,6 +534,8 @@ function renderPanels() {
       ${stat('年間出生数', pf.births.toLocaleString('ja-JP'), '人')}
       ${stat('人口', (pf.population / 10000).toFixed(1), '万人')}
       ${stat('1人当たり県民所得', yen(pf.v.prefIncomePerCapita * 1000))}
+      ${stat('賃金の県差（全国=100）', Math.round(pf.wage * 100))}
+      ${stat('市区町村の数', pf.munis.length)}
       ${stat('大学等進学率', pf.v.univEntryRate, '%')}
       ${stat('県外の大学へ', (100 - pf.v.inPrefUnivShare).toFixed(1), '%')}
       ${stat('合計特殊出生率', pf.v.tfr)}
@@ -540,6 +570,15 @@ function renderPanels() {
     if (G.openPanels && key in G.openPanels) d.open = G.openPanels[key];
     d.addEventListener('toggle', () => { (G.openPanels ||= {})[key] = d.open; });
   }
+}
+
+function peopleHTML(L) {
+  const ppl = (L.people || []).slice().sort((a, b) => (b.alive - a.alive) || (b.close - a.close));
+  if (!ppl.length) return '<p class="small">まだ、名前を覚えている人はいません。幼なじみや友だち、職場の人とは、人生の中で出会っていきます。</p>';
+  const word = (p) => !p.alive ? `${p.diedAt}年に他界` : p.close >= 70 ? 'とても親しい' : p.close >= 45 ? '親しい' : p.close >= 20 ? 'ときどき連絡' : '疎遠';
+  const rel = (p) => (p.left && (p.rel === 'doki' || p.rel === 'boss') ? '前の職場の' : p.left && p.rel === 'neighbor' ? '前の家の' : '') + (REL[p.rel] || '');
+  return `<ul class="pplist">${ppl.slice(0, 14).map((p) => `<li class="${p.alive ? '' : 'gone'}"><span class="pn">${esc(p.name.sei)} ${esc(p.name.mei)}<small>${esc(rel(p))}${p.away ? '・遠くに住む' : ''}</small></span><span class="close" role="meter" aria-label="${esc(p.name.sei + p.name.mei)}さんとの親しさ" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(p.close)}"><i style="width:${p.alive ? Math.round(p.close) : 0}%"></i></span><small class="cw">${esc(word(p))}</small></li>`).join('')}</ul>
+    <p class="small">親しさは、会う機会や今年の重点（「友人」など）で変わり、離れて暮らすと少しずつ薄れます。同い年の友人も、生命表にしたがって年をとっていきます。</p>`;
 }
 
 function spend(id) {
@@ -709,7 +748,7 @@ function renderEnd() {
   ${deathItem && deathItem.h && deathItem.h !== 'death' ? hotlineHTML(W, deathItem.h) : ''}
   <div class="card">
     <dl class="facts-grid">
-      <dt>生まれた県</dt><dd>${esc(L.birthPref)}（${L.sex === 'M' ? '男' : '女'}）・${esc(QUINTILE[S.quintile])}に生まれる</dd>
+      <dt>生まれた場所</dt><dd>${esc(L.birthPref)}${esc(L.birthMuni || '')}（${L.sex === 'M' ? '男' : '女'}）・${esc(QUINTILE[S.quintile])}に生まれる</dd>
       <dt>暮らした県</dt><dd>${esc(S.lived.join('・'))}</dd>
       <dt>最終学歴</dt><dd>${esc(S.edu)}</dd>
       <dt>最後の仕事</dt><dd>${esc(S.job || '—')}</dd>
@@ -718,6 +757,7 @@ function renderEnd() {
       <dt>下した決断</dt><dd>${S.decisions}回</dd>
       ${S.hobbies.length ? `<dt>趣味</dt><dd>${esc(S.hobbies.map((h) => `${h.name}（腕前${h.skill}）`).join('・'))}</dd>` : ''}
       ${S.pet ? `<dt>ペット</dt><dd>${esc(S.pet)}</dd>` : ''}
+      ${S.friends.length ? `<dt>親しかった人</dt><dd>${esc(S.friends.map((f) => `${f.name}（${f.rel}）`).join('・'))}</dd>` : ''}
     </dl>
     <p class="small">同じ年に${esc(L.birthPref)}で生まれた${L.sex === 'M' ? '男の子' : '女の子'}のうち、この人より長生きするのは約${Math.round(outlive * 100)}%です。</p>
   </div>
@@ -740,7 +780,7 @@ function renderEnd() {
   </div>
 
   <h2>同じ日に生まれた4人</h2>
-  <ul class="log">${peers.map((p) => { const ps = summarize(W, p); return `<li><b>${esc(ps.name)}</b>（${p.sex === 'M' ? '男' : '女'}・${esc(p.birthPref)}生まれ${p.pref !== p.birthPref ? `、${esc(p.pref)}で` : ''}）<br>${ps.age}歳まで生きました${!gentle && ps.cause ? `（${esc(ps.cause)}）` : ''}。${esc(ps.edu)}・${ps.married ? '結婚' : '未婚'}・子ども${ps.children}人${ps.job ? `・${esc(ps.job)}` : ''}</li>`; }).join('')}</ul>
+  <ul class="log">${peers.map((p) => { const ps = summarize(W, p); return `<li><b>${esc(ps.name)}</b>（${p.sex === 'M' ? '男' : '女'}・${esc(p.birthPref)}${esc(W.muniShort(p.birthMuni))}生まれ${p.pref !== p.birthPref ? `、${esc(p.pref)}で` : ''}）<br>${ps.age}歳まで生きました${!gentle && ps.cause ? `（${esc(ps.cause)}）` : ''}。${esc(ps.edu)}・${ps.married ? '結婚' : '未婚'}・子ども${ps.children}人${ps.job ? `・${esc(ps.job)}` : ''}</li>`; }).join('')}</ul>
   <p class="small">誰も、生まれる場所を選んではいません。</p>
 
   <h2>生存曲線</h2>

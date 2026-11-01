@@ -147,4 +147,21 @@ export const CHOICES_MORE = [
     { l: 'つける', money: -200000, fx: { social: 2, happy: 2 }, t: '補聴器をつけました。鳥の声がこんなににぎやかだったことを思い出しました。', w: 1.5 },
     { l: 'まだいらない', fx: { social: -1 }, w: 1 },
   ], { once: true }),
+  // ================================================================ 夢の挑戦（v3）
+  C('d_astronaut', 28, 45, 0.02, 'big', '宇宙飛行士の募集が、十数年ぶりに始まりました。応募する？', [
+    { l: '応募する', roll: [[0.01, { t: '何段階もの選抜を勝ち抜き、宇宙飛行士の候補者に選ばれました。', fx: { happy: 15 }, tone: 'g', act: 'job:astronaut' }], [0.3, { t: '書類選考は通りましたが、その先で不合格になりました。「書類は通った」が、ちょっとした自慢になりました。', fx: { happy: 2 }, tone: 'n' }], [0.69, { t: '選考の結果は不合格でした。それでも、応募したことに後悔はありません。', fx: { happy: -1 }, tone: 'n' }]], w: 1 },
+    { l: '見送る', t: '募集のニュースを、少しうらやましく眺めました。', w: 2 },
+  ], { once: true, note: 'astronaut2023', req: (L) => ['univ', 'grad'].includes(L.edu.level) && L.stats.know >= 60 && L.stats.health >= 60 }),
+  C('d_forecaster', 18, 60, 0.012, 'small', '気象予報士の試験を受けてみる？', [
+    { l: '独学で挑戦する', money: -30000, roll: [[0.08, { t: '気象予報士の試験に合格しました。空を見る目が変わりました。', fx: { know: 6, happy: 6 }, tone: 'g', set: { forecaster: true } }], [0.92, { t: '気象予報士の試験は不合格でした。天気図は、前より読めるようになりました。', fx: { know: 2, happy: -1 }, tone: 'n' }]], w: 1 },
+    { l: 'やめておく', w: 2 },
+  ], { cd: 3, note: 'forecaster2023', req: (L) => !L.flags.forecaster && L.stats.know >= 50, next: null }),
+  C('d_forecaster_job', 22, 60, 0.15, 'big', '気象会社から、予報士として働かないかと声がかかりました', [
+    { l: '転職する', act: 'job:forecaster', t: '気象予報士として、天気を伝える仕事を始めました。', tone: 'g', w: 1 },
+    { l: '今の仕事を続ける', t: '資格は、今の仕事と趣味に生かすことにしました。', w: 1.5 },
+  ], { once: true, req: (L) => L.flags.forecaster && L.work.jobId !== 'forecaster' }),
+  C('d_sumo_scout', 14, 15, 0.15, 'big', '相撲部屋の親方から、入門しないかと声をかけられました', [
+    { l: '入門する', roll: [[0.7, { t: '中学を卒業して、相撲部屋に入門しました。', fx: { happy: 4 }, tone: 'g', act: 'job:rikishi' }], [0.3, { t: '入門を決めましたが、新弟子検査の体格の基準に届かず、高校に進みました。', fx: { happy: -3 }, tone: 'b' }]], w: 0.4 },
+    { l: '高校に進む', t: '入門の誘いは断り、高校に進むことにしました。', w: 2 },
+  ], { once: true, note: 'sumo2025', req: (L) => L.sex === 'M' && L.hobbies.some((h) => h.id === 'sumo' && h.skill >= 55) }),
 ];

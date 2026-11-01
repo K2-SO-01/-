@@ -6,6 +6,7 @@ import { createLife, beginYear, nextYear, answer, spendNow, setNisa, setIdeco, s
 import { SPEND } from '../assets/js/engine/spend.js';
 import { HOBBY_LIST } from '../assets/js/engine/hobbies.js';
 import { JOBS } from '../assets/js/engine/content.js';
+import { LOCAL } from '../assets/js/engine/local.js';
 import { loadWorld } from './sim.mjs';
 
 const W = loadWorld();
@@ -50,11 +51,24 @@ test('出来事・決断の数（元の作品と同じかそれ以上を目標�
   assert.ok(HOBBY_LIST.length >= 60, `趣味 ${HOBBY_LIST.length}`);
   assert.ok(JOBS.length >= 90, `職業 ${JOBS.length}`);
   assert.ok(SPEND.length >= 20, `お金の使い道 ${SPEND.length}`);
+  assert.ok(CONTENT_COUNTS.local >= 120, `ご当地の出来事 ${CONTENT_COUNTS.local}`);
+  assert.ok(CONTENT_COUNTS.people >= 35, `人にまつわる出来事・決断 ${CONTENT_COUNTS.people}`);
+  assert.ok(JOBS.filter((j) => j.dream).length >= 24, '夢の職業');
+});
+
+test('47都道府県すべてに、祭り・名物・名所と、その県だけの出来事がある', () => {
+  for (const p of W.prefs) {
+    const d = LOCAL[p.name];
+    assert.ok(d, `${p.name}のご当地データ`);
+    assert.ok(d.fest.length && d.food.length >= 2 && d.sight.length >= 2 && d.ev.length >= 2, `${p.name}のご当地データが足りない`);
+    for (const [a0, a1, tone, t] of d.ev) assert.ok(a0 <= a1 && ['g', 'b', 'n'].includes(tone) && t && !BAD.test(t), `${p.name}: ${t}`);
+  }
 });
 
 test('プレイヤーとして200人生きて、記録と決断に差し込み漏れや壊れた文がない', () => {
   const cards = new Set();
-  let items = 0;
+  let items = 0, people = 0, local = 0;
+  const LOCAL_WORDS = new RegExp(Object.values(LOCAL).flatMap((d) => [...d.fest, ...d.food, ...d.sight]).map((w) => w.replace(/[()（）]/g, '.')).join('|'));
   for (let i = 0; i < 200; i++) {
     const { L, seen } = livePlayer('content-' + i);
     for (const c of seen.cards) cards.add(c);
@@ -63,9 +77,13 @@ test('プレイヤーとして200人生きて、記録と決断に差し込み�
       assert.ok(it.t && !BAD.test(it.t), `記録の文が壊れている（${it.a}歳）: ${it.t}`);
       assert.ok(['g', 'b', 'n', 'h'].includes(it.o), `トーンがない: ${it.t}`);
       if (it.note) assert.ok(!BAD.test(it.note), `注釈が壊れている: ${it.note}`);
+      if (it.k === 'people') people++;
+      if (LOCAL_WORDS.test(it.t)) local++;
     }
     assert.ok(Number.isFinite(L.money.savings) && Number.isFinite(L.money.invest), 'お金が数値でない');
   }
   assert.ok(items > 20000);
   assert.ok(cards.size >= 60, `200人のうちに出た決断の種類 ${cards.size}`);
+  assert.ok(people > 1000, `名前のある人の記録 ${people}`);
+  assert.ok(local > 400, `ご当地の記録 ${local}`);
 });

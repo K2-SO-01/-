@@ -9,9 +9,11 @@ import { EVENTS as EVENTS_A, HOBBY_EVENTS } from './events.js';
 import { EVENTS_MORE } from './events_more.js';
 import { CHOICES as CHOICES_A } from './choices.js';
 import { CHOICES_MORE } from './choices_more.js';
-const EVENTS = [...EVENTS_A, ...EVENTS_MORE];
-const CHOICES = [...CHOICES_A, ...CHOICES_MORE];
-export const CONTENT_COUNTS = { events: EVENTS.length, choices: CHOICES.length };
+import { LOCAL, LOCAL_EVENTS, LOCAL_PREF_EVENTS } from './local.js';
+import { REL, FRIEND_RELS, CALL, PEOPLE_EVENTS, PEOPLE_CARDS } from './people.js';
+const EVENTS = [...EVENTS_A, ...EVENTS_MORE, ...LOCAL_EVENTS, ...LOCAL_PREF_EVENTS];
+const CHOICES = [...CHOICES_A, ...CHOICES_MORE, ...PEOPLE_CARDS];
+export const CONTENT_COUNTS = { events: EVENTS.length + PEOPLE_EVENTS.length, choices: CHOICES.length, local: LOCAL_EVENTS.length + LOCAL_PREF_EVENTS.length, people: PEOPLE_EVENTS.length + PEOPLE_CARDS.length };
 import { HOBBY, HOBBY_LIST, HOBBY_MILESTONES, HOBBY_THRESHOLDS, PRO, MAX_HOBBIES } from './hobbies.js';
 import { SPEND_BY_ID, PLACES, ABROAD, FURUSATO_GIFTS } from './spend.js';
 
@@ -25,10 +27,11 @@ export function createLife(W, opts = {}) {
   const now = opts.now || new Date();
   const mode = opts.mode || 'births';
   const birthPref = opts.pref || W.drawPref(R, mode);
+  const birthMuni = W.drawMuni(R, birthPref, mode);
   const sex = opts.sex || (R.chance(SEX_RATIO_M) ? 'M' : 'F');
   const L = {
     v: 1, seed: String(opts.seed), startYear: now.getFullYear(), birthMonth: now.getMonth() + 1,
-    sex, birthPref, pref: birthPref, isPeer: !!opts.isPeer, auto: !!opts.auto, mode,
+    sex, birthPref, pref: birthPref, birthMuni, muni: birthMuni, isPeer: !!opts.isPeer, auto: !!opts.auto, mode,
     age: 0, alive: true, deathAge: null, deathCause: null,
     stats: { health: clamp(Math.round(R.normal(86, 6)), 40, 100), happy: 70, know: 4, social: 50 },
     hBase: 86, talent: R.normal(0, 1), wageZ: R.normal(0, 1),
@@ -40,7 +43,7 @@ export function createLife(W, opts = {}) {
     money: { savings: 0, debt: 0, invest: 0, investOn: false, scholarship: 0, nisaMonthly: 0, ideco: 0, idecoOn: false, stocks: 0 },
     home: { own: false, mortgage: 0, withParents: true },
     health: { smoker: false, everSmoked: false, alcohol: false, gambling: false, conditions: {}, care: false, dementia: false },
-    flags: {}, hobby: null, club: null, hobbies: [], spend: { auto: {} }, cool: {}, pet: null,
+    flags: {}, hobby: null, club: null, hobbies: [], spend: { auto: {} }, cool: {}, pet: null, people: [], pid: 0,
     focus: null, focusAuto: true, focusYears: {},
     moved: [], log: [], notes: {}, finalWord: '', decisions: 0,
     pending: null, step: 0, yearDone: false,
@@ -164,7 +167,7 @@ export function wageOf(W, p, age, prefName) {
   if (!job) return 0;
   const M = W.model.earnings;
   let base = job.pub ? (W.baseWage('M', age) + W.baseWage('F', age)) / 2 * 1.02 : W.baseWage(p.sex, age);
-  base *= (M.educationFactor[p.edu] ?? 1) * job.wf * W.incomeFactor(prefName) * Math.exp((p.wageZ || 0) * M.personalSigma);
+  base *= (M.educationFactor[p.edu] ?? 1) * job.wf * W.wageFactor(prefName) * Math.exp((p.wageZ || 0) * M.personalSigma);
   if (p.nonreg) base *= M.nonRegularRelative[p.sex] * 0.9;
   base *= 1 + (p.boost || 0);
   return Math.max(600000, base);
@@ -228,9 +231,16 @@ export function migrateLife(L) {
   if (L.pet === undefined) L.pet = null;
   const M = L.money; M.nisaMonthly ??= M.investOn ? 30000 : 0; M.ideco ??= 0; M.idecoOn ??= false; M.stocks ??= 0;
   for (const it of L.log) if (!it.o) it.o = inferTone(it.t, it);
+  L.people ||= []; L.pid ??= L.people.length;
   return L;
 }
-function ctx(W, L) { migrateLife(L); return { W, L, R: new Rng(L.rng), out: [] }; }
+function ctx(W, L) {
+  migrateLife(L);
+  const C = { W, L, R: new Rng(L.rng), out: [] };
+  // 以前のバージョンの人生には市区町村がないので、ここで決める
+  if (!L.birthMuni) { L.birthMuni = W.drawMuni(C.R, L.birthPref, L.mode || 'births'); L.muni = L.pref === L.birthPref ? L.birthMuni : W.drawMuni(C.R, L.pref, 'population'); }
+  return C;
+}
 function done(C) { C.L.rng = C.R.state(); return C.out; }
 
 export function beginYear(W, L) {
@@ -494,6 +504,8 @@ STEP.stage = (C) => {
   if (a === 6) {
     L.edu.stage = 'elem';
     log(C, R.pick(['小学校に入学しました。大きなランドセルを背負って、最初の一歩を踏み出しました。', '小学校に入学しました。名札の名前を、何度も指でなぞりました。']), { k: 'school', big: true });
+    const co = W.cohort(L.pref, L.muni);
+    if (co != null && !L.isPeer) log(C, `${W.muniShort(L.muni)}で同じ学年の子どもは、およそ${roughCount(co)}人です。`, { k: 'school', o: 'n', note: '住民基本台帳（令和6年1月1日）の0〜4歳人口を5で割った、およその数です。' });
   }
   if (a === 11 && !L.isPeer && isUrbanForExam(pf) && (L.household.quintile >= 4 || L.stats.know > 50)) {
     offer(C, 'jhsExam'); if (L.pending) return;
@@ -523,6 +535,12 @@ STEP.stage = (C) => {
     else if (st === 'grad') { L.edu.level = 'grad'; log(C, '大学院を修了しました。', { k: 'school', big: true }); L.edu.stage = 'done'; jobHunt(C); if (L.pending) return; }
     else if (st === 'voc') { L.edu.level = 'voc'; log(C, `専門学校（${VOC_TRACKS.find((v) => v.id === L.edu.voc)?.label || ''}）を卒業しました。`, { k: 'school', big: true }); L.edu.stage = 'done'; jobHunt(C); if (L.pending) return; }
     else if (st === 'jc') { L.edu.level = 'jc'; log(C, '短期大学を卒業しました。', { k: 'school', big: true }); L.edu.stage = 'done'; jobHunt(C); if (L.pending) return; }
+  }
+  // 子どものうちに入ったプロへの道
+  if (L.flags.proAt && a >= L.flags.proAt.age) {
+    const pa = L.flags.proAt; L.flags.proAt = null;
+    if (R.chance(0.6)) { log(C, pa.ok, { k: 'work', o: 'g', big: true }); adj(L, 'happy', 10); beginPro(C, pa.job, `${JOB[pa.job].t}としての日々が始まりました。`); if (L.pending) return; }
+    else { log(C, '年齢の制限までに、プロへの最後の壁を越えられませんでした。積み上げた日々は、別の道で生きていきます。', { k: 'hobby', o: 'b', big: true }); adj(L, 'happy', -6); }
   }
   // 仕事を探す
   if (a >= 16 && L.edu.stage === 'done' && (L.work.status === 'none' || L.work.status === 'unemployed') && a < 65) {
@@ -709,7 +727,10 @@ function startJob(C, job, opts = {}) {
   L.work.years = 0;
   L.work.everWorked = true;
   L.work.rank = 0;
+  L.work.retireAge = null;
   L.work.title = jobTitle(job, 0);
+  // 前の職場の同期・上司とは、職場が離れる
+  for (const p of L.people || []) if ((p.rel === 'doki' || p.rel === 'boss') && !p.left) { p.left = true; p.close = Math.max(0, p.close - 10); }
   if (!L.work.firstJob) L.work.firstJob = { title: job.t, age: L.age };
   const type = job.self ? '' : L.work.nonreg ? '（非正規）' : '（正社員）';
   const inc = wageOf(W, { ...L.work, sex: L.sex, edu: L.edu.level, wageZ: L.wageZ }, L.age, L.pref);
@@ -743,6 +764,18 @@ function workYear(C) {
     const pf = W.pref(L.pref);
     // 失業
     const job = JOB[w.jobId];
+    if (job.retire) {
+      if (!w.retireAge) w.retireAge = Math.round(clamp(R.normal(job.retire[0], job.retire[1]), job.retire[0] - 8, job.retire[0] + 12));
+      if (L.age >= w.retireAge) {
+        log(C, job.after || `${job.t}を引退しました。`, { k: 'work', o: 'n', big: true });
+        L.flags.exPro = job.t;
+        w.status = 'none'; w.jobId = null; w.income = 0; w.retireAge = null; w.title = '';
+        adj(L, 'happy', -3);
+        log(C, '第二の人生の仕事を探しはじめました。', { k: 'work', o: 'n' });
+        jobHunt(C);
+        return;
+      }
+    }
     if (L.age < 64 && !job.pub && R.chance(pf.v.unemploymentRate / 100 * (w.nonreg ? 0.75 : 0.32) * (job.self ? 0.4 : 1))) {
       const t = job.self ? '店や仕事を畳むことになりました。' : R.pick(['勤めていた会社の業績が悪くなり、仕事を失いました。', '契約が更新されず、仕事を失いました。', '会社が倒産し、仕事を失いました。']);
       w.status = 'unemployed'; w.unempSince = curYear(L); w.jobId = null; w.income = 0;
@@ -788,8 +821,6 @@ STEP.events = (C) => {
     if (R.chance(0.02)) { log(C, '肺炎で数日入院しました。', { k: 'health' }); adj(L, 'health', -4); }
   }
   if (a >= 6 && a <= 17) schoolEvents(C);
-  // 祭りや地元の行事
-  if (a >= 4 && R.chance(0.03)) log(C, R.pick([`家族で「${pf.festival}」を見に行きました。`, `${L.pref === L.birthPref ? '地元' : L.pref}の名物「${pf.food}」を囲みました。`]), { k: 'life' });
   // 虐待（児童相談所への相談対応件数にもとづく）
   if (a >= 1 && a < 18 && !L.flags.abused) {
     const p = pf.v.childAbusePer100kChildren / 100000 * 0.35 * (q <= 2 ? 1.6 : 0.7);
@@ -1076,6 +1107,7 @@ STEP.focus = (C) => {
   adj(L, 'happy', (target - L.stats.happy) * 0.22 + R.normal(0, 2.2));
   if (f === 'work' && L.work.status === 'employed') L.work.boost = Math.min(0.45, L.work.boost + 0.01);
   hobbyYear(C);
+  peopleYear(C);
   // 記録
   L.hist.happy[a] = Math.round(L.stats.happy);
   L.hist.health[a] = Math.round(L.stats.health);
@@ -1087,7 +1119,7 @@ STEP.focus = (C) => {
 function incomeHappy(W, L) {
   const inc = L.work.income + (L.work.pensionM || 0) * 12 + (L.family.spouse?.income || 0);
   if (L.age < 18) return (L.household.quintile - 3) * 1.5;
-  const ref = W.baseWage(L.sex, Math.min(60, L.age)) * W.incomeFactor(L.pref);
+  const ref = W.baseWage(L.sex, Math.min(60, L.age)) * W.wageFactor(L.pref);
   return clamp(Math.log((inc + 1500000) / (ref + 1500000)) * 8, -8, 6);
 }
 
@@ -1664,9 +1696,11 @@ function moveTo(C, dest, why) {
   if (dest === from) return;
   L.moved.push({ age: L.age, from, to: dest, why });
   L.pref = dest;
+  L.muni = dest === L.birthPref && C.R.chance(0.5) ? L.birthMuni : W.drawMuni(C.R, dest, 'population');
   if (L.family.spouse && L.family.spouse.alive) L.family.spouse.pref = dest;
   for (const ch of L.family.children) if (ch.alive && !ch.left) ch.pref = dest;
-  log(C, `${from}から${dest}へ移り住みました（${why}）。ここからは${dest}の統計の中で暮らします。`, { k: 'move', big: true });
+  log(C, `${from}から${dest}${W.muniShort(L.muni)}へ移り住みました（${why}）。ここからは${dest}の統計の中で暮らします。`, { k: 'move', big: true });
+  for (const p of L.people || []) if (p.rel === 'neighbor' && !p.left) { p.left = true; p.close = Math.max(0, p.close - 15); }
   adj(L, 'social', -6);
 }
 
@@ -1815,6 +1849,7 @@ function makeQ(L, W) {
     parentAlive: [F.mother, F.father].some((p) => p && p.alive),
     ladderJob: !!(L.work.jobId && (LADDERS[JOB[L.work.jobId]?.lad] || []).length > 2),
     familyBusiness: [F.father, F.mother].some((p) => p && p.alive && p.jobId && JOB[p.jobId]?.self),
+    local: LOCAL[L.pref], cohort: W.cohort(L.birthPref, L.birthMuni) ?? 999,
   };
 }
 
@@ -1834,8 +1869,16 @@ function fillText(C, text, extra = {}) {
     job: L.work.title || '', job2: JOBS.filter((j) => !j.dream && j.w > 0.005)[Math.floor(R.next() * 40)]?.t || '近所のお店',
     pet: L.pet ? `${L.pet.kind}の${L.pet.name}` : '', friend: extra.friend || drawGivenName(W, R, R.chance(0.5) ? 'M' : 'F')[0],
     place: R.pick(PLACES), abroad: R.pick(ABROAD), gift: R.pick(FURUSATO_GIFTS),
+    muni: W.muniShort(L.muni), birthMuni: W.muniShort(L.birthMuni),
   };
-  return text.replace(/\{(\w+)\}/g, (_, k) => (map[k] != null ? map[k] : ''));
+  const lo = LOCAL[L.pref] || {}; const bl = LOCAL[L.birthPref] || {};
+  const person = extra.pid != null ? (L.people || []).find((x) => x.id === extra.pid) : null;
+  const lazy = {
+    fest: () => R.pick(lo.fest || ['地元の祭り']), lfood: () => R.pick(lo.food || ['地元の名物']), sight: () => R.pick(lo.sight || ['近くの名所']), team: () => lo.team || '地元のチーム',
+    bfood: () => R.pick(bl.food || ['ふるさとの味']), bsight: () => R.pick(bl.sight || ['ふるさとの景色']),
+    p: () => (person ? callName(person) : 'ある人'), rel: () => (person ? relLabel(person) : '知り合い'),
+  };
+  return text.replace(/\{(\w+)\}/g, (_, k) => (map[k] != null ? map[k] : lazy[k] ? lazy[k]() : ''));
 }
 
 export function factNote(W, key) {
@@ -1858,6 +1901,7 @@ function logEvent(C, ev, extra = {}) {
   fxApply(C, ev.fx, ev.money);
   if (ev.set) Object.assign(L.flags, ev.set);
   if (ev.act) doAct(C, ev.act);
+  if (ev.pact && extra.pid != null) personAct(C, extra.pid, ev.pact);
   L.cool[ev.id] = L.age;
   if (ev.then) offerCard(C, ev.then);
 }
@@ -1876,11 +1920,21 @@ function eligible(L, Q, ev) {
 function runCatalogEvents(C) {
   const { L, W, R } = C;
   const Q = makeQ(L, W);
-  const hits = [];
+  // ふだんの出来事・ご当地の出来事・人との出来事は、それぞれ別の枠で選ぶ
+  // （同じ枠で取り合うと、けがや病気の出来事が押し出されて、寿命の較正がずれるため）
+  const hits = [], lhits = [], phits = [];
   for (const ev of EVENTS) {
     if (ev.trigger || !ev.p) continue;
     if (!eligible(L, Q, ev)) continue;
-    if (R.chance(ev.p)) hits.push([ev, {}]);
+    if (R.chance(ev.p)) (ev.local ? lhits : hits).push([ev, {}]);
+  }
+  if (!L.isPeer) {
+    for (const ev of PEOPLE_EVENTS) {
+      if (!eligible(L, Q, ev)) continue;
+      if (!R.chance(ev.p)) continue;
+      const p = pickPerson(C, ev.who, ev.preq);
+      if (p) phits.push([ev, { pid: p.id }]);
+    }
   }
   for (const hb of L.hobbies || []) {
     const h = HOBBY[hb.id];
@@ -1892,7 +1946,12 @@ function runCatalogEvents(C) {
     }
   }
   const max = L.isPeer ? 1 : L.age < 6 ? 2 : 3;
-  for (const [ev, extra] of R.shuffle(hits).slice(0, max)) {
+  const pick = [
+    ...R.shuffle(hits).slice(0, max),
+    ...R.shuffle(lhits).slice(0, L.isPeer ? 0 : 1),
+    ...R.shuffle(phits).slice(0, L.focus === 'friends' || L.focus === 'community' ? 2 : 1),
+  ];
+  for (const [ev, extra] of pick) {
     logEvent(C, ev, extra);
     if (L.pending) return;
   }
@@ -1922,10 +1981,13 @@ function maybeChoice(C) {
   for (const card of CHOICES) {
     if (!card.p) continue;
     if (!eligible(L, Q, card)) continue;
-    if (R.chance(card.p)) hits.push(card);
+    if (!R.chance(card.p)) continue;
+    if (card.who) { const p = pickPerson(C, card.who, card.preq); if (p) hits.push([card, { pid: p.id }]); }
+    else hits.push([card, {}]);
   }
   if (!hits.length) return;
-  offerCard(C, R.pick(hits).id);
+  const [card, extra] = R.pick(hits);
+  offerCard(C, card.id, extra);
 }
 DEC.card = {
   cat: 'small',
@@ -1933,8 +1995,8 @@ DEC.card = {
     const card = CHOICE_BY_ID[c.id];
     this.cat = card.cat;
     return {
-      title: fillText(C, card.title), body: card.body ? fillText(C, card.body) : '', note: card.note ? factNote(C.W, card.note) : '',
-      options: card.options.map((o) => ({ label: fillText(C, o.l), hint: o.hint || fxHint(o) })),
+      title: fillText(C, card.title, c), body: card.body ? fillText(C, card.body, c) : '', note: card.note ? factNote(C.W, card.note) : '',
+      options: card.options.map((o) => ({ label: fillText(C, o.l, c), hint: o.hint || fxHint(o) })),
     };
   },
   auto(C, c) {
@@ -1952,14 +2014,17 @@ function applyOption(C, card, o, c) {
   const { L, R } = C;
   fxApply(C, o.fx, o.money);
   if (o.set) Object.assign(L.flags, o.set);
-  if (o.t) log(C, fillText(C, o.t), { k: 'choice', o: o.tone || toneOfFx(o) });
+  if (o.t) log(C, fillText(C, o.t, c), { k: 'choice', o: o.tone || toneOfFx(o) });
   if (o.act) doAct(C, o.act, c);
+  if (o.pact && c.pid != null) personAct(C, c.pid, o.pact);
   if (o.roll) {
     const r = R.weighted(o.roll.map((x, j) => [j, x[0]]));
     const res = o.roll[r][1];
-    if (res.t) log(C, fillText(C, res.t), { k: 'choice', o: res.tone || toneOfFx(res), big: Math.abs(res.money || 0) >= 1e8 });
+    if (res.t) log(C, fillText(C, res.t, c), { k: 'choice', o: res.tone || toneOfFx(res), big: Math.abs(res.money || 0) >= 1e8 });
+    if (res.set) Object.assign(L.flags, res.set);
     fxApply(C, res.fx, res.money);
     if (res.act) doAct(C, res.act, c);
+    if (res.pact && c.pid != null) personAct(C, c.pid, res.pact);
   }
 }
 function toneOfFx(o) {
@@ -1976,7 +2041,7 @@ function doAct(C, act, c = {}) {
   else if (k === 'boost') L.work.boost = Math.min(0.5, L.work.boost + Number(arg));
   else if (k === 'rankup') rankUp(C, true);
   else if (k === 'jobchange') { const j = JOB[jobOffers(C, 1)[0]]; if (j) startJob(C, j, { text: `${j.t}として新しい職場で働きはじめました。` }); }
-  else if (k === 'job') startJob(C, JOB[arg], { nonreg: false, text: `${JOB[arg].t}として歩みはじめました。` });
+  else if (k === 'job') beginPro(C, arg, `${JOB[arg].t}として歩みはじめました。`);
   else if (k === 'unemployed') { L.work.status = 'unemployed'; L.work.jobId = null; L.work.income = 0; L.work.unempSince = curYear(L); }
   else if (k === 'inherit_job') {
     const p = [L.family.father, L.family.mother].find((x) => x && x.jobId && JOB[x.jobId]?.self);
@@ -2021,10 +2086,17 @@ function hobbyYear(C) {
       log(C, t, { k: 'hobby', o: 'g', big: hb.ms >= 3 });
       adj(L, 'happy', 2 + hb.ms);
     }
-    const pro = h.pro && PRO[h.pro];
-    if (pro && !hb.tried && L.age >= pro.ages[0] && L.age <= pro.ages[1] && hb.skill >= pro.skill && !(pro.job && L.work.jobId === pro.job)) {
-      hb.tried = true;
-      offer(C, 'pro', { hid: hb.id });
+    const pros = [].concat(h.pro || []);
+    hb.triedP ||= {};
+    if (hb.tried && pros[0]) hb.triedP[pros[0]] = true;
+    for (const pid of pros) {
+      const pro = PRO[pid];
+      if (!pro || hb.triedP[pid] || (pro.sex && pro.sex !== L.sex)) continue;
+      if (L.age < pro.ages[0] || L.age > pro.ages[1] || hb.skill < pro.skill) continue;
+      if (L.work.jobId && JOB[L.work.jobId]?.dream) continue;
+      if (L.flags.proAt) continue;
+      hb.triedP[pid] = true;
+      offer(C, 'pro', { hid: hb.id, pid });
       if (L.pending) return;
     }
   }
@@ -2032,21 +2104,26 @@ function hobbyYear(C) {
 DEC.pro = {
   cat: 'big',
   build(C, c) {
-    const h = HOBBY[c.hid]; const pro = PRO[h.pro];
+    const h = HOBBY[c.hid]; const pro = PRO[c.pid || [].concat(h.pro)[0]];
     return { title: pro.ask, body: `${h.name}を続けてきて、${pro.title}への道が見えてきました。挑戦すれば、ほかの道は一度あきらめることになります。`, note: pro.fact ? factNote(C.W, pro.fact) : '', options: [{ label: '挑戦する', hint: `${pro.title}をめざす · 結果は腕前と運しだい` }, { label: '趣味として続ける', hint: '' }] };
   },
   auto(C, c) { return C.R.chance(0.35) ? 0 : 1; },
   apply(C, c, i) {
     const { L, R } = C;
-    const hb = L.hobbies.find((x) => x.id === c.hid); const h = HOBBY[c.hid]; const pro = PRO[h.pro];
+    const hb = L.hobbies.find((x) => x.id === c.hid) || { skill: 50 }; const h = HOBBY[c.hid]; const pro = PRO[c.pid || [].concat(h.pro)[0]];
     if (i === 1) { log(C, `${h.name}は、これからも趣味として続けることにしました。`, { k: 'hobby', o: 'n' }); return; }
     if (pro.cost) pay(L, pro.cost);
     const p = clamp(pro.p * (0.6 + (hb.skill - pro.skill) / (100 - pro.skill + 1)), 0.01, 0.9);
     if (R.chance(p)) {
-      log(C, pro.ok, { k: 'work', o: 'g', big: true });
       adj(L, 'happy', 10);
-      if (L.edu.stage !== 'done' && L.age >= 18) L.edu.stage = 'done';
-      startJob(C, JOB[pro.job], { nonreg: false, text: `${JOB[pro.job].t}としての日々が始まりました。` });
+      if (L.age < 15) {
+        // 子どものうちに道に入り、プロになるのは数年後（将棋の奨励会、囲碁の院生など）
+        L.flags.proAt = { job: pro.job, age: clamp(L.age + (pro.delay ?? 4), 15, 26), ok: pro.ok };
+        log(C, `${pro.title}をめざす道に入りました。学校に通いながら、腕を磨く日々が始まりました。`, { k: 'hobby', o: 'g', big: true });
+      } else {
+        log(C, pro.ok, { k: 'work', o: 'g', big: true });
+        beginPro(C, pro.job, `${JOB[pro.job].t}としての日々が始まりました。`);
+      }
     } else {
       log(C, pro.fail, { k: 'hobby', o: 'b', big: true });
       adj(L, 'happy', -5);
@@ -2065,6 +2142,114 @@ DEC.newHobby = {
   apply(C, c, i) { if (i < 3 && c.opts[i]) addHobby(C, c.opts[i]); },
 };
 const CLUB_HOBBY = { サッカー部: 'soccer', 野球部: 'baseball', バスケットボール部: 'basketball', バレーボール部: 'volleyball', 陸上部: 'run', ソフトテニス部: 'tennis', 卓球部: 'tabletennis', 剣道部: 'kendo', 水泳部: 'swim', バドミントン部: 'badminton', 吹奏楽部: 'brass', 美術部: 'draw', 科学部: 'astronomy', 合唱部: 'chorus', パソコン部: 'videogame', 写真部: 'photo', 文芸部: 'write', 茶道部: 'tea', 放送部: 'acting', 将棋部: 'shogi', 漫画研究部: 'manga', 軽音楽部: 'band', 演劇部: 'acting', ダンス部: 'dance' };
+
+// ---------------------------------------------------------------- 夢の道に入る（学校の途中なら、そこで学業を終える）
+function beginPro(C, jobId, text) {
+  const { L } = C;
+  const job = JOB[jobId];
+  if (!job) return;
+  if (L.edu.stage !== 'done') {
+    const st = L.edu.stage;
+    if (st === 'hs') L.edu.level = L.age >= 18 ? 'hs' : 'jhs';
+    else if (['elem', 'jhs', 'home', 'preschool'].includes(st)) L.edu.level = 'jhs';
+    else if (!['univ', 'grad', 'voc', 'jc'].includes(L.edu.level) && EDU_RANK[L.edu.level] == null) L.edu.level = 'hs';
+    L.edu.stage = 'done';
+  }
+  startJob(C, job, { nonreg: false, text });
+}
+
+// ---------------------------------------------------------------- 名前のある人たち
+function roughCount(n) {
+  if (n < 30) return Math.max(1, Math.round(n)).toLocaleString('ja-JP');
+  if (n < 300) return (Math.round(n / 10) * 10).toLocaleString('ja-JP');
+  return (Math.round(n / 100) * 100).toLocaleString('ja-JP');
+}
+function relLabel(p) { return REL[p.rel] || '知り合い'; }
+function callName(p) {
+  const c = CALL[p.rel] || 'mei';
+  return c === 'mei' ? p.name.mei : c === 'sei' ? p.name.sei : `${p.name.sei}さん`;
+}
+function hasRel(L, rel, cur = true) { return (L.people || []).some((p) => p.rel === rel && (!cur || (p.alive && !p.left))); }
+function newPerson(C, rel, o = {}) {
+  const { L, W, R } = C;
+  if (L.isPeer) return null;
+  const same = rel === 'mama' ? 'F' : rel === 'papa' ? 'M' : null;
+  const sex = same || (['osana', 'best', 'club'].includes(rel) ? (R.chance(0.8) ? L.sex : (L.sex === 'M' ? 'F' : 'M')) : R.chance(0.5) ? 'M' : 'F');
+  const older = rel === 'boss' ? R.int(8, 20) : rel === 'neighbor' ? R.int(-15, 25) : rel === 'doki' ? R.int(-2, 3) : rel === 'mama' || rel === 'papa' ? R.int(-5, 5) : rel === 'friend' ? R.int(-8, 8) : 0;
+  const by = L.startYear - older;
+  const sur = drawSurname(W, R, L.pref);
+  const mei = older >= 15 ? drawOlderName(W, R, sex, 'parent')[0] : drawGivenName(W, R, sex)[0];
+  const p = { id: L.pid++, rel, sex, by, name: { sei: sur[0], mei }, close: o.close ?? R.int(40, 60), met: L.age, pref: L.pref, alive: true, left: false, away: false, married: false, kids: 0 };
+  L.people.push(p);
+  return p;
+}
+function pickPerson(C, who, preq) {
+  const { L, R } = C;
+  const list = (L.people || []).filter((p) => {
+    if (!p.alive) return false;
+    if (preq && !preq(p)) return false;
+    if (who === 'any') return FRIEND_RELS.includes(p.rel) && p.close >= 15;
+    if (who === 'friendlike') return FRIEND_RELS.includes(p.rel) && p.close >= 30;
+    if (who === 'faded') return FRIEND_RELS.includes(p.rel) && p.close < 20 && p.close > 0;
+    if (p.rel !== who) return false;
+    if ((who === 'doki' || who === 'boss' || who === 'neighbor') && p.left) return false;
+    return true;
+  });
+  return list.length ? R.pick(list) : null;
+}
+function personAct(C, pid, act) {
+  const { L, R } = C;
+  const p = (L.people || []).find((x) => x.id === pid);
+  if (!p) return;
+  const [k, arg] = act.split(':');
+  if (k === 'close') p.close = clamp(p.close + Number(arg), 0, 100);
+  else if (k === 'married') p.married = true;
+  else if (k === 'kid') p.kids++;
+  else if (k === 'away') { p.away = true; p.pref = C.W.drawDestination(R, L.pref); }
+  else if (k === 'left') p.left = true;
+}
+function peopleYear(C) {
+  const { L, W, R } = C;
+  if (L.isPeer) return;
+  const a = L.age;
+  const Q = makeQ(L, W);
+  const meet = (rel, text, o) => { const p = newPerson(C, rel, o); if (p) log(C, fillText(C, text, { pid: p.id }), { k: 'people', o: 'g' }); return p; };
+  if (a === 3 && !hasRel(L, 'osana', false) && R.chance(0.75)) meet('osana', '近所に住む{p}と、毎日のように遊ぶようになりました。幼なじみです。', { close: 60 });
+  if (a >= 6 && a <= 12 && !hasRel(L, 'best', false) && R.chance(0.28)) meet('best', 'クラスの{p}と仲よくなりました。一緒にいると、時間があっという間に過ぎます。', { close: 65 });
+  if (a >= 13 && a <= 17 && L.people.filter((p) => p.rel === 'best').length < 2 && R.chance(0.1)) meet('best', '{p}と、なんでも話せる仲になりました。', { close: 60 });
+  if (a >= 12 && a <= 14 && L.club && !hasRel(L, 'club', false) && R.chance(0.5)) meet('club', `${L.club}で、{p}と仲よくなりました。`);
+  if (L.edu.stage === 'univ' && !hasRel(L, 'uni', false) && R.chance(0.6)) meet('uni', '大学で、{p}と知り合いました。');
+  if (L.work.status === 'employed' && L.work.years <= 1 && !JOB[L.work.jobId]?.self) {
+    if (!hasRel(L, 'doki') && R.chance(0.5)) meet('doki', '職場で、同じ時期に入った{p}と話すようになりました。');
+    if (!hasRel(L, 'boss') && R.chance(0.45)) { const p = newPerson(C, 'boss'); if (p) log(C, `上司は${callName(p)}です。厳しいけれど、面倒見のいい人です。`, { k: 'people', o: 'n' }); }
+  }
+  const pr = L.sex === 'F' ? 'mama' : 'papa';
+  if (Q.kidAge(1, 6) && !hasRel(L, pr, false) && R.chance(0.3)) meet(pr, `子どもを通じて、${REL[pr]}の{p}と知り合いました。`);
+  if (a >= 28 && (L.home.own || a >= 40) && !L.home.withParents && !hasRel(L, 'neighbor') && R.chance(0.12)) meet('neighbor', 'お隣の{p}と、あいさつ以上の話をするようになりました。');
+  if (a >= 18 && L.hobbies.length && R.chance(0.03) && L.people.filter((p) => p.alive && FRIEND_RELS.includes(p.rel) && p.close >= 20).length < 6) {
+    const h = HOBBY[R.pick(L.hobbies).id];
+    meet('friend', `${h.name}を通じて、{p}と知り合いました。`);
+  }
+  // 親しさの移り変わりと、別れ
+  for (const p of L.people) {
+    if (!p.alive) continue;
+    // 親しさは年に少しずつ薄れる。親友は薄れにくく、離れて暮らすと薄れやすい
+    let d = p.rel === 'best' ? -0.6 : -1.2;
+    if (L.focus === 'friends' || L.focus === 'community') d += 4;
+    if (p.left || p.away) d -= 1;
+    if (p.pref !== L.pref) d -= 1;
+    if (['osana', 'club', 'uni'].includes(p.rel) && a >= 23) d -= 0.5;
+    p.close = clamp(p.close + d + R.normal(0, 1.5), 0, 100);
+    const pa = personAge(L, p);
+    if (pa >= 25 && R.chance(W.q(p.pref, p.sex, pa))) {
+      p.alive = false; p.diedAt = curYear(L);
+      if (p.close >= 20 || p.rel === 'best') {
+        log(C, `${relLabel(p)}の${callName(p)}が、${pa}歳で亡くなりました。`, { k: 'people', o: 'b', big: p.close >= 50 });
+        adj(L, 'happy', -Math.round(2 + p.close / 20));
+      }
+    }
+  }
+}
 
 // ---------------------------------------------------------------- 子どもの名前
 DEC.childName = {
@@ -2183,7 +2368,7 @@ function birthLog(W, R, L, out) {
   const ma = personAge(L, F.mother);
   const parents = F.father ? `母${F.mother.name.mei}（${ma}歳）と父${F.father.name.mei}（${personAge(L, F.father)}歳）` : `母${F.mother.name.mei}（${ma}歳）`;
   const order = L.birthOrder === 0 ? '第一子' : `${ordinalChild(L.birthOrder)}`;
-  log(C, `${L.startYear}年${L.birthMonth}月、${L.birthPref}で${parents}のもとに、${order}の${L.sex === 'M' ? '男の子' : '女の子'}として生まれました。`, { k: 'birth', big: true });
+  log(C, `${L.startYear}年${L.birthMonth}月、${L.birthPref}${W.muniShort(L.birthMuni)}で${parents}のもとに、${order}の${L.sex === 'M' ? '男の子' : '女の子'}として生まれました。`, { k: 'birth', big: true });
   log(C, `名前は${L.name.sei}${L.name.mei}（${L.name.seiKana} ${L.name.meiKana}）。${QUINTILE[L.household.quintile]}に生まれました。`, { k: 'birth', note: '暮らし向きは、親の仕事と収入から見た全国の家計の中での位置（5段階）です。' });
 }
 
@@ -2204,6 +2389,8 @@ export function summarize(W, L) {
     quintile: L.wealthAtBirth,
     hobbies: (L.hobbies || []).map((h) => ({ name: HOBBY[h.id]?.name, skill: Math.round(h.skill) })),
     pet: L.pet ? `${L.pet.kind}の${L.pet.name}` : null,
+    birthMuni: L.birthMuni, lastMuni: L.muni,
+    friends: (L.people || []).filter((p) => FRIEND_RELS.includes(p.rel)).sort((a, b) => b.close - a.close).slice(0, 3).map((p) => ({ name: `${p.name.sei}${p.name.mei}`, rel: REL[p.rel], alive: p.alive })),
   };
 }
 

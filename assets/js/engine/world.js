@@ -56,6 +56,22 @@ export function createWorld(D) {
   };
   W.lifeExp = (prefName, sex) => W.byName.get(prefName).lt[sex].e0;
 
+  // ------- 市区町村（住民基本台帳 令和6年1月1日・日本人住民）
+  // 「いま生まれる赤ちゃん」は県内の0〜4歳人口の割合、「いま日本に住む人」と引っ越し先は総人口の割合で決める
+  W.drawMuni = (rng, prefName, mode = 'births') => {
+    const ms = W.byName.get(prefName).munis;
+    const k = mode === 'births' ? 2 : 1;
+    return rng.weighted(ms.map((m) => [m[0], m[k]]));
+  };
+  W.muni = (prefName, name) => W.byName.get(prefName).munis.find((m) => m[0] === name) || null;
+  // 同じ学年の子どものおよその数（0〜4歳人口 ÷ 5）
+  W.cohort = (prefName, name) => { const m = W.muni(prefName, name); return m ? m[2] / 5 : null; };
+  W.muniShort = (name) => (name || '').replace(/^.+?郡(?=.)/, '');
+  // 全国の中で、その市区町村に生まれる（住む）割合
+  const muniTot = { births: 0, population: 0 };
+  for (const p of D.prefs) for (const m of p.munis) { muniTot.births += m[2]; muniTot.population += m[1]; }
+  W.muniShare = (prefName, name, mode = 'births') => { const m = W.muni(prefName, name); return m ? m[mode === 'births' ? 2 : 1] / muniTot[mode] : null; };
+
   // ------- 出生地の抽選
   W.drawPref = (rng, mode) => {
     const pairs = D.prefs.map((p) => [p.name, mode === 'population' ? p.popShare : p.birthShare]);
@@ -77,6 +93,8 @@ export function createWorld(D) {
     const p = W.byName.get(prefName);
     return Math.pow(p.v.taxableIncomePerTaxpayer / natTax, D.model.earnings.prefFactorExponent);
   };
+  // 賃金の県差：賃金構造基本統計調査（令和3年、RESAS 加工）の1人当たり賃金の、全国に対する比
+  W.wageFactor = (prefName) => W.byName.get(prefName).wage;
   W.suicideFactor = (prefName) => W.byName.get(prefName).v.suicideRate / W.avg.suicideRate;
   W.trafficFactor = (prefName) => W.byName.get(prefName).v.trafficDeathsPer100k / W.avg.trafficDeathsPer100k;
   W.divorceFactor = (prefName) => Math.pow(W.byName.get(prefName).v.divorceRate / W.avg.divorceRate, 0.8);

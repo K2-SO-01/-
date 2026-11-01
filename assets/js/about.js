@@ -6,7 +6,7 @@ const $ = (s) => document.querySelector(s);
 loadWorld().then((W) => {
   const D = W.D;
   // 出典
-  $('#src-list').innerHTML = Object.values(D.sources).map((s) => `<li id="src-${esc(s.id)}"><b>${esc(s.title)}</b>${s.publisher ? `　${esc(s.publisher)}` : ''}${s.year ? `（${esc(String(s.year))}）` : ''}${s.scope ? ` <span class="badge ${s.scope === 'national' ? 'nat' : ''}">${s.scope === 'national' ? '全国値' : '県別'}</span>` : ''}${s.estimated ? ' <span class="badge">推計を含む</span>' : ''}${s.verified === false ? ' <span class="badge">未照合</span>' : ''}
+  $('#src-list').innerHTML = Object.values(D.sources).map((s) => `<li id="src-${esc(s.id)}"><b>${esc(s.title)}</b>${s.publisher ? `　${esc(s.publisher)}` : ''}${s.year ? `（${esc(String(s.year))}）` : ''}${s.scope ? ` <span class="badge ${s.scope === 'national' ? 'nat' : ''}">${{ national: '全国値', municipality: '市区町村別' }[s.scope] || '県別'}</span>` : ''}${s.estimated ? ' <span class="badge">推計を含む</span>' : ''}${s.verified === false ? ' <span class="badge">未照合</span>' : ''}
     ${s.url ? `<br><a href="${esc(s.url)}" rel="noopener" target="_blank">${esc(s.url)}</a>` : ''}
     ${s.via ? `<br><small>確認経路：${esc(s.via)}</small>` : ''}${s.note ? `<br><small>${esc(s.note)}</small>` : ''}</li>`).join('');
   // 推計・代用
@@ -21,6 +21,7 @@ loadWorld().then((W) => {
   est.push(['名字の人数・名前ごとの人数と読み', '名字は県内上位5姓（一部の県は10〜15姓）を電話帳ベースの集計から使い、人数は順位から推計。名前はランキングの順位から重みを推計し、読みは一般的な読み方を付与。ランキング外の名前と親・祖父母世代の名前は作者が作成した例']);
   est.push(['県別の平均寿命の年次', '都道府県別生命表の最新は令和2年（2020年）のため、県別の死亡率はその値に合わせています（全国の最新は令和6年簡易生命表）']);
   est.push(['性暴力被害の経験率（男性）', D.national.violence2023.forcedSexM.note]);
+  est.push(['ご当地の出来事・友人や同僚との出来事・夢の職業', '祭り・名物・名所・県民の日などは広く知られた事実をもとにした文章で、統計ではありません。起こりやすさはゲームとしての設定です。友人や同僚は同い年の生命表にしたがって年をとります。力士・騎手・宝塚・宇宙飛行士・気象予報士などの注釈の数字は報道や公的資料によるもので、なれる確率そのものは推計です']);
   est.push(['同じ日に生まれた4人', '元の作品では「同じ1秒に生まれた人たち」ですが、日本では約47秒に1人の出生のため、「同じ日に生まれた4人」としています']);
   $('#est-list').innerHTML = est.map(([a, b]) => `<li><b>${esc(a)}</b><br><small>${esc(b)}</small></li>`).join('');
   // 相談先

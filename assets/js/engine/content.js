@@ -218,9 +218,9 @@ export const JOBS = [
   { id: 'temple', t: 'お寺・神社の仕事', s: 3, w: 0.002, edu: 'univ', wf: 0.85, f: 0.15, lad: 'self' },
   { id: 'shopowner', t: '小さな店の店主', s: 3, w: 0.018, edu: 'none', wf: 0.85, f: 0.4, self: true, lad: 'self' },
   // ---- 夢の仕事（趣味から。ふつうの求人には出ない）
-  { id: 'pro_baseball', t: 'プロ野球選手', s: 3, w: 0, edu: 'none', wf: 3.0, f: 0, dream: true, lad: 'none' },
-  { id: 'pro_soccer', t: 'プロサッカー選手', s: 3, w: 0, edu: 'none', wf: 1.8, f: 0.05, dream: true, lad: 'none' },
-  { id: 'dancer', t: 'ダンサー', s: 3, w: 0, edu: 'none', wf: 0.8, f: 0.6, dream: true, lad: 'none' },
+  { id: 'pro_baseball', t: 'プロ野球選手', s: 3, w: 0, edu: 'none', wf: 3.0, f: 0, dream: true, lad: 'none', retire: [31, 4], after: 'ユニフォームを脱ぎました。球場の歓声は、ずっと耳に残っています。' },
+  { id: 'pro_soccer', t: 'プロサッカー選手', s: 3, w: 0, edu: 'none', wf: 1.8, f: 0.05, dream: true, lad: 'none', retire: [30, 4], after: 'スパイクを脱ぎ、現役を引退しました。' },
+  { id: 'dancer', t: 'ダンサー', s: 3, w: 0, edu: 'none', wf: 0.8, f: 0.6, dream: true, lad: 'none', retire: [36, 6], after: '舞台の第一線から退きました。' },
   { id: 'musician', t: '音楽家', s: 3, w: 0, edu: 'none', wf: 0.9, f: 0.4, dream: true, lad: 'none' },
   { id: 'illustrator', t: 'イラストレーター', s: 3, w: 0, edu: 'none', wf: 0.85, f: 0.6, dream: true, lad: 'none' },
   { id: 'mangaka', t: '漫画家', s: 3, w: 0, edu: 'none', wf: 1.1, f: 0.4, dream: true, lad: 'none' },
@@ -229,11 +229,19 @@ export const JOBS = [
   { id: 'comedian', t: 'お笑い芸人', s: 3, w: 0, edu: 'none', wf: 1.2, f: 0.2, dream: true, lad: 'none' },
   { id: 'actor', t: '俳優', s: 3, w: 0, edu: 'none', wf: 1.2, f: 0.5, dream: true, lad: 'none' },
   { id: 'shogi_pro', t: 'プロ棋士', s: 3, w: 0, edu: 'none', wf: 1.3, f: 0.05, dream: true, lad: 'shogi' },
-  { id: 'progamer', t: 'プロゲーマー', s: 3, w: 0, edu: 'none', wf: 0.9, f: 0.1, dream: true, lad: 'none' },
+  { id: 'progamer', t: 'プロゲーマー', s: 3, w: 0, edu: 'none', wf: 0.9, f: 0.1, dream: true, lad: 'none', retire: [27, 4], after: 'プロゲーマーを引退しました。反射神経の衰えを、少しだけ認めました。' },
   { id: 'streamer', t: '配信者', s: 3, w: 0, edu: 'none', wf: 0.9, f: 0.35, dream: true, lad: 'none' },
   { id: 'shopowner_food', t: '飲食店の店主', s: 3, w: 0, edu: 'none', wf: 0.9, f: 0.4, dream: true, self: true, lad: 'self' },
   { id: 'politician', t: '市議会議員', s: 3, w: 0, edu: 'none', wf: 1.3, f: 0.2, dream: true, pub: true, lad: 'none' },
   { id: 'founder', t: '会社の経営者', s: 3, w: 0, edu: 'none', wf: 1.5, f: 0.2, dream: true, self: true, lad: 'none' },
+  { id: 'rikishi', t: '力士', s: 3, w: 0, edu: 'none', wf: 0.9, f: 0, dream: true, lad: 'sumo', retire: [30, 4], after: '土俵を去りました。ちゃんこの味は、今も忘れません。' },
+  { id: 'jockey', t: '騎手', s: 3, w: 0, edu: 'none', wf: 1.4, f: 0.05, dream: true, lad: 'none', retire: [42, 6], after: '騎手を引退しました。馬の世話は、これからも続けます。' },
+  { id: 'takarasienne', t: '宝塚の舞台人', s: 3, w: 0, edu: 'none', wf: 0.7, f: 1, dream: true, lad: 'takarazuka', retire: [31, 5], after: '退団公演の日、客席から花道まで、たくさんの拍手に包まれました。' },
+  { id: 'seiyu', t: '声優', s: 3, w: 0, edu: 'none', wf: 0.8, f: 0.5, dream: true, lad: 'none' },
+  { id: 'igo_pro', t: '囲碁のプロ棋士', s: 3, w: 0, edu: 'none', wf: 1.1, f: 0.15, dream: true, lad: 'igo' },
+  { id: 'pro_golfer', t: 'プロゴルファー', s: 3, w: 0, edu: 'none', wf: 1.2, f: 0.4, dream: true, lad: 'none', retire: [45, 8], after: 'ツアーから退き、レッスンプロとして教えることにしました。' },
+  { id: 'astronaut', t: '宇宙飛行士', s: 3, w: 0, edu: 'univ', wf: 1.6, f: 0.2, dream: true, pub: true, lad: 'none' },
+  { id: 'forecaster', t: '気象予報士', s: 3, w: 0, edu: 'none', wf: 1.05, f: 0.3, dream: true, lad: 'none' },
 ];
 
 // 役職の階段（rank 0 から）。'' は肩書きなし
@@ -253,6 +261,9 @@ export const LADDERS = {
   site: ['見習い', '', '職長', '親方'],
   prof: ['', '講師', '准教授', '教授'],
   shogi: ['四段', '五段', '六段', '七段', '八段', '九段'],
+  igo: ['初段', '三段', '五段', '七段', '九段'],
+  sumo: ['序ノ口', '序二段', '三段目', '幕下', '十両', '幕内'],
+  takarazuka: ['', '', '新人公演の主役', '二番手', 'トップスター'],
   self: [''],
   none: [''],
 };

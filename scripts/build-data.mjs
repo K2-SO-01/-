@@ -18,6 +18,7 @@ const names = raw('names.json');
 const prefsBase = raw('prefs.json').list;
 const model = raw('model.json');
 const factsRaw = raw('facts.json');
+const muniRaw = raw('municipalities.json');
 const facts = Object.fromEntries(Object.entries(factsRaw).filter(([k]) => k !== '_meta'));
 
 const PREF_NAMES = prefsBase.map((p) => p.name);
@@ -73,6 +74,8 @@ src('names_common', { title: 'ランキング外の一般的な名前と読み�
 src('map', { title: '日本地図（都道府県）', publisher: 'Victor Cazanave「svg-maps」@svg-maps/japan（CC BY 4.0）', url: 'https://github.com/VictorCazanave/svg-maps/tree/master/packages/japan' });
 src('model', { title: 'このゲームの推計・仮定（死因の年齢別構成、賃金カーブ、進学・婚姻・出生・移動のモデルなど）', publisher: '作者', estimated: true, note: model._meta.note });
 
+src('wage_pref', { title: manual.prefWages2021.title, publisher: manual.prefWages2021.source, url: manual.prefWages2021.url, via: manual.prefWages2021.via, year: 2021, scope: 'prefecture', estimated: true, note: manual.prefWages2021.note });
+src('munis', { title: '市区町村別の人口と0〜4歳人口', publisher: muniRaw._meta.source, url: muniRaw._meta.url, via: muniRaw._meta.via, year: 2024, scope: 'municipality', estimated: true, note: '生まれる市区町村は、「いま生まれる赤ちゃん」では県内の0〜4歳人口の割合、「いま日本に住む人」では県内の総人口の割合で決めます。市区町村別の出生数は取得できなかったため、0〜4歳人口で代用しています。' + muniRaw._meta.note });
 for (const [k, f] of Object.entries(facts)) src('fact_' + k, { title: f.text, publisher: f.source, url: f.url, via: f.via, year: f.year, scope: 'national', kind: 'fact' });
 
 function pick(o, keys) { const r = {}; for (const k of keys) if (o[k] !== undefined) r[k] = o[k]; return r; }
@@ -244,8 +247,14 @@ const prefs = prefsBase.map((b) => {
     quake30: quake ?? quakeMedian, quakeEstimated: quake == null,
     lt, lifeCheck,
     surnames, surnameTop1Known: knownTop1 != null,
+    wage: round(manual.prefWages2021.values[name] / manual.prefWages2021.national, 4),
+    // 市区町村：[名前, 総人口, 0〜4歳人口]（住民基本台帳 令和6年1月1日・日本人住民）
+    munis: muniRaw.prefs[name].map(([n, , tot, kids]) => [n, tot, kids]),
   };
 });
+
+ind('wageIndex', { label: '賃金の県差（全国=100）', unit: '', source: 'wage_pref', year: 2021, scope: 'prefecture', estimated: true, reason: manual.prefWages2021.note });
+ind('munis', { label: '生まれる市区町村', unit: '', source: 'munis', year: 2024, scope: 'municipality', estimated: true, reason: '市区町村別の出生数は取得できなかったため、住民基本台帳の0〜4歳人口（日本人住民）の割合で代用しています。' });
 
 // 全国平均（出生数で重み付け）の指標
 function weighted(key, weightKey = 'births') {

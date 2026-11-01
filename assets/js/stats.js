@@ -12,6 +12,8 @@ const COLS = [
   { k: 'leF', label: '平均寿命 女', fmt: (p) => p.v.lifeExpectancyF, val: (p) => p.v.lifeExpectancyF, ind: 'lifeExpectancyF' },
   { k: 'u5', label: '5歳までに亡くなる確率', fmt: (p, W) => ((1 - W.survival(p.name, 'M')[5]) * 50 + (1 - W.survival(p.name, 'F')[5]) * 50).toFixed(2) + '%', val: (p, W) => 2 - W.survival(p.name, 'M')[5] - W.survival(p.name, 'F')[5], ind: 'lifeTable' },
   { k: 'inc', label: '1人当たり県民所得', fmt: (p) => yen(p.v.prefIncomePerCapita * 1000), val: (p) => p.v.prefIncomePerCapita, ind: 'prefIncomePerCapita' },
+  { k: 'wage', label: '賃金（全国=100）', fmt: (p) => Math.round(p.wage * 100), val: (p) => p.wage, ind: 'wageIndex' },
+  { k: 'muni', label: '市区町村の数', fmt: (p) => p.munis.length, val: (p) => p.munis.length, ind: 'munis' },
   { k: 'tax', label: '課税対象所得/人', fmt: (p) => yen(p.v.taxableIncomePerTaxpayer * 1000), val: (p) => p.v.taxableIncomePerTaxpayer, ind: 'taxableIncomePerTaxpayer' },
   { k: 'univ', label: '大学等進学率', fmt: (p) => p.v.univEntryRate + '%', val: (p) => p.v.univEntryRate, ind: 'univEntryRate' },
   { k: 'out', label: '県外の大学へ', fmt: (p) => (100 - p.v.inPrefUnivShare).toFixed(1) + '%', val: (p) => 100 - p.v.inPrefUnivShare, ind: 'inPrefUnivShare' },

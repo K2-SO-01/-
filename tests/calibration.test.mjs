@@ -93,10 +93,31 @@ test('重い出来事の頻度が統計の水準から大きく外れていな�
   near(sv, (W.nat.violence2023.forcedSexF.value + W.nat.violence2023.forcedSexM.value) / 200, 0.025, '性暴力の被害経験（男女平均）');
 });
 
-test('収入の県差：東京都は秋田県より高い（課税対象所得の差の向き）', () => {
+test('収入の県差：東京都と秋田県の正社員の年収の比が、賃金構造基本統計調査の県の賃金の比に近い', () => {
   const t = W.pref('東京都')._sim, a = W.pref('秋田県')._sim;
   assert.ok(t && a);
-  assert.ok(t.fullTimeIncome.M > a.fullTimeIncome.M * 1.15, `東京 ${t.fullTimeIncome.M} / 秋田 ${a.fullTimeIncome.M}`);
+  const target = W.pref('東京都').wage / W.pref('秋田県').wage;
+  const sim = t.fullTimeIncome.M / a.fullTimeIncome.M;
+  assert.ok(sim > target * 0.85 && sim < target * 1.15, `東京/秋田 シミュレーション ${sim.toFixed(2)} / 統計 ${target.toFixed(2)}`);
+});
+
+test('生まれる市区町村は、県内の0〜4歳人口（人口モードは総人口）の割合にしたがう', () => {
+  for (const [pref, mode] of [['東京都', 'births'], ['北海道', 'births'], ['鳥取県', 'population']]) {
+    const R = new Rng('muni-' + pref);
+    const n = 30000;
+    const ms = W.pref(pref).munis;
+    const k = mode === 'births' ? 2 : 1;
+    const tot = ms.reduce((s, m) => s + m[k], 0);
+    const cnt = {};
+    for (let i = 0; i < n; i++) { const m = W.drawMuni(R, pref, mode); cnt[m] = (cnt[m] || 0) + 1; }
+    for (const m of ms.slice().sort((a, b) => b[k] - a[k]).slice(0, 5)) {
+      const p = m[k] / tot;
+      near((cnt[m[0]] || 0) / n, p, 4.5 * Math.sqrt(p * (1 - p) / n) + 1e-4, `${pref}${m[0]}に生まれる割合`);
+    }
+  }
+  // 市区町村の合計は、住民基本台帳の県の合計（日本人住民）と一致する
+  const sumJP = W.prefs.reduce((s, p) => s + p.munis.reduce((t, m) => t + m[1], 0), 0);
+  assert.equal(sumJP, 121561801, '全国の日本人住民（令和6年1月1日）');
 });
 
 test('名字と名前：県の上位の名字が出やすく、読みがつく', () => {
