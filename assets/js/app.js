@@ -340,6 +340,17 @@ function renderTop() {
     parts.push(`貯金 ${yen(M.savings + M.invest)}`);
     if (M.debt + M.scholarship + L.home.mortgage > 0) parts.push(`借入 ${yen(M.debt + M.scholarship + L.home.mortgage)}`);
   }
+  // 家族構成と健康のようす（くわしくは「家族と暮らし」）
+  const F = L.family;
+  const fam = [];
+  if (F.spouse && F.spouse.alive && !F.spouse.divorced) fam.push(F.spouse.rel);
+  const kids = F.children.filter((c) => c.alive).length;
+  if (kids) fam.push(`子ども${kids}人`);
+  if (L.age < 18) fam.push([F.mother?.alive && '母', F.father?.alive && '父'].filter(Boolean).join('・') || (F.raisedBy || ''));
+  else if (!fam.length) fam.push(L.home.withParents ? '実家暮らし' : 'ひとり暮らし');
+  parts.push(`家族：${fam.filter(Boolean).join('・')}`);
+  const cond = L.health.dementia ? '認知症' : L.health.care ? '要介護' : Object.keys(L.health.conditions).filter((k) => !(k === 'cancer' && L.health.conditions.cancer.cured)).map((k) => ({ cancer: 'がん治療中', hypertension: '高血圧', diabetes: '糖尿病', heart: '心臓病', stroke: '脳卒中の後遺症', depression: 'うつ病' }[k]))[0];
+  if (cond) parts.push(`健康：${cond}`);
   $('#p-money').innerHTML = parts.map((p) => `<span>${esc(p)}</span>`).join('');
 }
 function studentLabel(L) {
