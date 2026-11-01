@@ -15,7 +15,7 @@ const EVENTS = [...EVENTS_A, ...EVENTS_MORE, ...LOCAL_EVENTS, ...LOCAL_PREF_EVEN
 const CHOICES = [...CHOICES_A, ...CHOICES_MORE, ...PEOPLE_CARDS];
 export const CONTENT_COUNTS = { events: EVENTS.length + PEOPLE_EVENTS.length, choices: CHOICES.length, local: LOCAL_EVENTS.length + LOCAL_PREF_EVENTS.length, people: PEOPLE_EVENTS.length + PEOPLE_CARDS.length };
 import { HOBBY, HOBBY_LIST, HOBBY_MILESTONES, HOBBY_THRESHOLDS, PRO, MAX_HOBBIES } from './hobbies.js';
-import { SPEND_BY_ID, PLACES, ABROAD, FURUSATO_GIFTS } from './spend.js';
+import { SPEND, SPEND_BY_ID, PLACES, ABROAD, FURUSATO_GIFTS, FUND_BY_ID, DIET_COST, INS_PREMIUM, KANKON_RATE } from './spend.js';
 
 export const REFLECT_AGES = [5, 15, 30, 50, 70];
 const SEX_RATIO_M = 0.512; // 出生性比 約105（推計）
@@ -34,7 +34,7 @@ export function createLife(W, opts = {}) {
     sex, birthPref, pref: birthPref, birthMuni, muni: birthMuni, isPeer: !!opts.isPeer, auto: !!opts.auto, mode,
     age: 0, alive: true, deathAge: null, deathCause: null,
     stats: { health: clamp(Math.round(R.normal(86, 6)), 40, 100), happy: 70, know: 4, social: 50 },
-    hBase: 86, talent: R.normal(0, 1), wageZ: R.normal(0, 1),
+    hBase: 86, talent: R.normal(0, 1), wageZ: R.normal(0, 1), hapZ: R.normal(0, 6), socZ: R.normal(0, 6),
     temper: { curious: 0, kind: 0, grit: 0, active: 0, calm: 0 }, temperLabel: null,
     family: { mother: null, father: null, siblings: [], grand: [], spouse: null, exSpouses: [], partner: null, children: [], raisedBy: null },
     household: { quintile: 3, income: 0 },
@@ -44,6 +44,7 @@ export function createLife(W, opts = {}) {
     home: { own: false, mortgage: 0, withParents: true },
     health: { smoker: false, everSmoked: false, alcohol: false, gambling: false, conditions: {}, care: false, dementia: false },
     flags: {}, hobby: null, club: null, hobbies: [], spend: { auto: {} }, cool: {}, pet: null, people: [], pid: 0,
+    life: { kankon: 'full', diet: 'normal', ins: 'basic', fund: 'global' },
     focus: null, focusAuto: true, focusYears: {},
     moved: [], log: [], notes: {}, finalWord: '', decisions: 0,
     pending: null, step: 0, yearDone: false,
@@ -218,7 +219,26 @@ function log(C, text, o = {}) {
 }
 function adj(L, k, d) { L.stats[k] = clamp(L.stats[k] + d, 0, 100); }
 // 出費。18歳未満のうちは家計（親）が負担するので、本人のお金からは引かない
-function pay(L, amt) { if (L.age >= 18) L.money.savings -= amt; }
+function pay(L, amt) {
+  if (L.age < 18) return;
+  // 貯金で払いきれない分は、家族の助けや公的な支え、安い方法を選ぶことで一部しか借金にならない（推計）
+  const have = Math.max(0, L.money.savings);
+  if (amt <= have) L.money.savings -= amt;
+  else L.money.savings -= have + (amt - have) * (L.age >= 65 && L.work.status !== 'employed' ? 0 : 0.4);
+}
+// 治療費：保険に「しっかり」入っていれば、大部分が保険でまかなわれる
+function medPay(C, amt) {
+  const { L } = C;
+  if (L.life?.ins === 'full' && L.age >= 18) { pay(L, Math.round(amt * 0.25)); log(C, `治療費の大部分が保険でまかなわれました（自己負担 約${yen(Math.round(amt * 0.25))}）。`, { k: 'money', o: 'g' }); }
+  else pay(L, amt);
+}
+// 冠婚葬祭のお金：設定に応じて額が変わり、少ないと相手との仲が少し遠くなる
+function kankon(C, amt, pid) {
+  const { L } = C;
+  const k = KANKON_RATE[L.life?.kankon || 'full'] ?? 1;
+  pay(L, Math.round(amt * k));
+  if (pid != null && k < 1) personAct(C, pid, `close:${k >= 0.5 ? -3 : -8}`);
+}
 
 // ================================================================ 年の進行
 const STEPS = ['reflect', 'family', 'stage', 'events', 'focus', 'money', 'death'];
@@ -232,6 +252,8 @@ export function migrateLife(L) {
   const M = L.money; M.nisaMonthly ??= M.investOn ? 30000 : 0; M.ideco ??= 0; M.idecoOn ??= false; M.stocks ??= 0;
   for (const it of L.log) if (!it.o) it.o = inferTone(it.t, it);
   L.people ||= []; L.pid ??= L.people.length;
+  L.hapZ ??= 0; L.socZ ??= 0;
+  L.life ||= { kankon: 'full', diet: 'normal', ins: L.flags?.insured ? 'full' : 'basic', fund: 'global' };
   return L;
 }
 function ctx(W, L) {
@@ -536,6 +558,11 @@ STEP.stage = (C) => {
     else if (st === 'voc') { L.edu.level = 'voc'; log(C, `専門学校（${VOC_TRACKS.find((v) => v.id === L.edu.voc)?.label || ''}）を卒業しました。`, { k: 'school', big: true }); L.edu.stage = 'done'; jobHunt(C); if (L.pending) return; }
     else if (st === 'jc') { L.edu.level = 'jc'; log(C, '短期大学を卒業しました。', { k: 'school', big: true }); L.edu.stage = 'done'; jobHunt(C); if (L.pending) return; }
   }
+  // 60代前半で退職したあと、貯金が心もとなくなったら、また働きに出る
+  if (a >= 60 && a < 65 && L.work.status === 'retired' && L.money.savings < 1000000 && !L.flags.welfare && L.stats.health >= 40 && R.chance(0.6)) {
+    log(C, '年金を受け取るまでの暮らしが心もとなく、また働きに出ることにしました。', { k: 'work', o: 'n' });
+    L.work.status = 'none'; jobHunt(C); if (L.pending) return;
+  }
   // 子どものうちに入ったプロへの道
   if (L.flags.proAt && a >= L.flags.proAt.age) {
     const pa = L.flags.proAt; L.flags.proAt = null;
@@ -619,9 +646,9 @@ function adultStage(C) {
   }
   // 家を買う
   const hhInc = (L.work.income || 0) + (sp && sp.alive && !sp.divorced ? (sp.income || 0) : 0);
-  if (!L.home.own && a >= 28 && a <= 55 && L.work.status === 'employed' && hhInc >= 3500000 && L.money.savings >= 1500000 && L.money.debt < 1000000) {
+  if (!L.home.own && a >= 27 && a <= 58 && L.work.status === 'employed' && hhInc >= 3200000 && L.money.savings >= 1000000 && L.money.debt < 1000000) {
     const pf = W.pref(L.pref);
-    const p = (pf.v.homeOwnershipRate / 100) * 0.06 * (sp && sp.alive && !sp.divorced ? 1.6 : 0.5) * (F.children.length ? 1.3 : 1);
+    const p = (pf.v.homeOwnershipRate / 100) * 0.1 * (sp && sp.alive && !sp.divorced ? 1.6 : 0.6) * (F.children.length ? 1.3 : 1);
     if (R.chance(p)) { offer(C, 'house'); if (L.pending) return; }
   }
   // 仕事の流れ
@@ -973,11 +1000,12 @@ function adultEvents(C) {
     cs.cancer.cured = true;
     log(C, 'がんの治療から5年がたち、再発はありませんでした。', { k: 'health' }); adj(L, 'happy', 5); adj(L, 'health', 6);
   }
-  if (a >= 40 && !cs.hypertension && R.chance(0.012 + (a - 40) * 0.0008 + (L.health.smoker ? 0.006 : 0))) {
+  const dietK = L.life.diet === 'careful' ? 0.85 : L.life.diet === 'eatout' ? 1.15 : 1;
+  if (a >= 40 && !cs.hypertension && R.chance((0.012 + (a - 40) * 0.0008 + (L.health.smoker ? 0.006 : 0)) * dietK)) {
     cs.hypertension = { since: curYear(L) };
     log(C, '健康診断で血圧が高いと言われ、薬を飲みはじめました。', { k: 'health' }); adj(L, 'health', -3);
   }
-  if (a >= 40 && !cs.diabetes && R.chance(0.005 + (a - 40) * 0.0003)) {
+  if (a >= 40 && !cs.diabetes && R.chance((0.005 + (a - 40) * 0.0003) * dietK)) {
     cs.diabetes = { since: curYear(L) };
     log(C, '糖尿病と診断され、食事に気をつけるようになりました。', { k: 'health' }); adj(L, 'health', -5);
   }
@@ -1001,7 +1029,7 @@ function adultEvents(C) {
   }
   // 貧困
   const lowInc = (L.work.income + (L.work.pensionM || 0) * 12 + (L.family.spouse?.income || 0)) < 1600000;
-  if (L.age >= 20 && lowInc && L.money.debt > 3000000 && L.money.savings < 100000 && !L.flags.welfare && L.work.status !== 'employed' && !['univ', 'voc', 'jc', 'grad'].includes(L.edu.stage) && R.chance(0.06)) {
+  if (L.age >= 20 && lowInc && L.money.debt > 500000 && L.money.savings < 100000 && !L.flags.welfare && L.work.status !== 'employed' && !['univ', 'voc', 'jc', 'grad'].includes(L.edu.stage) && R.chance(L.home.own ? 0.05 : 0.25)) {
     L.flags.welfare = true;
     log(C, '暮らしが立ち行かなくなり、生活保護を受けることになりました。', { k: 'heavy', big: true, h: 'poverty', note: `${L.pref}の生活保護を受ける世帯は、一般世帯千あたり約${W.pref(L.pref).v.welfareHouseholdsPer1000.toFixed(1)}世帯（被保護者調査）。` });
     L.money.savings = 0; L.money.debt = Math.max(0, L.money.debt - 1000000);
@@ -1090,16 +1118,18 @@ STEP.focus = (C) => {
   let dh = drift + (L.hBase - L.stats.health) * 0.08;
   if (f === 'sports' || f === 'health') dh += 1.4; if (f === 'rest') dh += 0.8; if (f === 'work') dh -= 0.8;
   if (L.health.smoker) dh -= 0.6; if (L.health.alcohol) dh -= 1;
+  if (a >= 18) dh += L.life.diet === 'careful' ? 0.2 : L.life.diet === 'eatout' ? -0.2 : 0;
   dh += R.normal(0, 1.2);
   adj(L, 'health', dh);
   // 人間関係
-  let ds = (50 - L.stats.social) * 0.04;
+  const closeN = (L.people || []).filter((p) => p.alive && p.close >= 45).length;
+  const married = L.family.spouse && L.family.spouse.alive && !L.family.spouse.divorced;
+  const sTarget = 42 + (married ? 8 : 0) + (L.family.children.some((c) => c.alive) ? 4 : 0) + Math.min(12, closeN * 3) + (a < 18 ? 6 : 0) - (a >= 75 ? 6 : 0) - (L.moved.length && L.moved[L.moved.length - 1].age >= a - 2 ? 5 : 0) + (L.socZ || 0);
+  let ds = (sTarget - L.stats.social) * 0.12;
   if (f === 'friends' || f === 'family' || f === 'community') ds += 2.5; if (f === 'work') ds -= 1.2; if (f === 'home') ds += 1.2;
-  if (L.family.spouse && L.family.spouse.alive && !L.family.spouse.divorced) ds += 0.8;
-  if (a >= 75) ds -= 0.6;
   adj(L, 'social', ds + R.normal(0, 1));
   // 幸福：暮らしの状態に向かってゆっくり動く
-  const target = 52 + (L.stats.health - 60) * 0.18 + (L.stats.social - 50) * 0.22 + incomeHappy(W, L)
+  const target = 49 + (L.hapZ || 0) + (L.stats.health - 60) * 0.18 + (L.stats.social - 50) * 0.22 + incomeHappy(W, L)
     + (L.family.spouse && L.family.spouse.alive && !L.family.spouse.divorced ? 3 : 0) + (L.family.children.length ? 2 : 0)
     + (f === 'hobby' || f === 'rest' ? 3 : 0) + (f === 'friends' ? 2 : 0) + (f === 'study' ? -2 : 0) + (L.money.debt > 3000000 ? -6 : 0)
     + (L.health.conditions.depression && !L.health.conditions.depression.treated ? -8 : 0)
@@ -1158,31 +1188,55 @@ STEP.money = (C) => {
     else if (sa >= 65) spouseInc = (sp.sex === 'M' ? 160000 : 90000) * 12;
     sp.income = Math.round(spouseInc);
   }
-  const total = w.income + pension + spouseInc;
+  // 児童手当（2024年10月分から：3歳未満は月1.5万円、3歳〜高校生年代は月1万円、第3子以降は月3万円。所得制限なし）
+  let allowance = 0;
+  if (a >= 18) {
+    const kidsU18 = L.family.children.filter((c) => c.alive && personAge(L, c) < 18 && !c.left);
+    kidsU18.forEach((c, i) => { const ca = personAge(L, c); allowance += i >= 2 ? 360000 : ca < 3 ? 180000 : 120000; });
+  }
+  const total = w.income + pension + spouseInc + allowance;
   // 支出：手取り（約8割）から生活費。家族の人数と県の物価で変わる
   const pf = W.pref(L.pref);
   const kids = L.family.children.filter((c) => c.alive && personAge(L, c) < 22).length;
   const adults = 1 + (sp && sp.alive && !sp.divorced ? 1 : 0);
   // 生活費：最低限の費用（人数・県の物価・家賃）を下限に、手取りの7割ほどを使う（推計）
-  const disposable = total * 0.8;
+  // 手取り：働いて得た収入は約8割、年金や手当は税・社会保険料が少ないので約9割
+  const disposable = (w.income + spouseInc) * 0.8 + (pension + allowance) * 0.92;
   let sub = (1100000 + 600000 * (adults - 1) + 500000 * kids) * (pf.v.priceIndex / 100);
   if (!L.home.own && !L.home.withParents) sub += pf.v.rentPer3_3m2 * 12 * 12 * (adults + kids > 2 ? 1.4 : 1) * 0.6;
   let living = Math.max(sub, disposable * 0.78 + sub * 0.12);
   if (L.home.withParents && a < 30) living *= 0.5;
-  if (L.home.own && L.home.mortgage > 0) { const pay = Math.min(L.home.mortgage, 1200000); L.home.mortgage -= pay; living += pay; if (L.home.mortgage <= 0 && !L.isPeer) triggerEvent(C, 'm_mortgage_done'); }
+  let mpay = 0;
+  if (L.home.own && L.home.mortgage > 0) { mpay = Math.min(L.home.mortgage, 1200000); L.home.mortgage -= mpay; living += mpay; if (L.home.mortgage <= 0 && !L.isPeer) triggerEvent(C, 'm_mortgage_done'); }
   if (L.focus === 'health') living += 100000;
   if (L.health.smoker) living += 200000;
+  if (a >= 18 && !(L.home.withParents && a < 30)) living += DIET_COST[L.life.diet] || 0;
+  if (L.life.ins === 'full' && a >= 20 && a < 70) living += INS_PREMIUM;
+  // 退職後は、年金で足りない分を貯金から取り崩して暮らす
+  // （家計調査2024年平均：高齢夫婦無職世帯は月に約3.4万円、高齢単身無職世帯は月に約2.8万円の不足）
+  if (a >= 65 && w.status !== 'employed' && M.savings > 0) living = Math.max(living, disposable + (adults > 1 ? 408700 : 333800));
+  // 資産が多い人ほど、暮らしや楽しみにも多く使う（資産からの消費。推計）
+  const wealth = M.savings + M.invest + (M.stocks || 0);
+  if (a >= 60) living += Math.max(0, wealth - 20000000) * 0.03;
+  else if (a >= 30) living += Math.max(0, wealth - 30000000) * 0.015;
   let net = disposable - living;
   if (L.flags.welfare) net = Math.max(net, 0);
-  // 学生のあいだは家族の仕送りや奨学金で生活費の多くをまかなう
-  if (['univ', 'voc', 'jc', 'grad', 'ronin'].includes(L.edu.stage)) net = Math.max(net, -150000 * (6 - L.household.quintile) / 3);
+  // 学生のあいだの生活費は、家族の仕送りと奨学金、アルバイトでまかなう
+  if (['univ', 'voc', 'jc', 'grad', 'ronin'].includes(L.edu.stage)) net = Math.max(net, 0);
+  // 貯金で足りない分は暮らしを切り詰めてしのぐ。借金になるのは、最低限の暮らしにも届かないときだけ
+  if (net < 0 && a >= 18 && M.savings + net < 0) {
+    const floor = sub * (a >= 65 ? 0.5 : 0.6) + mpay;
+    const cut = Math.max(floor, Math.min(living, disposable + Math.max(0, M.savings)));
+    net = disposable - cut;
+  }
   if (L.focus === 'work' && net > 0) net *= 1.05;
-  if (a < 18) net = Math.min(net, w.income);
+  // 18歳未満は家計（親）が暮らしを支え、本人のお金はアルバイト代だけ
+  if (a < 18) net = Math.max(0, Math.min(net, w.income));
   M.savings = Math.round(M.savings + net);
   yearlySpending(C);
   // 借金：貯金がマイナスなら借金として扱う
   if (M.savings < 0 && L.age >= 18) { M.debt += -M.savings; M.savings = 0; }
-  if (M.debt > 0 && M.savings > 0) { const pay = Math.min(M.debt, M.savings * 0.5); M.debt -= pay; M.savings -= pay; }
+  if (M.debt > 0 && M.savings > 0) { const pay = Math.min(M.debt, M.savings * (a >= 60 ? 1 : 0.5)); M.debt -= pay; M.savings -= pay; }
   if (M.scholarship > 0 && L.edu.stage === 'done' && w.income > 0) { const pay = Math.min(M.scholarship, 180000); M.scholarship -= pay; M.savings -= pay; if (M.scholarship === 0) log(C, '奨学金を返し終えました。', { k: 'money' }); }
   L.hist.income[a] = Math.round(total);
   L.hist.work[a] = w.income;
@@ -1225,6 +1279,7 @@ function drawCause(C) {
 
 function die(C, cause) {
   const { L, W } = C;
+  if (L.life?.ins === 'full' && L.age < 70 && L.age >= 20 && ((L.family.spouse && L.family.spouse.alive && !L.family.spouse.divorced) || L.family.children.some((c) => c.alive && personAge(L, c) < 22))) L.flags.lifeInsPaid = true;
   L.alive = false; L.deathAge = L.age; L.deathCause = cause; L.deathYear = curYear(L);
   L.hist.happy[L.age] = Math.round(L.stats.happy);
   const label = W.causeLabel(cause);
@@ -1236,6 +1291,7 @@ function die(C, cause) {
   else if (L.age === 0) t = `生まれて1年もたたないうちに、${label}のため亡くなりました。`;
   else t = `${L.age}歳で、${label}のため亡くなりました。`;
   log(C, t, { k: 'death', big: true, h, gentle: `${L.age}歳で亡くなりました。` });
+  if (L.flags.lifeInsPaid) log(C, '加入していた生命保険から、残された家族に保険金が支払われました。', { k: 'money', o: 'n' });
 }
 
 // ================================================================ 決断
@@ -1529,13 +1585,14 @@ DEC.retire = {
   cat: 'big',
   build(C, c) {
     if (c.self) return { title: 'そろそろ仕事をやめる？', options: [{ label: '引退する', hint: '' }, { label: 'まだ続ける', hint: '' }] };
-    if (c.at === 60) return { title: '60歳。定年を迎えます', body: '多くの職場では、定年のあとも嘱託や再雇用で働き続けることができます。', options: [{ label: '再雇用で働き続ける', hint: '収入は下がる' }, { label: '退職する', hint: '自由な時間' }] };
+    if (c.at === 60) return { title: '60歳。定年を迎えます', body: '多くの職場では、定年のあとも嘱託や再雇用で働き続けることができます。', options: [{ label: '再雇用で働き続ける', hint: '収入は下がる' }, { label: '退職する', hint: '自由な時間 · 年金は65歳から（それまでは貯金で暮らす）' }] };
     return { title: '65歳。仕事をどうする？', body: `${C.L.pref}では、65歳以上の人のうち約${C.W.pref(C.L.pref).v.elderlyWorkerShare}%が働いています（国勢調査）。`, options: [{ label: '働き続ける', hint: '' }, { label: '引退する', hint: '年金で暮らす' }] };
   },
   auto(C, c) {
     const { L, W, R } = C;
     if (c.self) return 0;
-    if (c.at === 60) return R.chance(0.8) ? 0 : 1;
+    // 貯金が十分でなければ、たいていは再雇用で働き続ける
+    if (c.at === 60) { const assets = L.money.savings + L.money.invest; return assets >= 15000000 && R.chance(0.5) ? 1 : R.chance(0.9) ? 0 : 1; }
     return R.chance(W.pref(L.pref).v.elderlyWorkerShare / 100 * 1.2) ? 0 : 1;
   },
   apply(C, c, i) {
@@ -1756,7 +1813,7 @@ DEC.treatMental = {
     const d = L.health.conditions.depression;
     if (R.chance([0.75, 0.55, 0.2][i])) { d.treated = true; log(C, '時間はかかりましたが、少しずつ眠れるようになり、気持ちが戻ってきました。', { k: 'health' }); adj(L, 'happy', 8); }
     else log(C, 'つらい日々が続きました。', { k: 'health', h: 'mental' });
-    if (i === 0 && L.work.status === 'employed') pay(L, 800000);
+    if (i === 0 && L.work.status === 'employed') medPay(C, 800000);
   },
 };
 DEC.cancer = {
@@ -1769,7 +1826,7 @@ DEC.cancer = {
     const cureP = [0.62, 0.64, 0.3][i] * (L.age < 70 ? 1.1 : 0.85);
     if (i === 2) { log(C, '積極的な治療は受けず、痛みを和らげながら暮らすことにしました。', { k: 'health' }); cs.untreated = true; return; }
     log(C, i === 1 ? '別の病院の意見も聞いたうえで、治療を始めました。' : '手術と薬の治療を受けました。', { k: 'health' });
-    pay(L, 400000);
+    medPay(C, 400000);
     if (R.chance(cureP)) { cs.cured = true; adj(L, 'health', 8); log(C, '治療はうまくいきました。', { k: 'health' }); }
   },
 };
@@ -1898,7 +1955,8 @@ function logEvent(C, ev, extra = {}) {
   const text = fillText(C, R.pick(ev.t), extra);
   if (!text) return;
   log(C, text, { k: ev.k || 'life', o: ev.tone, h: ev.h, big: ev.big, note: ev.note ? factNote(W, ev.note) : undefined, gentle: ev.h ? `${L.age}歳、つらい時期がありました。` : undefined });
-  fxApply(C, ev.fx, ev.money);
+  if (ev.kankon) { fxApply(C, ev.fx, 0); kankon(C, -(ev.money || 0), extra.pid); }
+  else fxApply(C, ev.fx, ev.money);
   if (ev.set) Object.assign(L.flags, ev.set);
   if (ev.act) doAct(C, ev.act);
   if (ev.pact && extra.pid != null) personAct(C, extra.pid, ev.pact);
@@ -1949,7 +2007,7 @@ function runCatalogEvents(C) {
   const pick = [
     ...R.shuffle(hits).slice(0, max),
     ...R.shuffle(lhits).slice(0, L.isPeer ? 0 : 1),
-    ...R.shuffle(phits).slice(0, L.focus === 'friends' || L.focus === 'community' ? 2 : 1),
+    ...R.shuffle(phits).slice(0, ['friends', 'family', 'community'].includes(L.focus) ? 2 : 1),
   ];
   for (const [ev, extra] of pick) {
     logEvent(C, ev, extra);
@@ -2054,6 +2112,7 @@ function doAct(C, act, c = {}) {
   else if (k === 'move' && arg === 'birth') moveTo(C, L.birthPref, '老後を故郷で');
   else if (k === 'move' && arg === 'any') moveTo(C, W.drawDestination(R, L.pref), '転勤');
   else if (k === 'quintile') L.household.quintile = clamp(L.household.quintile + Number(arg), 1, 5);
+  else if (k === 'ins') setLifestyle(L, 'ins', arg);
 }
 const PET_NAMES = { 犬: ['ポチ', 'ココ', 'モモ', 'ハル', 'ソラ', 'マロン', 'コタロウ', 'チョコ', 'むぎ', 'リク'], 猫: ['タマ', 'ミケ', 'レオ', 'ルナ', 'きなこ', 'ソラ', 'モカ', 'こむぎ', 'ノラ', 'クロ'], 金魚: ['きんちゃん', 'ひらり', 'あか', 'しろ', 'ぎょぴ'] };
 
@@ -2077,9 +2136,11 @@ function hobbyYear(C) {
     const h = HOBBY[hb.id];
     // 腕前：重点を「趣味」にした年は大きく伸び、そうでない年はゆっくり。上手になるほど伸びにくい
     const main = L.hobbies[0] === hb || L.hobbies.length === 1;
-    let g = (L.focus === 'hobby' ? (main ? 20 : 9) : L.focus === 'sports' && h.kind === 'sport' ? 15 : L.focus === 'friends' && L.age < 18 ? 2.5 : 1.3) + 1.2 * L.talent + (L.spend.auto.hobby_gear ? 3 : 0) + R.normal(0, 1);
-    if (L.age >= 70 && h.kind === 'sport') g -= 1.5;
-    hb.skill = clamp(hb.skill + Math.max(-1, g) * (1 - hb.skill / 105), 0, 100);
+    let g = (L.focus === 'hobby' ? (main ? 18 : 8) : L.focus === 'sports' && h.kind === 'sport' ? 14 : L.focus === 'friends' && L.age < 18 ? 2 : 0.5) + 1.2 * L.talent + (L.spend.auto.hobby_gear ? 3 : 0) + R.normal(0, 1);
+    if (L.age >= 70 && h.kind === 'sport') g -= 2;
+    if (L.age >= 78) g -= 1;
+    const room = Math.pow(Math.max(0, 1 - hb.skill / 100), 1.4);
+    hb.skill = clamp(hb.skill + (g >= 0 ? g * room : Math.max(-2, g)), 0, 100);
     while (hb.ms < HOBBY_THRESHOLDS.length && hb.skill >= HOBBY_THRESHOLDS[hb.ms]) {
       const t = (HOBBY_MILESTONES[h.kind] || HOBBY_MILESTONES.media)[hb.ms].replace(/\{h\}/g, h.name);
       hb.ms++;
@@ -2235,7 +2296,7 @@ function peopleYear(C) {
     if (!p.alive) continue;
     // 親しさは年に少しずつ薄れる。親友は薄れにくく、離れて暮らすと薄れやすい
     let d = p.rel === 'best' ? -0.6 : -1.2;
-    if (L.focus === 'friends' || L.focus === 'community') d += 4;
+    if (L.focus === 'friends' || L.focus === 'family' || L.focus === 'community') d += 3;
     if (p.left || p.away) d -= 1;
     if (p.pref !== L.pref) d -= 1;
     if (['osana', 'club', 'uni'].includes(p.rel) && a >= 23) d -= 0.5;
@@ -2245,6 +2306,7 @@ function peopleYear(C) {
       p.alive = false; p.diedAt = curYear(L);
       if (p.close >= 20 || p.rel === 'best') {
         log(C, `${relLabel(p)}の${callName(p)}が、${pa}歳で亡くなりました。`, { k: 'people', o: 'b', big: p.close >= 50 });
+        kankon(C, 10000);
         adj(L, 'happy', -Math.round(2 + p.close / 20));
       }
     }
@@ -2279,6 +2341,30 @@ export function spendNow(W, L, id, arg) {
 export function setAutoSpend(L, id, on) { L.spend.auto[id] = !!on; }
 export function setNisa(L, monthly) { L.money.nisaMonthly = monthly; L.money.investOn = monthly > 0; }
 export function setIdeco(L, on) { L.money.idecoOn = !!on; }
+export function setLifestyle(L, key, val) { L.life ||= {}; L.life[key] = val; if (key === 'ins') L.flags.insured = val === 'full'; }
+// 「今やっておきたいこと」：いまの暮らしに合いそうな使い道をいくつか選ぶ（理由つき）
+export function spendSuggestions(W, L) {
+  if (L.age < 18) return [];
+  const out = [];
+  const M = L.money;
+  const add = (id, why) => { const s = SPEND_BY_ID[id]; if (s && spendAvailable(W, L, s) && !out.some((x) => x.id === id) && !(s.auto && L.spend.auto[id])) out.push({ id, why }); };
+  const F = L.family;
+  const parents = [F.mother, F.father].filter((p) => p && p.alive);
+  if (M.debt > 0) add('repay', '借金の利息がかさむ前に');
+  if (parents.some((p) => personAge(L, p) >= 70)) add('trip_parent', `親が${Math.max(...parents.map((p) => personAge(L, p)))}歳になりました`);
+  if (L.family.children.some((c) => c.alive && personAge(L, c) >= 10 && personAge(L, c) <= 15)) add('kids_juku', '子どもが受験の年ごろです');
+  if (L.stats.health < 60 || L.age >= 40) add('checkup', L.stats.health < 60 ? '健康が気になってきました' : '40歳を過ぎたら年に一度');
+  if (L.stats.happy < 55) add(M.savings > 600000 ? 'trip_dom' : 'live', '少し気分を変えたいとき');
+  if (L.stats.social < 45) add('dinner', '人とのつながりが細くなっています');
+  if (!M.nisaMonthly && M.savings > 2000000) add('nisa', '使う予定のない貯金があります');
+  if ((L.work.income || 0) >= 3000000) add('furusato', '収入に応じて控除が受けられます');
+  if (L.home.mortgage > 0 && M.savings > 5000000) add('prepay', '貯金に余裕があります');
+  if (L.hobbies.length) add('hobby_gear', `${HOBBY[L.hobbies[0].id]?.name || '趣味'}の腕前を伸ばしたいなら`);
+  if (L.stats.health < 70 && L.age >= 25) add('gym', '体力づくりに');
+  if (out.length < 3) add('gift_friend', '大切な人に');
+  if (out.length < 3) add('gourmet', 'たまには自分にごほうびを');
+  return out.slice(0, 4);
+}
 export function spendAvailable(W, L, s) {
   const Q = makeQ(L, W);
   if (L.age < 18) return false;
@@ -2295,6 +2381,7 @@ export function spendAvailable(W, L, s) {
     default: return true;
   }
 }
+export function spendCostOf(L, s) { return spendCost(L, s); }
 function spendCost(L, s) {
   if (!s.kids) return s.cost || 0;
   const n = L.family.children.filter((c) => c.alive && personAge(L, c) >= s.kids[0] && personAge(L, c) <= s.kids[1]).length;
@@ -2346,8 +2433,10 @@ function yearlySpending(C) {
     const put = 23000 * 12;
     if (M.savings >= put) { M.savings -= put; M.ideco = (M.ideco || 0) + put; }
   }
-  if (M.invest > 0) M.invest = Math.round(M.invest * (1 + R.normal(0.04, 0.14)));
-  if (M.ideco > 0) M.ideco = Math.round(M.ideco * (1 + R.normal(0.04, 0.14)));
+  const fund = FUND_BY_ID[L.life.fund] || FUND_BY_ID.global;
+  const ret = R.normal(fund.mu, fund.sd);
+  if (M.invest > 0) M.invest = Math.round(M.invest * (1 + ret));
+  if (M.ideco > 0) M.ideco = Math.round(M.ideco * (1 + ret));
   if (M.stocks > 0) M.stocks = Math.round(M.stocks * (1 + R.normal(0.05, 0.3)));
   if (L.age === 65 && M.ideco > 0) { M.savings += M.ideco; log(C, `iDeCoで積み立ててきた${yen(M.ideco)}を受け取りました。`, { k: 'money', o: 'g' }); M.ideco = 0; }
   // おまかせ・並走：統計にそって少しだけお金の使い道を選ぶ
@@ -2389,7 +2478,7 @@ export function summarize(W, L) {
     quintile: L.wealthAtBirth,
     hobbies: (L.hobbies || []).map((h) => ({ name: HOBBY[h.id]?.name, skill: Math.round(h.skill) })),
     pet: L.pet ? `${L.pet.kind}の${L.pet.name}` : null,
-    birthMuni: L.birthMuni, lastMuni: L.muni,
+    birthMuni: L.birthMuni, lastMuni: L.muni, lifeInsPaid: !!L.flags.lifeInsPaid,
     friends: (L.people || []).filter((p) => FRIEND_RELS.includes(p.rel)).sort((a, b) => b.close - a.close).slice(0, 3).map((p) => ({ name: `${p.name.sei}${p.name.mei}`, rel: REL[p.rel], alive: p.alive })),
   };
 }

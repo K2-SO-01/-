@@ -1,7 +1,7 @@
 // トップ → 出生地の抽選 → 出生届 → 人生 → 最期の記録
 import { Rng, newSeed } from './engine/rng.js';
-import { createLife, beginYear, continueYear, nextYear, answer, setFocus, setAuto, summarize, REFLECT_AGES, curYear, personAge, JOB, spendNow, setAutoSpend, setNisa, setIdeco, spendAvailable, migrateLife } from './engine/life.js';
-import { SPEND, NISA_STEPS } from './engine/spend.js';
+import { createLife, beginYear, continueYear, nextYear, answer, setFocus, setAuto, summarize, REFLECT_AGES, curYear, personAge, JOB, spendNow, setAutoSpend, setNisa, setIdeco, spendAvailable, migrateLife, setLifestyle, spendSuggestions, spendCostOf } from './engine/life.js';
+import { SPEND, SPEND_BY_ID, NISA_STEPS, FUNDS, FUND_BY_ID, LIFESTYLE } from './engine/spend.js';
 import { HOBBY } from './engine/hobbies.js';
 import { FOCUS, focusGroup, QUINTILE, EDU_LABEL, TEMPER } from './engine/content.js';
 import { yen, oneIn, pct } from './engine/util.js';
@@ -15,6 +15,7 @@ import { REL, FRIEND_RELS } from './engine/people.js';
 const $ = (s, el = document) => el.querySelector(s);
 const SPEEDS = [1, 2, 4, 8, 16];
 const TURBO = 60;
+const LOG_SHORT = 10; // 記録をたたんでいるときに見せる件数
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 let W = null;
@@ -284,11 +285,12 @@ function renderPlay() {
     <div class="scene" id="p-scene" role="img" aria-label=""></div>
     <div class="statstrip" id="p-stats" aria-label="状態（0〜100）"></div>
     <div class="moneyline" id="p-money"></div>
+    <button class="btn shopbtn" id="btn-shop" type="button" aria-haspopup="dialog"><span class="sb-l">¥ お金を使う · 投資</span><small id="shop-sum"></small></button>
     <div class="layout">
       <div>
         <div class="loghead"><h2 class="lh">人生の記録 <small>新しい順 · ☆で覚えておく</small></h2>
           <div class="legend" aria-label="記号の意味"><span class="lg t-g"><b class="mk">＋</b>よい出来事</span><span class="lg t-b"><b class="mk">－</b>つらい出来事</span><span class="lg t-h"><b class="mk">！</b>重い出来事</span><span class="lg t-n"><b class="mk">・</b>ふつう</span></div></div>
-        <ul class="log" id="p-log" aria-live="polite" aria-relevant="additions" aria-label="人生の記録（新しい順）"></ul>
+        <div class="logwrap" id="p-logwrap"><ul class="log" id="p-log" aria-live="polite" aria-relevant="additions" aria-label="人生の記録（新しい順）"></ul></div>
         <div class="more"><button class="linkbtn" id="btn-more" type="button">以前の記録をもっと見る</button></div>
         <div id="p-panels"></div>
       </div>
@@ -310,11 +312,12 @@ function renderPlay() {
     </div>
   </div></nav>`;
   $('#btn-menu').addEventListener('click', openMenu);
+  $('#btn-shop').addEventListener('click', () => openShop());
   $('#btn-pause').addEventListener('click', togglePause);
   $('#btn-next').addEventListener('click', () => { G.turbo = !G.turbo; G.paused = false; renderControls(); });
   for (const b of el.querySelectorAll('.speeds button')) b.addEventListener('click', () => { G.speed = Number(b.dataset.sp); G.turbo = false; G.paused = false; renderControls(); save(); });
   $('#sp-sel').addEventListener('change', (e) => { G.speed = Number(e.target.value); G.turbo = false; G.paused = false; renderControls(); save(); });
-  $('#btn-more').addEventListener('click', () => { G.showAll = true; renderLog(); });
+  $('#btn-more').addEventListener('click', () => { G.showAll = !G.showAll; renderLog(); if (!G.showAll) $('#p-logwrap').scrollTop = 0; });
   $('#p-log').addEventListener('click', onStar);
   renderTop(); renderLog(); renderPeers(); renderFocus(); renderPanels(); renderControls();
 }
@@ -386,6 +389,7 @@ function renderTop() {
   const cond = L.health.dementia ? '認知症' : L.health.care ? '要介護' : Object.keys(L.health.conditions).filter((k) => !(k === 'cancer' && L.health.conditions.cancer.cured)).map((k) => ({ cancer: 'がん治療中', hypertension: '高血圧', diabetes: '糖尿病', heart: '心臓病', stroke: '脳卒中の後遺症', depression: 'うつ病' }[k]))[0];
   if (cond) parts.push(`健康：${cond}`);
   $('#p-money').innerHTML = parts.map((p) => `<span>${esc(p)}</span>`).join('');
+  renderShopButton();
 }
 function studentLabel(L) {
   return { univ: '大学生', grad: '大学院生', voc: '専門学校生', jc: '短大生', ronin: '浪人中', hs: '高校生' }[L.edu.stage] || '';
@@ -411,7 +415,7 @@ function renderLog() {
   let items = L.log.filter((it) => !qkeys.has(it.a + '|' + it.t) && !(gentle && it.h && !it.g));
   items = items.slice().reverse();
   const total = items.length;
-  if (!G.showAll) items = items.slice(0, 60);
+  if (!G.showAll) items = items.slice(0, LOG_SHORT);
   const lastAge = items[0]?.a;
   $('#p-log').innerHTML = items.map((it, i) => {
     const idx = L.log.indexOf(it);
@@ -422,7 +426,11 @@ function renderLog() {
     const help = it.h && i < 8 ? hotlineHTML(W, it.h === 'death' ? (it.k === 'death' ? 'grief' : 'default') : it.h) : '';
     return `<li class="t-${tone} ${it.big ? 'big' : ''}${heavy}${it.k === 'death' ? ' death' : ''}${it.k === 'note' ? ' note' : ''}${i === 0 && it.a === lastAge ? ' enter' : ''}"><span class="age"><b class="mk" ${mk[1] ? `aria-label="${mk[1]}"` : 'aria-hidden="true"'}>${mk[0]}</b>${it.a}歳 · ${it.y}年</span>${esc(text)}${it.note ? `<span class="lnote">ⓘ ${esc(it.note)}</span>` : ''}${help}<button class="star" type="button" data-i="${idx}" aria-pressed="${it.s ? 'true' : 'false'}" aria-label="覚えておく瞬間に${it.s ? 'しない' : 'する'}">${it.s ? '★' : '☆'}</button></li>`;
   }).join('');
-  $('#btn-more').parentElement.classList.toggle('hidden', G.showAll || total <= 60);
+  const more = $('#btn-more');
+  more.parentElement.classList.toggle('hidden', total <= LOG_SHORT);
+  more.textContent = G.showAll ? '最近の記録だけ見る' : `以前の記録をもっと見る（ほか${total - LOG_SHORT}件）`;
+  more.setAttribute('aria-expanded', String(!!G.showAll));
+  $('#p-logwrap').classList.toggle('all', !!G.showAll);
 }
 function onStar(e) {
   const b = e.target.closest('.star');
@@ -485,21 +493,6 @@ function renderPanels() {
   const dots = (q) => '●'.repeat(q) + '○'.repeat(5 - q);
   const stage = { home: '家で過ごす', preschool: '保育園・幼稚園', elem: '小学生', jhs: '中学生', hs: '高校生', univ: '大学生', grad: '大学院生', voc: '専門学校生', jc: '短大生', ronin: '浪人中' }[L.edu.stage];
   const hob = L.hobbies.map((h) => `<li>${esc(HOBBY[h.id]?.name || h.id)}<span class="skill" role="meter" aria-label="${esc(HOBBY[h.id]?.name || '')}の腕前" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(h.skill)}"><i style="width:${Math.round(h.skill)}%"></i></span><small>${Math.round(h.skill)}</small></li>`).join('');
-  // お金
-  const M = L.money;
-  const adult = L.age >= 18;
-  const cats = {};
-  for (const s of SPEND) { if (s.invest) continue; (cats[s.cat] ||= []).push(s); }
-  const spendHTML = Object.entries(cats).map(([cat, list]) => {
-    const rows = list.filter((s) => spendAvailable(W, L, s)).map((s) => {
-      if (s.auto) return `<label class="row check"><span>${esc(s.l)}</span><input type="checkbox" data-auto="${s.id}" ${L.spend.auto[s.id] ? 'checked' : ''}></label>`;
-      return `<button class="btn small spend" data-spend="${s.id}" type="button">${esc(s.l)}${s.cost ? `<small>約${esc(yen(s.cost))}</small>` : ''}</button>`;
-    }).join('');
-    return rows ? `<h4 class="sh">${esc(cat)}</h4><div class="spendgrid">${rows}</div>` : '';
-  }).join('');
-  const assets = [`貯金 ${yen(M.savings)}`, M.invest ? `NISA ${yen(M.invest)}` : '', M.ideco ? `iDeCo ${yen(M.ideco)}` : '', M.stocks ? `株 ${yen(M.stocks)}` : '', M.debt ? `借金 ${yen(M.debt)}` : '', M.scholarship ? `奨学金の残り ${yen(M.scholarship)}` : '', L.home.mortgage ? `住宅ローン ${yen(L.home.mortgage)}` : ''].filter(Boolean).join('・');
-  const nisaSel = `<label class="row"><span>NISAで毎月積み立てる</span><select class="sel" id="nisa-sel" style="width:auto">${NISA_STEPS.map((v) => `<option value="${v}" ${(M.nisaMonthly || (M.investOn ? 30000 : 0)) === v ? 'selected' : ''}>${v ? yen(v) + '/月' : 'しない'}</option>`).join('')}</select></label>
-    <label class="row check"><span>iDeCo（月2.3万円・60歳まで引き出せない）</span><input type="checkbox" id="ideco-chk" ${M.idecoOn ? 'checked' : ''}></label>`;
   const stat = (lab, v, unit = '') => `<div><dt>${esc(lab)}</dt><dd>${esc(String(v))}${unit}</dd></div>`;
   $('#p-panels').innerHTML = `
   <details class="panel" open><summary>わたしの記録</summary><div class="pbody idcard">
@@ -508,7 +501,7 @@ function renderPanels() {
     <dl class="iddl">
       <dt>性別</dt><dd>${L.sex === 'M' ? '男性' : '女性'}</dd>
       <dt>出生</dt><dd>${esc(L.birthPref)}${esc(L.birthMuni || '')} · ${L.startYear}年${L.birthMonth}月</dd>
-      <dt>住んでいるところ</dt><dd>${esc(L.pref)}${esc(L.muni || '')}</dd>
+      <dt>住まい</dt><dd>${esc(L.pref)}${esc(L.muni || '')}</dd>
       <dt>生まれた家庭</dt><dd><span class="dots" aria-label="5段階の${L.wealthAtBirth}">${dots(L.wealthAtBirth)}</span></dd>
       <dt>学歴</dt><dd>${esc(stage || EDU_LABEL[L.edu.level] || '—')}</dd>
       <dt>仕事</dt><dd>${esc(L.work.status === 'employed' ? L.work.title : { retired: '引退', unemployed: '求職中' }[L.work.status] || '—')}</dd>
@@ -523,10 +516,6 @@ function renderPanels() {
   </div></details>
   <details class="panel"><summary>友人・知人</summary><div class="pbody">
     ${peopleHTML(L)}
-  </div></details>
-  <details class="panel"><summary>お金を使う · 投資</summary><div class="pbody">
-    ${adult ? `<p class="small">${esc(assets)}</p>${spendHTML}<h4 class="sh">お金を育てる</h4><div class="menu-list">${nisaSel}</div>
-    <p class="small">「毎年」のものはチェックを入れると毎年続けます。貯金が足りない年は自動で見送ります。投資の値動きは毎年変わり、減ることもあります。</p>` : '<p class="small">18歳になると、自分のお金の使い道を決められるようになります。いまは家計を親が担っています。</p>'}
   </div></details>
   <details class="panel"><summary>${esc(L.pref)}の統計</summary><div class="pbody">
     <dl class="statdl">
@@ -560,10 +549,6 @@ function renderPanels() {
     <p>どれも可能性を動かすだけで、結果を決めるわけではありません。運や境遇も一緒に働きます。</p>
   </div></details>`;
   const P = $('#p-panels');
-  for (const b of P.querySelectorAll('[data-spend]')) b.addEventListener('click', () => spend(b.dataset.spend));
-  for (const c of P.querySelectorAll('[data-auto]')) c.addEventListener('change', () => { setAutoSpend(L, c.dataset.auto, c.checked); save(); });
-  const ns = $('#nisa-sel'); if (ns) ns.addEventListener('change', () => { setNisa(L, Number(ns.value)); renderTop(); save(); });
-  const ic = $('#ideco-chk'); if (ic) ic.addEventListener('change', () => { setIdeco(L, ic.checked); save(); });
   // 開いているパネルを覚えておく
   for (const d of P.querySelectorAll('details')) {
     const key = d.querySelector('summary').textContent;
@@ -581,10 +566,118 @@ function peopleHTML(L) {
     <p class="small">親しさは、会う機会や今年の重点（「友人」など）で変わり、離れて暮らすと少しずつ薄れます。同い年の友人も、生命表にしたがって年をとっていきます。</p>`;
 }
 
-function spend(id) {
+
+// ================================================================ お金を使う · 投資（シート）
+const SHOP_TABS = [
+  ['now', '今やりたいこと'], ['つながり', 'つながり'], ['楽しむ', '楽しむ'], ['自分に投資', '自分に投資'], ['子ども', '子ども'],
+  ['運試し・税', '運試し・税'], ['grow', 'お金を育てる'], ['life', '暮らし方'],
+];
+const FX_LABEL = { health: '健康', happy: '幸福', know: '知識', social: '人間関係' };
+function fxText(fx = {}) { return Object.entries(fx).filter(([, v]) => v).map(([k, v]) => `${FX_LABEL[k]}${v > 0 ? '↑' : '↓'}`).join(' · '); }
+function renderShopButton() {
+  const b = $('#btn-shop');
+  if (!b || !G) return;
   const { L } = G;
-  spendNow(W, L, id);
-  renderTop(); renderLog(); renderPanels(); save();
+  const adult = L.age >= 18;
+  b.disabled = !adult;
+  const autoN = Object.values(L.spend.auto || {}).filter(Boolean).length;
+  const fund = FUND_BY_ID[L.life?.fund]?.l.replace(/（.*?）/, '') || '';
+  $('#shop-sum').textContent = adult ? [`自動 ${autoN}件`, L.money.nisaMonthly ? `NISA 月${yen(L.money.nisaMonthly)}` : '', L.money.invest > 0 || L.money.nisaMonthly ? `預け先：${fund}` : ''].filter(Boolean).join(' · ') : '18歳になると使えます';
+}
+function moneySummary(L) {
+  const M = L.money;
+  const inv = (M.invest || 0) + (M.ideco || 0) + (M.stocks || 0);
+  const loan = (M.debt || 0) + (M.scholarship || 0) + (L.home.mortgage || 0);
+  return [`貯金 ${yen(M.savings)}`, inv ? `投資 ${yen(inv)}` : '', loan ? `借入 ${yen(loan)}` : ''].filter(Boolean).join(' · ');
+}
+function openShop(tab) {
+  const { L } = G;
+  if (L.age < 18 || modalOpen()) return;
+  G.shopTab = tab || G.shopTab || 'now';
+  const ov = $('#overlay');
+  ov.innerHTML = `<div class="scrim" data-close="1"><div class="sheet shop" role="dialog" aria-modal="true" aria-labelledby="shop-t">
+    <div class="shop-hd"><h2 id="shop-t">お金を使う · 投資</h2><button class="btn small" id="shop-x" type="button">閉じる</button></div>
+    <p class="shop-sum" id="shop-money"></p>
+    <div class="tabs" role="tablist" aria-label="区分">${SHOP_TABS.map(([id, lab]) => `<button type="button" role="tab" class="tab" data-tab="${esc(id)}" id="tab-${esc(id)}" aria-controls="shop-panel">${esc(lab)}</button>`).join('')}</div>
+    <div class="shop-panel" id="shop-panel" role="tabpanel"></div>
+    <p class="shop-toast" id="shop-toast" aria-live="polite"></p>
+    <p class="small" style="margin:0">選んでいるあいだ、時間は止まっています。使うものは、もう一度押すと決まります。</p>
+  </div></div>`;
+  const close = () => { G.closeOverlay = null; ov.innerHTML = ''; renderTop(); renderLog(); renderPanels(); save(); $('#btn-shop')?.focus(); };
+  G.closeOverlay = close;
+  ov.querySelector('.scrim').addEventListener('click', (e) => { if (e.target.dataset.close) close(); });
+  $('#shop-x').addEventListener('click', close);
+  for (const t of ov.querySelectorAll('.tab')) t.addEventListener('click', () => { G.shopTab = t.dataset.tab; renderShop(); t.focus(); });
+  ov.querySelector('.tabs').addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    const ids = SHOP_TABS.map((x) => x[0]);
+    const i = ids.indexOf(G.shopTab) + (e.key === 'ArrowRight' ? 1 : -1);
+    G.shopTab = ids[(i + ids.length) % ids.length];
+    renderShop(); $(`#tab-${CSS.escape(G.shopTab)}`).focus(); e.preventDefault();
+  });
+  renderShop();
+  $(`#tab-${CSS.escape(G.shopTab)}`).focus();
+}
+function itemHTML(L, s, why) {
+  const cost = spendCostOf(L, s);
+  const short = s.cost && cost > L.money.savings && s.act !== 'repay' && s.act !== 'sell_stock';
+  const sub = [cost ? `約${yen(cost)}` : '', fxText(s.fx), why || ''].filter(Boolean).join(' · ');
+  const auto = s.auto ? `<label class="autosw"><input type="checkbox" data-auto="${s.id}" ${L.spend.auto[s.id] ? 'checked' : ''}><span>毎年</span></label>` : '';
+  return `<div class="item${L.spend.auto[s.id] ? ' on' : ''}"><button type="button" class="buy" data-buy="${s.id}" ${short ? 'disabled' : ''}><span class="il">${esc(s.l)}</span><small>${esc(short ? '貯金が足りません' : sub)}</small></button>${auto}</div>`;
+}
+function renderShop() {
+  const { L } = G;
+  const tab = G.shopTab;
+  $('#shop-money').textContent = moneySummary(L);
+  for (const t of document.querySelectorAll('#overlay .tab')) { const on = t.dataset.tab === tab; t.setAttribute('aria-selected', String(on)); t.tabIndex = on ? 0 : -1; if (on) t.scrollIntoView({ block: 'nearest', inline: 'center' }); }
+  const P = $('#shop-panel');
+  P.setAttribute('aria-labelledby', `tab-${tab}`);
+  const M = L.money;
+  let html = '';
+  if (tab === 'now') {
+    const sug = spendSuggestions(W, L);
+    html = `<p class="small">いまの暮らしに合いそうなものです。</p><div class="items">${sug.map((x) => x.id === 'nisa' ? `<div class="item"><button type="button" class="buy" data-go="grow"><span class="il">NISAで積み立てを始める</span><small>${esc(x.why)}</small></button></div>` : itemHTML(L, SPEND_BY_ID[x.id], x.why)).join('') || '<p class="small">いまは特にありません。</p>'}</div>
+      <p><button type="button" class="linkbtn" data-go="つながり">ほかのものも見る（${SPEND.filter((s) => !s.invest && spendAvailable(W, L, s)).length}件）</button></p>`;
+  } else if (tab === 'grow') {
+    const fund = L.life.fund;
+    html = `<h3 class="sh">NISAで毎月積み立てる</h3>
+      <div class="seg wrapseg nisa" role="radiogroup" aria-label="NISAの毎月の積立額">${NISA_STEPS.map((v) => `<label><input type="radio" name="nisa" value="${v}" ${(M.nisaMonthly || 0) === v ? 'checked' : ''}><span>${v ? yen(v) : 'しない'}</span></label>`).join('')}</div>
+      <p class="small">いまの NISA の残高：${yen(M.invest || 0)}。積み立ては貯金が足りる年だけ行います。</p>
+      <h3 class="sh">積み立てたお金の預け先</h3>
+      <div class="radios" role="radiogroup" aria-label="預け先">${FUNDS.map((f) => `<label class="radio"><input type="radio" name="fund" value="${f.id}" ${fund === f.id ? 'checked' : ''}><span><b>${esc(f.l)}</b><small>${esc(f.hint)}</small></span></label>`).join('')}</div>
+      <p class="small">値動きは毎年変わり、減る年もあります。iDeCo も同じ預け先で運用します。</p>
+      <label class="row check autoline"><span>iDeCo（月2.3万円 · 60歳まで引き出せない · 働いているあいだ）</span><input type="checkbox" id="ideco-chk" ${M.idecoOn ? 'checked' : ''}></label>
+      <div class="items">${['stock', 'sell_stock', 'prepay', 'repay'].map((id) => SPEND_BY_ID[id]).filter((s) => spendAvailable(W, L, s)).map((s) => itemHTML(L, s, s.id === 'sell_stock' ? `いまの評価額 ${yen(M.stocks)}` : s.id === 'repay' ? `借金 ${yen(M.debt)}` : '')).join('')}</div>`;
+  } else if (tab === 'life') {
+    html = Object.entries(LIFESTYLE).map(([k, d]) => `<h3 class="sh">${esc(d.label)}</h3><div class="seg wrapseg" role="radiogroup" aria-label="${esc(d.label)}">${d.opts.map(([v, lab]) => `<label><input type="radio" name="ls-${k}" value="${v}" ${L.life[k] === v ? 'checked' : ''}><span>${esc(lab)}</span></label>`).join('')}</div><p class="small">${esc(d.help)}</p>`).join('');
+  } else {
+    const list = SPEND.filter((s) => s.cat === tab && !s.invest && spendAvailable(W, L, s));
+    html = `<div class="items">${list.map((s) => itemHTML(L, s)).join('') || '<p class="small">いまは選べるものがありません。</p>'}</div>
+      ${list.some((s) => s.auto) ? '<p class="small">「毎年」をオンにすると、毎年自動で続けます。貯金が足りない年は見送り、オフに戻ります。</p>' : ''}`;
+  }
+  P.innerHTML = html;
+  // 2回押しで使う
+  for (const b of P.querySelectorAll('[data-buy]')) b.addEventListener('click', () => {
+    if (b.dataset.armed) { shopBuy(b.dataset.buy); return; }
+    for (const x of P.querySelectorAll('[data-armed]')) { delete x.dataset.armed; x.classList.remove('armed'); x.querySelector('small').textContent = x.dataset.sub; }
+    b.dataset.armed = '1'; b.dataset.sub = b.querySelector('small').textContent; b.classList.add('armed');
+    b.querySelector('small').textContent = 'もう一度押すと決まります';
+  });
+  for (const b of P.querySelectorAll('[data-go]')) b.addEventListener('click', () => { G.shopTab = b.dataset.go; renderShop(); $(`#tab-${CSS.escape(G.shopTab)}`).focus(); });
+  for (const c of P.querySelectorAll('[data-auto]')) c.addEventListener('change', () => { setAutoSpend(L, c.dataset.auto, c.checked); toast(c.checked ? `「${SPEND_BY_ID[c.dataset.auto].l.replace(/（.*?）/g, '')}」を毎年続けます。` : '毎年続けるのをやめました。'); save(); renderShop(); });
+  for (const r of P.querySelectorAll('input[name="nisa"]')) r.addEventListener('change', () => { setNisa(L, Number(r.value)); toast(Number(r.value) ? `NISAで毎月${yen(Number(r.value))}ずつ積み立てます。` : 'NISAの積み立てをやめました。'); save(); renderShopButton(); });
+  for (const r of P.querySelectorAll('input[name="fund"]')) r.addEventListener('change', () => { setLifestyle(L, 'fund', r.value); toast(`預け先を「${FUND_BY_ID[r.value].l}」にしました。`); save(); renderShopButton(); });
+  const ic = $('#ideco-chk'); if (ic) ic.addEventListener('change', () => { setIdeco(L, ic.checked); toast(ic.checked ? 'iDeCoを始めました。' : 'iDeCoの掛け金を止めました。'); save(); });
+  for (const k of Object.keys(LIFESTYLE)) for (const r of P.querySelectorAll(`input[name="ls-${k}"]`)) r.addEventListener('change', () => { setLifestyle(L, k, r.value); toast(`${LIFESTYLE[k].label}：${LIFESTYLE[k].opts.find((o) => o[0] === r.value)[1]}`); save(); });
+}
+function toast(t) { const el = $('#shop-toast'); if (el) el.textContent = t; }
+function shopBuy(id) {
+  const { L } = G;
+  const before = L.log.length;
+  const items = spendNow(W, L, id);
+  const msg = L.log.slice(before).map((it) => it.t).join(' ');
+  toast(msg || '使いました。');
+  renderShop(); renderShopButton(); save();
 }
 
 // ================================================================ 決断・ひと息
@@ -607,8 +700,16 @@ function openPending() {
   ov.querySelector('.opt').focus();
   for (const b of ov.querySelectorAll('.opt')) b.addEventListener('click', () => choose(Number(b.dataset.i)));
 }
+// 効果の向きで色を分ける。「借金↑」「費用↑」のように、増えると困るものは逆の色にする
+const BAD_WHEN_UP = /(借金|リスク|出費|費用|負担|保険料|ストレス)/;
+function hintTone(x) {
+  const up = /[+＋↑]/.test(x), down = /[−↓]/.test(x);
+  if (!up && !down) return '';
+  const good = up && !down;
+  return BAD_WHEN_UP.test(x) ? (good ? 'neg' : 'pos') : (good ? 'pos' : 'neg');
+}
 function hintHTML(h) {
-  return h.split(' · ').map((x) => `<span class="${/[−↓]/.test(x) ? 'neg' : /[+＋↑]/.test(x) ? 'pos' : ''}">${esc(x)}</span>`).join(' · ');
+  return h.split(' · ').map((part) => part.split(' ').map((x) => `<span class="${hintTone(x)}">${esc(x)}</span>`).join(' ')).join(' · ');
 }
 function choose(i) {
   const { L } = G;
@@ -669,7 +770,8 @@ function openMenu() {
     <p class="small"><a href="about.html#help" target="_blank" rel="noopener">心がつらいときの相談先</a>　<a href="stats.html" target="_blank" rel="noopener">47都道府県の統計</a></p>
     <button class="btn big" id="m-close" type="button">閉じる</button>
   </div></div>`;
-  const close = () => { ov.innerHTML = ''; renderTop(); renderLog(); renderPeers(); renderFocus(); renderControls(); save(); };
+  const close = () => { G.closeOverlay = null; ov.innerHTML = ''; renderTop(); renderLog(); renderPeers(); renderFocus(); renderControls(); save(); $('#btn-menu')?.focus(); };
+  G.closeOverlay = close;
   ov.querySelector('.scrim').addEventListener('click', (e) => { if (e.target.dataset.close) close(); });
   $('#m-close').addEventListener('click', close);
   $('#m-auto').addEventListener('change', (e) => setAuto(L, e.target.checked));
@@ -689,10 +791,21 @@ function openMenu() {
 document.addEventListener('keydown', (e) => {
   if (!G || $('#screen-play').classList.contains('hidden')) return;
   const tag = (e.target.tagName || '').toLowerCase();
+  if (e.key === 'Escape' && G.closeOverlay && modalOpen()) { e.preventDefault(); G.closeOverlay(); return; }
+  // 小窓を開いているあいだは、Tab キーのフォーカスを小窓の中だけで巡回させる
+  if (e.key === 'Tab' && modalOpen()) {
+    const f = [...$('#overlay').querySelectorAll('button:not([disabled]), a[href], input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])')].filter((x) => x.offsetParent !== null);
+    if (f.length) {
+      const i = f.indexOf(document.activeElement);
+      if (e.shiftKey && (i <= 0)) { e.preventDefault(); f[f.length - 1].focus(); }
+      else if (!e.shiftKey && (i === -1 || i === f.length - 1)) { e.preventDefault(); f[0].focus(); }
+    }
+    return;
+  }
   if (tag === 'textarea' || tag === 'input' || tag === 'select') return;
   const P = G.L.pending;
   if (modalOpen()) {
-    if (e.key === 'Escape' && !P) { $('#overlay').innerHTML = ''; }
+    if (e.key === 'Escape' && G.closeOverlay) { e.preventDefault(); G.closeOverlay(); return; }
     if (P && P.type === 'decision' && /^[1-9]$/.test(e.key)) { const i = Number(e.key) - 1; if (i < P.options.length) { e.preventDefault(); choose(i); } }
     return;
   }

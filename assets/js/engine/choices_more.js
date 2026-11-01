@@ -152,8 +152,8 @@ export const CHOICES_MORE = [
     { l: '応募する', roll: [[0.01, { t: '何段階もの選抜を勝ち抜き、宇宙飛行士の候補者に選ばれました。', fx: { happy: 15 }, tone: 'g', act: 'job:astronaut' }], [0.3, { t: '書類選考は通りましたが、その先で不合格になりました。「書類は通った」が、ちょっとした自慢になりました。', fx: { happy: 2 }, tone: 'n' }], [0.69, { t: '選考の結果は不合格でした。それでも、応募したことに後悔はありません。', fx: { happy: -1 }, tone: 'n' }]], w: 1 },
     { l: '見送る', t: '募集のニュースを、少しうらやましく眺めました。', w: 2 },
   ], { once: true, note: 'astronaut2023', req: (L) => ['univ', 'grad'].includes(L.edu.level) && L.stats.know >= 60 && L.stats.health >= 60 }),
-  C('d_forecaster', 18, 60, 0.012, 'small', '気象予報士の試験を受けてみる？', [
-    { l: '独学で挑戦する', money: -30000, roll: [[0.08, { t: '気象予報士の試験に合格しました。空を見る目が変わりました。', fx: { know: 6, happy: 6 }, tone: 'g', set: { forecaster: true } }], [0.92, { t: '気象予報士の試験は不合格でした。天気図は、前より読めるようになりました。', fx: { know: 2, happy: -1 }, tone: 'n' }]], w: 1 },
+  C('d_forecaster', 18, 60, 0.004, 'small', '気象予報士の試験を受けてみる？', [
+    { l: '独学で挑戦する', money: -30000, roll: [[0.05, { t: '気象予報士の試験に合格しました。空を見る目が変わりました。', fx: { know: 6, happy: 6 }, tone: 'g', set: { forecaster: true } }], [0.95, { t: '気象予報士の試験は不合格でした。天気図は、前より読めるようになりました。', fx: { know: 2, happy: -1 }, tone: 'n' }]], w: 1 },
     { l: 'やめておく', w: 2 },
   ], { cd: 3, note: 'forecaster2023', req: (L) => !L.flags.forecaster && L.stats.know >= 50, next: null }),
   C('d_forecaster_job', 22, 60, 0.15, 'big', '気象会社から、予報士として働かないかと声がかかりました', [
