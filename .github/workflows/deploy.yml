@@ -30,7 +30,7 @@ jobs:
       - name: 公開するファイルをまとめる
         run: |
           mkdir -p _site
-          cp -r index.html stats.html about.html assets data _site/
+          cp -r index.html stats.html about.html 404.html assets data _site/
           touch _site/.nojekyll
 
       - name: gh-pages ブランチに公開
