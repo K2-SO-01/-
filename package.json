@@ -1,0 +1,11 @@
+{
+  "name": "angou-slide",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "スマホ縦持ち専用・暗号表を動かして解く謎解きゲーム",
+  "scripts": {
+    "serve": "node tools/serve.js",
+    "verify": "node tools/verify.js"
+  }
+}

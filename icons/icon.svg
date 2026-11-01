@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#ffd84d"/>
+  <circle cx="256" cy="256" r="176" fill="#fff3c4" stroke="#2a1f3d" stroke-width="18"/>
+  <circle cx="256" cy="256" r="112" fill="#2ec4b6" stroke="#2a1f3d" stroke-width="18"/>
+  <circle cx="256" cy="256" r="46" fill="#fff" stroke="#2a1f3d" stroke-width="14"/>
+  <g fill="#2a1f3d" font-family="sans-serif" font-weight="900" font-size="58" text-anchor="middle">
+    <text x="256" y="128">あ</text>
+    <text x="398" y="276">ん</text>
+    <text x="256" y="424">ご</text>
+    <text x="114" y="276">う</text>
+  </g>
+  <path d="M256 30 l26 40 h-52z" fill="#ff4f81" stroke="#2a1f3d" stroke-width="8" stroke-linejoin="round"/>
+</svg>
