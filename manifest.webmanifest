@@ -1,0 +1,19 @@
+{
+  "name": "GIRIGIRI - ギリギリ回避",
+  "short_name": "GIRIGIRI",
+  "description": "指でドラッグして、障害物の隙間をギリギリで抜け続けるゲーム",
+  "lang": "ja",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "portrait",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "categories": ["games"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
