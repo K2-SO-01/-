@@ -81,36 +81,27 @@ test('セーブデータの書き出しと読み込みで状態が保たれる',
   assert.deepStrictEqual(s2.runtime.notices, []);
   assert.throws(() => G.deserialize('{"x":1}', T0));
 });
-test('難易度・分野を切りかえても問題は引き直せない（同じ設定なら同じ問題）', () => {
+test('難易度・分野を切りかえても、いまの問題は変わらない（次の問題から）', () => {
   const s = fresh();
-  s.quiz.topic = 'quad';
-  G.Quiz.next(s, T0);
+  s.quiz.topic = 'quad'; s.quiz.levelMode = 0;
+  const text = G.Quiz.next(s, T0).text;
   const seed = s.quiz.current.seed;
-  const txt = {};
-  for (let k = 0; k < 3; k++) for (const lv of [0, 1, 2, 'auto']) {
-    s.quiz.levelMode = lv; G.Quiz.retarget(s);
-    const q = G.Quiz.currentQuestion(s);
-    if (txt[lv] === undefined) txt[lv] = q.text; else assert.strictEqual(q.text, txt[lv], '同じ難易度なら同じ問題 ' + lv);
+  for (const t of ['seq', 'auto', 'prob', 'quad', 'diff']) for (const lv of [2, 'auto', 1, 0]) {
+    s.quiz.topic = t; s.quiz.levelMode = lv;
+    assert.strictEqual(G.Quiz.next(s, T0).text, text, t + ' / ' + lv);
     assert.strictEqual(s.quiz.current.seed, seed);
   }
-  s.quiz.levelMode = 'auto'; G.Quiz.retarget(s);
-  s.quiz.topic = 'seq'; G.Quiz.retarget(s); assert.strictEqual(s.quiz.current.topic, 'seq');
-  s.quiz.topic = 'quad'; G.Quiz.retarget(s);
-  assert.strictEqual(G.Quiz.currentQuestion(s).text, txt.auto);
-  // 次の問題を出しても、終わっていなければ同じ問題
-  assert.strictEqual(G.Quiz.next(s, T0).text, txt.auto);
-  assert.strictEqual(s.quiz.current.seed, seed);
-});
-test('ヒントを見た・答えた問題は、設定を変えてもそのまま', () => {
-  const s = fresh();
-  s.quiz.levelMode = 0;
-  G.Quiz.next(s, T0);
-  G.Quiz.revealHint(s, T0 + 100);
-  const before = G.Quiz.currentQuestion(s).text;
-  s.quiz.levelMode = 2;
-  assert.strictEqual(G.Quiz.retarget(s), false);
-  assert.strictEqual(G.Quiz.currentQuestion(s).text, before);
-  assert.strictEqual(s.quiz.current.level, 0);
+  // 次の問題の予告
+  s.quiz.topic = 'seq'; s.quiz.levelMode = 2;
+  assert.deepStrictEqual(G.Quiz.pendingSetting(s), { topic: 'seq', level: 2 });
+  s.quiz.topic = 'quad'; s.quiz.levelMode = 0;
+  assert.strictEqual(G.Quiz.pendingSetting(s), null);
+  // 終わったら新しい設定で出る
+  s.quiz.topic = 'seq'; s.quiz.levelMode = 2;
+  solve(s, T0 + 1000, true);
+  assert.strictEqual(G.Quiz.pendingSetting(s), null);
+  G.Quiz.next(s, T0 + 2000);
+  assert.strictEqual(s.quiz.current.topic, 'seq'); assert.strictEqual(s.quiz.current.level, 2);
 });
 test('バトルや模試の問題をはさんでも、ふつうの問題は続きから出る', () => {
   const s = fresh();

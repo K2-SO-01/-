@@ -203,6 +203,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: .88rem; }
 .tchip { --tc: var(--accent); flex: none; background: var(--panel); border: 1px solid var(--line); border-bottom: 3px solid var(--tc); border-radius: 8px; padding: .3rem .7rem; min-height: 40px; cursor: pointer; color: var(--text); white-space: nowrap; }
 .tchip.on { background: var(--tc); color: #111; font-weight: 800; }
 .level-row { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; margin-bottom: .6rem; }
+.next-note { margin: -.2rem 0 .6rem; padding: .35rem .7rem; border-radius: 8px; border: 1px dashed var(--line2); background: var(--panel2); color: var(--accent2); }
 .qpanel { background: linear-gradient(#1f242b, #1a1e24); border: 1px solid var(--line2); border-radius: 14px; padding: 1rem; position: relative; box-shadow: 0 4px 0 #0a0c0f, 0 10px 30px rgba(0,0,0,.35); }
 .qpanel.ok { border-color: var(--good); box-shadow: 0 4px 0 #0a0c0f, 0 0 0 2px rgba(82,210,115,.25), 0 10px 30px rgba(0,0,0,.35); }
 .qpanel.ng { border-color: var(--bad); }

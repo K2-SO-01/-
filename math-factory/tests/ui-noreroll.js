@@ -1,6 +1,6 @@
 // 問題の引き直し・途中で抜けたときの点検（画面を実際に操作する）
 //   node tests/ui-noreroll.js
-// - 難易度・分野のボタンを連打しても、同じ設定なら同じ問題
+// - 難易度・分野のボタンを押しても、いま出ている問題は変わらない（次の問題から切りかわる）
 // - 研究の「解く」・模試の出入りでも問題を引き直せない
 // - バトルのカード問題の途中でページを読み直しても、同じ問題の続きからバトルが進む
 // - Escキーでカード問題の小窓が閉じない
@@ -23,26 +23,34 @@ const URL = 'file://' + path.join(__dirname, '..', 'index.html');
   await page.evaluate(() => { const s = MF.UI.state; s.research.done.push('automation', 'military'); s.stats.answered = 30; MF.UI.go('quiz'); });
   await page.waitForTimeout(300);
 
-  // 1) 難易度ボタンの連打
-  const seen = {};
-  const labels = ['自動', '易', '普', '難'];
-  for (let k = 0; k < 3; k++) for (const l of labels) {
-    await tap('.seg-btn >> text="' + l + '"');
-    const t = await qtext();
-    if (seen[l] === undefined) seen[l] = t; else ok(seen[l] === t, '難易度「' + l + '」を押し直したら問題が変わった');
-  }
-  // 2) 分野チップの連打
+  // 1)(2) 難易度ボタン・分野タブをいろいろ押しても、いま出ている問題は変わらない（次の問題から）
+  const t0 = await qtext();
+  ok(t0, '問題が表示されていない');
   const chips = await page.$$eval('.tchip', (els) => els.map((e) => e.textContent));
-  const tseen = {};
-  let prevT = await qtext();
-  for (let k = 0; k < 2; k++) for (const c of chips.slice(0, 4)) {
-    await tap('.tchip >> text="' + c + '"');
-    const t = await qtext();
-    // 「おまかせ」は今出ている問題をそのまま続けるので、直前と同じ問題ならよい
-    if (/おまかせ/.test(c)) { ok(t === prevT || prevT === null, '「おまかせ」を押したら問題が変わった'); prevT = t; continue; }
-    if (tseen[c] === undefined) tseen[c] = t; else ok(tseen[c] === t, '分野「' + c + '」を押し直したら問題が変わった');
-    prevT = t;
+  const labels = ['自動', '易', '普', '難'];
+  for (let k = 0; k < 2; k++) {
+    for (const l of labels) {
+      await tap('.seg-btn >> text="' + l + '"');
+      ok(await qtext() === t0, '難易度「' + l + '」を押したら問題が変わった');
+    }
+    for (const c of chips) {
+      await tap('.tchip >> text="' + c + '"');
+      ok(await qtext() === t0, '分野「' + c + '」を押したら問題が変わった');
+    }
   }
+  // 次の問題から切りかわる予告が出て、答えたら新しい設定の問題になる
+  const want = chips.find((c) => !/おまかせ/.test(c));
+  await tap('.tchip >> text="' + want + '"');
+  await tap('.seg-btn >> text="難"');
+  await page.waitForTimeout(400);
+  const note = await page.evaluate(() => { const n = document.querySelector('.next-note'); return n ? n.textContent : ''; });
+  const curTopic = await page.evaluate(() => MF.Questions.TOPICS[MF.UI.state.quiz.current.topic].name);
+  if (curTopic !== want) ok(note.indexOf(want) >= 0, '次の問題の予告が出ない：' + note);
+  await page.evaluate(() => { const s = MF.UI.state; MF.Game.Quiz.skip(s, Date.now()); MF.UI.rerender(); });
+  await page.waitForTimeout(300);
+  const nowQ = await page.evaluate(() => { const c = MF.UI.state.quiz.current; return { t: MF.Questions.TOPICS[c.topic].name, lv: c.level, done: c.done }; });
+  ok(nowQ.t === want && nowQ.lv === 2 && !nowQ.done, '答えたあとの問題が新しい設定になっていない ' + JSON.stringify(nowQ));
+  ok(!(await page.$('.next-note')), '新しい問題になったのに予告が残っている');
   // 3) 研究の「解く」→ 問題画面
   const before = await page.evaluate(() => MF.UI.state.quiz.current.seed);
   await page.evaluate(() => { const s = MF.UI.state; s.quiz.topic = 'quad'; s.rp += 100; s.research.current = null; MF.Research.start(s, 'smelting2'); MF.UI.go('research'); });

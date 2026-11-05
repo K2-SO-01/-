@@ -253,7 +253,7 @@
           onclick: () => {
             if (s.quiz.topic === id) return;
             s.quiz.topic = id; s.quiz.topicFrom = null;
-            QuizUI.applySetting(s, id !== 'auto' && s.quiz.current && s.quiz.current.topic !== id ? '「' + label + '」の問題' : null);
+            UI.rerender(); // いま出ている問題はそのまま。次の問題からこの分野
           },
         }, label);
         chips.appendChild(mk('auto', '🎲 おまかせ'));
@@ -267,12 +267,12 @@
           seg.appendChild(h('button', { class: 'seg-btn' + (String(s.quiz.levelMode) === String(v) ? ' on' : ''), onclick: () => {
             if (String(s.quiz.levelMode) === String(v)) return;
             s.quiz.levelMode = v;
-            const c = s.quiz.current;
-            QuizUI.applySetting(s, c && v !== 'auto' && c.level !== v ? '難易度「' + l + '」' : null);
+            UI.rerender(); // いま出ている問題はそのまま。次の問題からこの難易度
           } }, l));
         });
         const lvInfo = h('span', { class: 'muted small hide-sm' }, s.quiz.levelMode === 'auto' ? '正答率に合わせて分野ごとに自動で調整' : '固定');
         root.appendChild(h('div', { class: 'level-row' }, h('span', { class: 'small' }, '難易度'), seg, lvInfo));
+        root.appendChild(UI.live((st) => QuizUI.nextNote(st)));
       }
       const holder = h('div', { class: 'quiz-holder' });
       root.appendChild(holder);
@@ -306,12 +306,14 @@
   });
   QuizUI.extraBelow = [];
   QuizUI.extraRow = []; // コンボ表示と同じ行に並べる部品
-  /** 分野・難易度を変えたとき。出しかけの問題は同じ種のまま切りかえる（引き直しはできない）。
-   *  もう答えたりヒントを見た問題はそのまま。設定は次の問題から。 */
-  QuizUI.applySetting = function (s, what) {
-    const c = s.quiz.current;
-    if (!G.Quiz.retarget(s) && what && c && !c.done && G.Quiz.isFree(c) && !G.Quiz.untouched(c)) UI.toast('いまの問題が終わったら' + what + 'になるよ', 'info', 2200);
-    UI.rerender();
+  /** 分野・難易度を変えても、いま出ている問題は変わらない（問題の引き直しを防ぐ）。次の問題から切りかわることを知らせる */
+  QuizUI.nextNote = function (s) {
+    const p = G.Quiz.pendingSetting(s);
+    if (!p) return null;
+    const parts = [];
+    if (p.topic) parts.push('「' + Qs.TOPICS[p.topic].name + '」');
+    if (p.level !== null) parts.push('難易度「' + Qs.LEVEL_NAMES[p.level] + '」');
+    return h('div', { class: 'next-note small' }, '⏭️ いまの問題が終わったら、' + parts.join('・') + 'の問題になるよ');
   };
   /** モード（模試・復習など）の古い問題が残っていたら片づける。ふつうの問題は Quiz.next がとっておいて、あとで続きから出す */
   function dropStale(s) {

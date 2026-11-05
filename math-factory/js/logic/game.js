@@ -161,21 +161,19 @@
       return w;
     });
   };
-  /** まだ手をつけていない（答えも、ヒントも見ていない）問題か */
-  Quiz.untouched = function (c) { return !!(c && !c.done && c.attempts === 0 && c.hints === 0); };
   /** ふつうの出題か（バトル・模試・復習などではない） */
   Quiz.isFree = function (c) { return !!(c && c.mode === 'normal'); };
-  /** 難易度や分野の設定を、出しかけの問題に反映する。手をつけていない問題だけ、同じ種(seed)のまま作り直す。
-   *  種は変えないので、設定を何度切りかえても、同じ設定なら同じ問題になる（設定の連打で問題を引き直せない）。 */
-  Quiz.retarget = function (s) {
+  /** 分野・難易度の設定と、いま出ている問題がちがうとき、次の問題の設定 {topic, level}（同じなら null）。
+   *  設定を変えても、いま出ている問題は変えない（問題を引き直せないように）。新しい設定は次の問題から。 */
+  Quiz.pendingSetting = function (s) {
     const c = s.quiz.current;
-    if (!Quiz.isFree(c) || !Quiz.untouched(c)) return false;
+    if (!Quiz.isFree(c) || c.done) return null;
     const sel = s.quiz.topic;
-    const topic = sel !== 'auto' && G.availableTopics(s).indexOf(sel) >= 0 ? sel : c.topic;
-    const level = Quiz.levelFor(s, topic);
-    if (topic === c.topic && level === c.level) return false;
-    c.topic = topic; c.level = level;
-    return true;
+    const topic = sel !== 'auto' && G.availableTopics(s).indexOf(sel) >= 0 ? sel : null;
+    const m = s.quiz.levelMode;
+    const level = m === 'auto' ? null : U.clamp(m | 0, 0, 2);
+    const out = { topic: topic !== null && topic !== c.topic ? topic : null, level: level !== null && level !== c.level ? level : null };
+    return out.topic !== null || out.level !== null ? out : null;
   };
   /** 次の問題を出す。opts: {topic, level, seed, mode, source} */
   Quiz.next = function (s, now, opts) {
@@ -183,12 +181,12 @@
     const mode = opts.mode || 'normal';
     const cur = s.quiz.current;
     if (mode === 'normal' && !opts.topic && !opts.seed && opts.level === undefined) {
-      // ふつうの出題：終わっていない問題があればそれを続ける。
+      // ふつうの出題：終わっていない問題があれば、それをそのまま続ける。
       // バトルや模試などの間とっておいた問題があれば、それにもどる（とちゅうで抜けて問題を引き直せないように）
-      if (Quiz.isFree(cur) && !cur.done) { Quiz.retarget(s); return Quiz.currentQuestion(s); }
+      if (Quiz.isFree(cur) && !cur.done) return Quiz.currentQuestion(s);
       const p = s.quiz.parked;
       s.quiz.parked = null;
-      if (p && !p.done) { s.quiz.current = p; Quiz.retarget(s); return Quiz.currentQuestion(s); }
+      if (p && !p.done) { s.quiz.current = p; return Quiz.currentQuestion(s); }
     } else if (Quiz.isFree(cur) && !cur.done && !s.quiz.parked) {
       s.quiz.parked = cur;
     }
