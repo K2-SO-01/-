@@ -28,7 +28,9 @@ const URL = 'file://' + path.join(__dirname, '..', 'index.html');
     for (const id of screens) {
       await page.evaluate((id) => MF.UI.go(id), id);
       await page.waitForTimeout(350);
-      while (await page.$('.modal')) { await page.keyboard.press('Escape'); await page.waitForTimeout(150); }
+      for (let g = 0; g < 8 && await page.$('.modal'); g++) { await page.keyboard.press('Escape'); await page.waitForTimeout(150); }
+      // Escで閉じない小窓（問題など）は直接閉じる
+      await page.evaluate(() => { while (MF.UI.modalStack.length) MF.UI.closeTopModal(); });
       const over = await page.evaluate(() => {
         const W = document.documentElement.clientWidth;
         const bad = [];

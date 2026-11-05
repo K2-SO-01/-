@@ -179,8 +179,8 @@
     if (item.k === 'exam') { StudyUI.startExam(item.kind); return; }
     let served = 0, ok = 0;
     MF.QuizUI.startSession({
-      mode: 'normal', title: '📋 ' + item.label, status: () => served + ' / ' + item.n + ' 問',
-      next: (st) => { if (served >= item.n) return null; served++; return G.Quiz.next(st, Date.now(), item.topic && item.topic !== 'auto' ? { topic: item.topic } : {}); },
+      mode: 'menu', title: '📋 ' + item.label, status: () => served + ' / ' + item.n + ' 問',
+      next: (st) => { if (served >= item.n) return null; served++; return G.Quiz.next(st, Date.now(), { topic: item.topic && item.topic !== 'auto' ? item.topic : null, mode: 'menu', source: 'menu' }); },
       onDone: (st, res) => { if (res.ok && res.attempt === 1) ok++; },
       onEnd: () => { UI.go('study', { tab: 'plan' }); UI.toast('メニュー完了！ ' + item.n + ' 問中 ' + ok + ' 問を1回で正解', 'good', 4000); },
     });

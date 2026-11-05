@@ -137,3 +137,25 @@ test('模試や日替わりチャレンジの答えでは、襲撃のメータ�
   answerN(s, 3);
   assert.strictEqual(s.battle.raid.meter, 3);
 });
+test('カードの問題は種つきで覚えておき、読み直しても同じ問題になる', () => {
+  const s = fresh();
+  const bt = Bt.start(s, 'raid', ['grub']);
+  bt.hand = ['strike', 'strike']; bt.player.energy = 3;
+  const r = Bt.requestPlay(s, 0, 0);
+  assert(r.ok && r.q.seed);
+  const s2 = G.deserialize(G.serialize(s), T0 + 1000);
+  assert.deepStrictEqual(s2.battle.active.pending.q, r.q);
+  // 消しゴムのやり直しは新しい問題
+  bt.flags.eraser = true; s.battle.relics.push('eraser');
+  const out = Bt.resolvePlay(s, false, 1000);
+  if (out && out.retry) { assert(out.q && out.q.seed); assert.strictEqual(bt.pending.q, out.q); }
+});
+test('ランのイベントの問題は、答えるまで同じ', () => {
+  const s = fresh();
+  Bt.startRun(s, T0);
+  s.battle.run.pendingEvent = Bt.RUN_EVENTS[0].id;
+  const q1 = Bt.eventQuestion(s), q2 = Bt.eventQuestion(s);
+  assert(q1 && q1.seed); assert.strictEqual(q1, q2);
+  Bt.resolveEvent(s, true);
+  assert.strictEqual(s.battle.run.eventQ, null);
+});

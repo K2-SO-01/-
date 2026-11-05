@@ -333,6 +333,17 @@
     G.notice(s, { type: 'event', text: '❗ ' + ev.title.replace(/^\S+\s/, '') + '：イベントが発生！ 上のバーの❗から選ぼう' });
     return s.galaxy.event;
   };
+  /** イベントの問題（種つき）。一度問題を出した選択肢は、答えるまで同じ問題（読み直しや別の選択肢で引き直せない） */
+  GX.eventQuestion = function (s, idx) {
+    const pe = s.galaxy.event;
+    if (!pe) return null;
+    const ch = GX.evById[pe.id].choices[idx];
+    if (!ch || !ch.quiz) return null;
+    if (pe.quiz) return pe.quiz.choice === idx ? pe.quiz : null;
+    const topic = U.randPick(s, G.availableTopics(s));
+    pe.quiz = { choice: idx, topic, level: ch.hard ? 2 : G.Quiz.levelFor(s, topic), seed: U.newSeed(s), mode: 'event', source: 'event' };
+    return pe.quiz;
+  };
   GX.chooseEvent = function (s, idx, quizOk, now) {
     const pe = s.galaxy.event;
     if (!pe) return null;
@@ -358,6 +369,11 @@
     return { ok: true, text: fx.text };
   };
 
+  // イベントの問題に答え終わったら、結果を覚えておく（「つづける」の前に読み直しても結果が消えないように）
+  G.on('questionEnd', (s, d) => {
+    const pe = s.galaxy && s.galaxy.event;
+    if (d.mode === 'event' && pe && pe.quiz && pe.quiz.seed === d.seed) pe.quiz.answered = { ok: d.ok === true && d.first === true };
+  });
   // ---------- 時間とともに進む ----------
   G.on('answer', (s, d) => {
     if (!d.ok) return;

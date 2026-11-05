@@ -43,10 +43,13 @@ sim/        バランス調整用の自動プレイシミュレーション
 ## テスト
 
 ```bash
-node tests/run.js            # ロジックのテスト（78件）
+node tests/run.js            # ロジックのテスト（86件）
 node tests/ui-smoke.js       # 画面のテスト（Playwright・PC/スマホ）
 node tests/ui-story.js       # オープニング〜最初のミッション
 node tests/ui-newplayer.js   # 新しいプレイヤーの操作でミッション1〜3
+node tests/ui-progress.js    # 全17ミッションを画面操作で進め、表示とデータのずれを点検
+node tests/ui-noreroll.js    # 問題の引き直し・途中で抜けたとき（読み直し・Esc）の点検
+node tests/ui-monkey.js [回数] [シード]  # ランダム操作でエラーや表示のおかしさを探す
 node tests/ui-tour.js <dir>  # 全画面のスクショとはみ出しチェック
 ```
 

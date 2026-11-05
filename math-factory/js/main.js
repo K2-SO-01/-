@@ -111,7 +111,7 @@
       requestAnimationFrame(frame);
     };
     requestAnimationFrame(frame);
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') UI.closeTopModal(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') UI.escapeModal(); });
     setInterval(() => App.save(), 10000);
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') App.save(); });
     window.addEventListener('pagehide', () => App.save());

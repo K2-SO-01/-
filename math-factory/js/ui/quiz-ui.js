@@ -92,6 +92,8 @@
       renderHead();
       text.innerHTML = q.text;
       fb.innerHTML = '';
+      const c = cur();
+      if (c && !c.done && c.hints > 0 && c.seed === q.seed) fb.innerHTML = hintsHTML(q, c.hints); // 続きから出すときは、開けたヒントも見せる
       renderActions();
       if (!keypad) setTimeout(() => { try { input.focus({ preventScroll: true }); } catch (e) { /* noop */ } }, 20);
     }
@@ -249,10 +251,9 @@
         const mk = (id, label, color) => h('button', {
           class: 'tchip' + (s.quiz.topic === id ? ' on' : ''), style: color ? { '--tc': color } : null,
           onclick: () => {
+            if (s.quiz.topic === id) return;
             s.quiz.topic = id; s.quiz.topicFrom = null;
-            const c = s.quiz.current;
-            if (c && !c.done && c.attempts === 0 && c.hints === 0 && id !== 'auto' && c.topic !== id) s.quiz.current = null;
-            UI.rerender();
+            QuizUI.applySetting(s, id !== 'auto' && s.quiz.current && s.quiz.current.topic !== id ? '「' + label + '」の問題' : null);
           },
         }, label);
         chips.appendChild(mk('auto', '🎲 おまかせ'));
@@ -263,7 +264,12 @@
         root.appendChild(chips);
         const seg = h('div', { class: 'seg', role: 'radiogroup', 'aria-label': '難易度' });
         [['auto', '自動'], [0, '易'], [1, '普'], [2, '難']].forEach(([v, l]) => {
-          seg.appendChild(h('button', { class: 'seg-btn' + (String(s.quiz.levelMode) === String(v) ? ' on' : ''), onclick: () => { s.quiz.levelMode = v; const c = s.quiz.current; if (c && !c.done && c.attempts === 0 && c.hints === 0) s.quiz.current = null; UI.rerender(); } }, l));
+          seg.appendChild(h('button', { class: 'seg-btn' + (String(s.quiz.levelMode) === String(v) ? ' on' : ''), onclick: () => {
+            if (String(s.quiz.levelMode) === String(v)) return;
+            s.quiz.levelMode = v;
+            const c = s.quiz.current;
+            QuizUI.applySetting(s, c && v !== 'auto' && c.level !== v ? '難易度「' + l + '」' : null);
+          } }, l));
         });
         const lvInfo = h('span', { class: 'muted small hide-sm' }, s.quiz.levelMode === 'auto' ? '正答率に合わせて分野ごとに自動で調整' : '固定');
         root.appendChild(h('div', { class: 'level-row' }, h('span', { class: 'small' }, '難易度'), seg, lvInfo));
@@ -287,7 +293,8 @@
         oneShot: !!(sess && sess.oneShot),
       });
       const c = s.quiz.current;
-      if (c && !c.done && (!sess || c.mode === sess.mode)) QuizUI.panel.load(G.Quiz.currentQuestion(s));
+      // 続きから出すのは、いまのモードの問題だけ（バトルや模試の問題をふつうの問題として出さない）
+      if (c && !c.done && (sess ? c.mode === sess.mode : G.Quiz.isFree(c))) QuizUI.panel.load(G.Quiz.currentQuestion(s));
       else { const q = nextQ(); if (q) QuizUI.panel.load(q); }
       QuizUI.updateCombo();
       const below = h('div', { class: 'quiz-below' });
@@ -299,17 +306,28 @@
   });
   QuizUI.extraBelow = [];
   QuizUI.extraRow = []; // コンボ表示と同じ行に並べる部品
+  /** 分野・難易度を変えたとき。出しかけの問題は同じ種のまま切りかえる（引き直しはできない）。
+   *  もう答えたりヒントを見た問題はそのまま。設定は次の問題から。 */
+  QuizUI.applySetting = function (s, what) {
+    const c = s.quiz.current;
+    if (!G.Quiz.retarget(s) && what && c && !c.done && G.Quiz.isFree(c) && !G.Quiz.untouched(c)) UI.toast('いまの問題が終わったら' + what + 'になるよ', 'info', 2200);
+    UI.rerender();
+  };
+  /** モード（模試・復習など）の古い問題が残っていたら片づける。ふつうの問題は Quiz.next がとっておいて、あとで続きから出す */
+  function dropStale(s) {
+    const c = s.quiz.current;
+    if (c && !c.done && !G.Quiz.isFree(c) && c.attempts === 0) s.quiz.current = null;
+  }
   QuizUI.startSession = function (sess) {
     QuizUI.session = sess;
-    const s = UI.state;
-    if (s.quiz.current && !s.quiz.current.done && s.quiz.current.attempts === 0) s.quiz.current = null;
+    dropStale(UI.state);
     UI.go('quiz');
   };
   QuizUI.endSession = function (finished) {
     const sess = QuizUI.session;
     QuizUI.session = null;
     const s = UI.state;
-    if (s.quiz.current && !s.quiz.current.done && s.quiz.current.attempts === 0) s.quiz.current = null;
+    dropStale(s);
     if (sess && sess.onEnd) sess.onEnd(s, finished);
     else UI.go('quiz');
   };

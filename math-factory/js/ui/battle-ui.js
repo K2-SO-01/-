@@ -173,6 +173,7 @@
       h('span', { class: 'bt-last small muted' }, bt.log[bt.log.length - 1] || ''),
       h('button', { class: 'btn primary', disabled: !!bt.over, onclick: () => endTurn() }, 'ターン終了 ▶')));
     if (bt.over) showResult();
+    else if (bt.pending && !BUI.asking) setTimeout(resumePending, 0);
   }
   function showLog(bt) { UI.modal({ title: '戦闘ログ', body: h('div', { class: 'small bt-log' }, bt.log.slice().reverse().map((l) => h('div', {}, l))) }); }
   function floatText(sel, text, cls) {
@@ -195,30 +196,44 @@
     sfx('card');
     askQuestion(req, false);
   }
+  /** カードの問題の結果をバトルに反映する */
+  function applyPlay(ok, ms) {
+    const s = UI.state, bt = s.battle.active;
+    if (!bt || !bt.pending) { renderBattle(); return; }
+    const out = Bt.resolvePlay(s, ok, ms);
+    if (out && out.retry) { renderBattle(); askQuestion({ card: bt.pending.card, q: out.q || bt.pending.q }, true); return; }
+    renderBattle();
+    if (out) {
+      const tsel = '.enemy[data-idx="' + (bt.enemies[BUI.target] ? BUI.target : 0) + '"]';
+      if (out.dmg) { floatText(tsel, (out.crit ? '会心 ' : '') + '-' + out.dmg, out.crit ? 'crit' : ''); sfx(out.crit ? 'crit' : 'hit'); }
+      else if (out.block) { floatText('.player-bar', '+' + out.block + '🛡️', 'blue'); sfx('block'); }
+      else if (out.fizzle) { floatText('.player-bar', '不発…', 'gray'); }
+      else sfx('buff');
+    }
+  }
+  /** 問題の途中でページを読み直したときなど、カードの問題が残っていたら続きを出す（そのままだとバトルが止まってしまう） */
+  function resumePending() {
+    const s = UI.state, bt = s.battle.active;
+    if (!bt || !bt.pending || bt.over || BUI.asking || UI.current !== 'battle') return;
+    const pd = bt.pending;
+    if (!pd.q) { Bt.cancelPlay(s); renderBattle(); return; } // 古いセーブ：どの問題か分からないので、カードを手札にもどす
+    if (pd.answered) { applyPlay(pd.answered.ok); return; } // 答えたあとで中断していた
+    askQuestion({ card: pd.card, q: pd.q }, !!pd.retried);
+  }
   function askQuestion(req, retry) {
     const s = UI.state;
     let res = null, closed = false;
+    BUI.asking = true;
     const holder = h('div', {}, h('div', { class: 'q-card-head' }, BUI.cardEl(s, req.card), h('p', { class: 'small' }, retry ? '🧽 消しゴム：もう一度チャレンジ！' : '正解するとカードが発動！ ' + B.battle.critSec + '秒以内なら会心。')));
     let panel;
     const finish = () => {
       if (closed) return; closed = true;
+      BUI.asking = false;
       if (panel) panel.destroy();
       close();
-      const bt = s.battle.active;
-      if (!bt || !bt.pending) { renderBattle(); return; }
-      const ok = !!(res && res.ok && res.attempt === 1);
-      const out = Bt.resolvePlay(s, ok, res ? res.ms : undefined);
-      if (out && out.retry) { renderBattle(); const q2 = Object.assign({}, req, { q: Bt.questionOpts(s, bt, req.card) }); askQuestion(q2, true); return; }
-      renderBattle();
-      if (out) {
-        const tsel = '.enemy[data-idx="' + (bt.enemies[BUI.target] ? BUI.target : 0) + '"]';
-        if (out.dmg) { floatText(tsel, (out.crit ? '会心 ' : '') + '-' + out.dmg, out.crit ? 'crit' : ''); sfx(out.crit ? 'crit' : 'hit'); }
-        else if (out.block) { floatText('.player-bar', '+' + out.block + '🛡️', 'blue'); sfx('block'); }
-        else if (out.fizzle) { floatText('.player-bar', '不発…', 'gray'); }
-        else sfx('buff');
-      }
+      applyPlay(!!(res && res.ok && res.attempt === 1), res ? res.ms : undefined);
     };
-    const close = UI.modal({ title: '🃏 ' + Bt.cardName(req.card), body: holder, noClose: true, cls: 'q-modal' });
+    const close = UI.modal({ title: '🃏 ' + Bt.cardName(req.card), body: holder, noClose: true, cls: 'q-modal', onClose: () => { if (!closed) BUI.asking = false; } });
     panel = MF.QuizUI.createPanel(holder, {
       compact: true, allowHints: false, allowSkip: false, oneShot: true, showReward: false, autoNext: 900, nextLabel: 'つづける ▶',
       next: () => { finish(); return null; },
@@ -331,13 +346,16 @@
   });
   function eventQuestion(ev) {
     const s = UI.state;
+    const q = Bt.eventQuestion(s); // 一度出した問題は、答えるまで同じ（読み直しで引き直せない）
+    if (!q) return;
+    const resolve = (ok) => { const out = Bt.resolveEvent(s, ok); UI.toast(out ? out.text : '', ok ? 'good' : 'bad', 3500); UI.rerender(); };
+    if (q.answered) { resolve(q.answered.ok); return; } // 答えたあとで読み直していた
     const holder = h('div', {});
     let res = null, done = false;
     const close = UI.modal({ title: '❓ ' + ev.title, body: holder, noClose: true, cls: 'q-modal' });
     const panel = MF.QuizUI.createPanel(holder, { compact: true, allowHints: false, allowSkip: false, oneShot: true, autoNext: 900, nextLabel: 'つづける ▶', onDone: (r) => { res = r; },
-      next: () => { if (done) return null; done = true; panel.destroy(); close(); const out = Bt.resolveEvent(s, !!(res && res.ok && res.attempt === 1)); UI.toast(out ? out.text : '', res && res.ok ? 'good' : 'bad', 3500); UI.rerender(); return null; } });
-    const t = U.randPick(s, G.availableTopics(s));
-    panel.load(G.Quiz.next(s, Date.now(), { topic: t, level: G.Quiz.levelFor(s, t), mode: 'battle', source: 'event' }));
+      next: () => { if (done) return null; done = true; panel.destroy(); close(); resolve(!!(res && res.ok && res.attempt === 1)); return null; } });
+    panel.load(G.Quiz.next(s, Date.now(), q));
   }
 
   // ---------- 工場とのつながり ----------

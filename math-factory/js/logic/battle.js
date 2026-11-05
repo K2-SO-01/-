@@ -246,16 +246,18 @@
     const alive = Bt.alive(bt);
     let t = target;
     if (t === undefined || t === null || !bt.enemies[t] || bt.enemies[t].hp <= 0) t = alive.length ? alive[0].idx : 0;
-    bt.pending = { handIdx, card: c, target: t, cost };
-    return { ok: true, card: c, q: Bt.questionOpts(s, bt, c) };
+    // 出す問題（種つき）も覚えておく。読み直しても同じ問題の続きになる
+    const q = Bt.questionOpts(s, bt, c);
+    bt.pending = { handIdx, card: c, target: t, cost, q };
+    return { ok: true, card: c, q };
   };
-  /** カードに対応する問題の分野と難易度 */
+  /** カードに対応する問題の分野・難易度・種 */
   Bt.questionOpts = function (s, bt, c) {
     const avail = G.availableTopics(s);
     const topic = U.randPick(s, avail);
     let level = G.Quiz.levelFor(s, topic);
     if ((bt.elite || bt.boss) && level < 2 && U.rand(s) < 0.5) level++;
-    return { topic, level, mode: 'battle', source: 'card' };
+    return { topic, level, seed: U.newSeed(s), mode: 'battle', source: 'card' };
   };
   Bt.cancelPlay = function (s) { const bt = s.battle.active; if (bt) bt.pending = null; };
   /** 解答結果を反映。ok: 正解か, ms: かかった時間 */
@@ -265,7 +267,7 @@
     const pd = bt.pending;
     bt.pending = null;
     const p = bt.player;
-    if (!ok && bt.flags.eraser && Bt.has(s, bt, 'eraser') && !pd.retried) { bt.flags.eraser = false; pd.retried = true; bt.pending = pd; log(bt, '🧽 消しゴムでやり直し！'); return { retry: true }; }
+    if (!ok && bt.flags.eraser && Bt.has(s, bt, 'eraser') && !pd.retried) { bt.flags.eraser = false; pd.retried = true; pd.q = Bt.questionOpts(s, bt, pd.card); pd.answered = null; bt.pending = pd; log(bt, '🧽 消しゴムでやり直し！'); return { retry: true, q: pd.q }; }
     p.energy -= pd.cost;
     bt.flags.firstCard = false;
     bt.hand.splice(pd.handIdx, 1);
@@ -465,6 +467,14 @@
     G.notice(s, { type: 'bad', text: '💥 襲撃を受けて設備が ' + damaged.length + ' 個壊れた…（工場で修理できる）', ms: 5000 });
     return { win: false, auto: true, damaged };
   };
+  // カード・イベントの問題に答え終わったら、結果を覚えておく（「つづける」の前に読み直しても結果が消えないように）
+  G.on('questionEnd', (s, d) => {
+    if (d.mode !== 'battle') return;
+    const res = { ok: d.ok === true && d.first === true };
+    const bt = s.battle.active, run = s.battle.run;
+    if (bt && bt.pending && bt.pending.q && bt.pending.q.seed === d.seed) bt.pending.answered = res;
+    if (run && run.eventQ && run.eventQ.seed === d.seed) run.eventQ.answered = res;
+  });
   G.on('answer', (s, d) => {
     if (!d.ok || d.mode === 'battle' || d.mode === 'exam' || d.mode === 'challenge') return; // 模試やチャレンジの答えでは群れは近づかない
     const r = s.battle.raid;
@@ -544,9 +554,20 @@
     { id: 'library', title: '星の図書館', text: '本棚に問題が浮かぶ。正解すれば新しい知識（カード）が手に入る。', ok: { card: 1 }, ng: { curse: 0 }, okText: 'レアなカードを1枚獲得', ngText: '何も起こらなかった' },
     { id: 'spring', title: '回復の泉', text: '泉のほとりに問題が書かれた石碑。', ok: { heal: 20 }, ng: { heal: 5 }, okText: 'HP+20', ngText: 'HP+5' },
   ];
+  /** ランのイベントで出す問題（種つき）。一度決めたら、答えるまで同じ問題 */
+  Bt.eventQuestion = function (s) {
+    const run = s.battle.run;
+    if (!run || !run.pendingEvent) return null;
+    if (!run.eventQ) {
+      const topic = U.randPick(s, G.availableTopics(s));
+      run.eventQ = { topic, level: G.Quiz.levelFor(s, topic), seed: U.newSeed(s), mode: 'battle', source: 'event' };
+    }
+    return run.eventQ;
+  };
   Bt.resolveEvent = function (s, ok) {
     const run = s.battle.run;
     if (!run || !run.pendingEvent) return null;
+    run.eventQ = null;
     const ev = Bt.RUN_EVENTS.find((e) => e.id === run.pendingEvent);
     const fx = ok ? ev.ok : ev.ng;
     const out = { text: ok ? ev.okText : ev.ngText };

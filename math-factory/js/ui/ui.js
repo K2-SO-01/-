@@ -230,12 +230,15 @@
     }
     if (!o.noClose) back.addEventListener('click', (e) => { if (e.target === back) close(); });
     root.appendChild(back);
+    close.noClose = !!o.noClose;
     UI.modalStack.push(close);
     const first = box.querySelector('.modal-foot .btn, input, button');
     if (first && !o.noFocus) setTimeout(() => { try { first.focus({ preventScroll: true }); } catch (e) { /* noop */ } }, 30);
     return close;
   };
   UI.closeTopModal = function () { const c = UI.modalStack[UI.modalStack.length - 1]; if (c) c(); };
+  /** Escキー：✕で閉じられる小窓だけ閉じる（カードの問題などを途中で抜けられないように） */
+  UI.escapeModal = function () { const c = UI.modalStack[UI.modalStack.length - 1]; if (c && !c.noClose) c(); };
   UI.confirm = function (title, text, okLabel, onOk, cls) {
     UI.modal({ title, body: h('p', {}, text), buttons: [{ label: 'やめる', cls: 'ghost' }, { label: okLabel || 'OK', cls: cls || 'primary', action: onOk }] });
   };

@@ -72,7 +72,7 @@
       rp: 0,
       quiz: {
         combo: 0, maxCombo: 0, topic: 'auto', levelMode: 'auto', levels: {}, recent: {},
-        current: null, lastTopics: [], served: 0,
+        current: null, parked: null, lastTopics: [], served: 0,
       },
       stats: { answered: 0, correct: 0, solved: 0, byTopic: {}, days: {}, log: [], timeMs: 0 },
       settings: { sound: true, bgm: true, fontScale: 1, reduceMotion: false, highContrast: false, keypad: 'auto', autoNext: true, volume: 0.6, pomoFocus: 25, pomoBreak: 5 },
@@ -161,13 +161,41 @@
       return w;
     });
   };
+  /** まだ手をつけていない（答えも、ヒントも見ていない）問題か */
+  Quiz.untouched = function (c) { return !!(c && !c.done && c.attempts === 0 && c.hints === 0); };
+  /** ふつうの出題か（バトル・模試・復習などではない） */
+  Quiz.isFree = function (c) { return !!(c && c.mode === 'normal'); };
+  /** 難易度や分野の設定を、出しかけの問題に反映する。手をつけていない問題だけ、同じ種(seed)のまま作り直す。
+   *  種は変えないので、設定を何度切りかえても、同じ設定なら同じ問題になる（設定の連打で問題を引き直せない）。 */
+  Quiz.retarget = function (s) {
+    const c = s.quiz.current;
+    if (!Quiz.isFree(c) || !Quiz.untouched(c)) return false;
+    const sel = s.quiz.topic;
+    const topic = sel !== 'auto' && G.availableTopics(s).indexOf(sel) >= 0 ? sel : c.topic;
+    const level = Quiz.levelFor(s, topic);
+    if (topic === c.topic && level === c.level) return false;
+    c.topic = topic; c.level = level;
+    return true;
+  };
   /** 次の問題を出す。opts: {topic, level, seed, mode, source} */
   Quiz.next = function (s, now, opts) {
     opts = opts || {};
+    const mode = opts.mode || 'normal';
+    const cur = s.quiz.current;
+    if (mode === 'normal' && !opts.topic && !opts.seed && opts.level === undefined) {
+      // ふつうの出題：終わっていない問題があればそれを続ける。
+      // バトルや模試などの間とっておいた問題があれば、それにもどる（とちゅうで抜けて問題を引き直せないように）
+      if (Quiz.isFree(cur) && !cur.done) { Quiz.retarget(s); return Quiz.currentQuestion(s); }
+      const p = s.quiz.parked;
+      s.quiz.parked = null;
+      if (p && !p.done) { s.quiz.current = p; Quiz.retarget(s); return Quiz.currentQuestion(s); }
+    } else if (Quiz.isFree(cur) && !cur.done && !s.quiz.parked) {
+      s.quiz.parked = cur;
+    }
     const topic = opts.topic || Quiz.pickTopic(s, now);
     const level = opts.level !== undefined ? opts.level : Quiz.levelFor(s, topic);
     const seed = opts.seed || U.newSeed(s);
-    s.quiz.current = { topic, level, seed, attempts: 0, hints: 0, startedAt: now, mode: opts.mode || 'normal', source: opts.source || null, done: false, firstOk: null };
+    s.quiz.current = { topic, level, seed, attempts: 0, hints: 0, startedAt: now, mode, source: opts.source || null, done: false, firstOk: null };
     s.quiz.served++;
     return Qs.generate(topic, level, seed);
   };

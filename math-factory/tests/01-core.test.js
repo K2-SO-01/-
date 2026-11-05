@@ -81,3 +81,46 @@ test('セーブデータの書き出しと読み込みで状態が保たれる',
   assert.deepStrictEqual(s2.runtime.notices, []);
   assert.throws(() => G.deserialize('{"x":1}', T0));
 });
+test('難易度・分野を切りかえても問題は引き直せない（同じ設定なら同じ問題）', () => {
+  const s = fresh();
+  s.quiz.topic = 'quad';
+  G.Quiz.next(s, T0);
+  const seed = s.quiz.current.seed;
+  const txt = {};
+  for (let k = 0; k < 3; k++) for (const lv of [0, 1, 2, 'auto']) {
+    s.quiz.levelMode = lv; G.Quiz.retarget(s);
+    const q = G.Quiz.currentQuestion(s);
+    if (txt[lv] === undefined) txt[lv] = q.text; else assert.strictEqual(q.text, txt[lv], '同じ難易度なら同じ問題 ' + lv);
+    assert.strictEqual(s.quiz.current.seed, seed);
+  }
+  s.quiz.levelMode = 'auto'; G.Quiz.retarget(s);
+  s.quiz.topic = 'seq'; G.Quiz.retarget(s); assert.strictEqual(s.quiz.current.topic, 'seq');
+  s.quiz.topic = 'quad'; G.Quiz.retarget(s);
+  assert.strictEqual(G.Quiz.currentQuestion(s).text, txt.auto);
+  // 次の問題を出しても、終わっていなければ同じ問題
+  assert.strictEqual(G.Quiz.next(s, T0).text, txt.auto);
+  assert.strictEqual(s.quiz.current.seed, seed);
+});
+test('ヒントを見た・答えた問題は、設定を変えてもそのまま', () => {
+  const s = fresh();
+  s.quiz.levelMode = 0;
+  G.Quiz.next(s, T0);
+  G.Quiz.revealHint(s, T0 + 100);
+  const before = G.Quiz.currentQuestion(s).text;
+  s.quiz.levelMode = 2;
+  assert.strictEqual(G.Quiz.retarget(s), false);
+  assert.strictEqual(G.Quiz.currentQuestion(s).text, before);
+  assert.strictEqual(s.quiz.current.level, 0);
+});
+test('バトルや模試の問題をはさんでも、ふつうの問題は続きから出る', () => {
+  const s = fresh();
+  G.Quiz.next(s, T0);
+  const c = s.quiz.current, text = G.Quiz.currentQuestion(s).text;
+  G.Quiz.next(s, T0 + 10, { topic: 'seq', level: 1, mode: 'battle', source: 'card' });
+  assert.strictEqual(s.quiz.parked, c);
+  solve(s, T0 + 20, true);
+  G.Quiz.next(s, T0 + 30, { topic: 'quad', level: 0, mode: 'exam', source: 'exam' });
+  assert.strictEqual(G.Quiz.next(s, T0 + 40).text, text);
+  assert.strictEqual(s.quiz.current, c);
+  assert.strictEqual(s.quiz.parked, null);
+});

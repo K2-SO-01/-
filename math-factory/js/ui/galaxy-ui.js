@@ -148,20 +148,24 @@
     const pe = s.galaxy.event;
     if (!pe) return;
     const ev = GX.evById[pe.id];
-    const body = h('div', {}, h('p', {}, ev.text), h('div', { class: 'ev-choices' }, ev.choices.map((ch, i) => h('button', { class: 'menu-item', onclick: () => { close(); choose(i); } },
+    // 問題を出したことのある選択肢があれば、ほかの問題つき選択肢はえらべない（引き直し防止）
+    const locked = (i) => ev.choices[i].quiz && pe.quiz && pe.quiz.choice !== i;
+    const body = h('div', {}, h('p', {}, ev.text), pe.quiz ? h('p', { class: 'small muted' }, '✏️ さっきの問題の続きから答えられるよ') : null, h('div', { class: 'ev-choices' }, ev.choices.map((ch, i) => h('button', { class: 'menu-item', disabled: locked(i), onclick: () => { close(); choose(i); } },
       h('span', {}, ch.quiz ? '✏️' : '👉'), h('span', {}, ch.label, ch.cost ? h('span', { class: 'tiny muted block' }, '必要：' + G.costText(ch.cost)) : null, ch.quiz ? h('span', { class: 'tiny muted block' }, '正解：' + ch.ok.text.split('！')[0] + ' ／ 不正解：' + ch.ng.text.split('…')[0]) : null), h('span', {}, '▶')))));
     const close = UI.modal({ title: ev.title, body, buttons: [{ label: 'あとで決める', cls: 'ghost' }] });
     function choose(i) {
       const ch = ev.choices[i];
       if (ch.cost && !G.has(s, ch.cost)) { UI.toast('資源が足りない：' + G.costText(ch.cost), 'warn'); return; }
       if (!ch.quiz) return finish(i, false);
+      const q = GX.eventQuestion(s, i);
+      if (!q) return;
+      if (q.answered) return finish(i, q.answered.ok); // 答えたあとで読み直していた
       const holder = h('div', {});
       let res = null, done = false;
       const c2 = UI.modal({ title: ev.title, body: holder, noClose: true, cls: 'q-modal' });
       const panel = MF.QuizUI.createPanel(holder, { compact: true, allowHints: false, allowSkip: false, oneShot: true, autoNext: 900, nextLabel: 'つづける ▶', onDone: (r) => { res = r; },
         next: () => { if (done) return null; done = true; panel.destroy(); c2(); finish(i, !!(res && res.ok && res.attempt === 1)); return null; } });
-      const t = U.randPick(s, G.availableTopics(s));
-      panel.load(G.Quiz.next(s, Date.now(), { topic: t, level: ch.hard ? 2 : G.Quiz.levelFor(s, t), mode: 'event', source: 'event' }));
+      panel.load(G.Quiz.next(s, Date.now(), q));
     }
     function finish(i, ok) {
       const r = GX.chooseEvent(s, i, ok, Date.now());

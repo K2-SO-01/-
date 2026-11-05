@@ -115,3 +115,17 @@ test('イベントは問題を解いているとときどき起こる（銀河�
   if (!happened) { const s2 = fresh(77); answerN(s2, 200); happened = !!s2.galaxy.event; }
   assert(happened);
 });
+test('イベントの問題は、一度出したら答えるまで同じ（ほかの問題つき選択肢もえらべない）', () => {
+  const s = launched(6);
+  const ev = GX.EVENTS.find((e) => e.choices.filter((c) => c.quiz).length >= 1);
+  const qi = ev.choices.findIndex((c) => c.quiz);
+  s.galaxy.event = { id: ev.id, at: T0, emp: 'gauss' };
+  const q1 = GX.eventQuestion(s, qi);
+  assert(q1 && q1.seed);
+  assert.strictEqual(GX.eventQuestion(s, qi), q1);
+  const other = ev.choices.findIndex((c, i) => c.quiz && i !== qi);
+  if (other >= 0) assert.strictEqual(GX.eventQuestion(s, other), null);
+  const r = GX.chooseEvent(s, qi, true, T0);
+  assert(r && r.ok);
+  assert.strictEqual(s.galaxy.event, null);
+});
