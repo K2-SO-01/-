@@ -1,0 +1,560 @@
+{
+ "Balance": {
+  "quiz": {
+   "baseReward": [
+    5,
+    9,
+    15
+   ],
+   "rpReward": [
+    1,
+    2,
+    3
+   ],
+   "comboStep": 0.1,
+   "comboCap": 20,
+   "retryFactor": [
+    1,
+    0.5,
+    0.25
+   ],
+   "hintFactor": 0.6,
+   "speedSec": 25,
+   "speedBonus": 0.2,
+   "autoWindow": 8,
+   "autoMin": 5,
+   "autoUp": 0.8,
+   "autoDown": 0.4
+  },
+  "factory": {
+   "startW": 14,
+   "startH": 10,
+   "expand1": [
+    18,
+    12
+   ],
+   "expand2": [
+    22,
+    14
+   ],
+   "chargeStart": 300,
+   "chargeMax": 900,
+   "chargePerAnswer": [
+    40,
+    60,
+    90
+   ],
+   "chargeIdleSpeed": 0.25,
+   "coreCap": 300,
+   "storageCap": 300,
+   "offlineMaxHours": 8,
+   "offlineEff": 0.8,
+   "spaghettiPenalty": 0.35
+  },
+  "pals": {
+   "eggChance": 0.07,
+   "eggComboBonus": 0.004,
+   "eggPity": 14,
+   "hatchNeed": [
+    5,
+    7,
+    9
+   ],
+   "maxEggs": 6,
+   "maxPals": 40,
+   "xpTopic": 3,
+   "xpOther": 1,
+   "xpPerLevel": 8,
+   "maxLevel": 30,
+   "rarityRoll": [
+    0.7,
+    0.25,
+    0.05
+   ],
+   "skillStep": 0.15,
+   "levelStep": 0.08
+  },
+  "battle": {
+   "playerHp": 60,
+   "energy": 3,
+   "hand": 5,
+   "critSec": 15,
+   "critMult": 1.25,
+   "raidMeter": 30,
+   "raidMinCorrect": 25,
+   "raidCountdownSec": 600,
+   "raidHpGrowth": 0.07,
+   "raidHpCap": 2.2,
+   "raidTierEvery": 2,
+   "turretBase": 4,
+   "turretPerLvl": 2,
+   "runFloors": 10,
+   "restHeal": 0.3,
+   "eliteEvery": 5
+  },
+  "meta": {
+   "gachaCost": 60,
+   "gacha10Cost": 540,
+   "dailyGoalDefault": 20,
+   "goalReward": {
+    "rp": 30
+   },
+   "challengeReward": {
+    "rp": 40,
+    "ticket": 1
+   }
+  },
+  "well": {
+   "focusBonus": 0.1,
+   "pomoRewardRp": 10,
+   "snoozeMin": 10,
+   "maxSnooze": 2
+  },
+  "galaxy": {
+   "rocketParts": 10,
+   "colonyParts": 5,
+   "turnEvery": 8,
+   "turnSecs": 40,
+   "eventEvery": 22,
+   "eventChance": 0.55,
+   "eventMinCorrect": 20,
+   "colonyBonus": 0.3,
+   "focusBonus": 4,
+   "colonyIncome": 3,
+   "launchFuel": 0,
+   "colonyFuel": 0
+  },
+  "research": {
+   "hardWeight": 1
+  }
+ },
+ "buildingCost": {
+  "miner": {
+   "iron": 6,
+   "stone": 4
+  },
+  "belt": {
+   "iron": 1
+  },
+  "furnace": {
+   "stone": 10,
+   "iron": 2
+  },
+  "assembler": {
+   "ironPlate": 10,
+   "copperPlate": 6
+  },
+  "lab": {
+   "ironPlate": 10,
+   "copperPlate": 10,
+   "brick": 6
+  },
+  "storage": {
+   "iron": 10,
+   "stone": 12
+  },
+  "power": {
+   "iron": 12,
+   "stone": 8,
+   "copper": 6
+  },
+  "solar": {
+   "ironPlate": 8,
+   "copperPlate": 8,
+   "stone": 6
+  },
+  "port": {
+   "ironPlate": 12,
+   "copperPlate": 8
+  },
+  "turret": {
+   "ironPlate": 10,
+   "gear": 5,
+   "stone": 10
+  },
+  "silo": {
+   "ironPlate": 40,
+   "brick": 30,
+   "circuit": 20,
+   "gear": 20
+  }
+ },
+ "building": {
+  "core": {
+   "power": 8
+  },
+  "miner": {
+   "rate": 0.4,
+   "power": -2
+  },
+  "belt": {
+   "power": 0,
+   "speed": 4
+  },
+  "furnace": {
+   "time": 1.6,
+   "power": -3
+  },
+  "assembler": {
+   "power": -4
+  },
+  "lab": {
+   "time": 4,
+   "power": -4,
+   "rpPerPack": 8
+  },
+  "storage": {
+   "power": 0
+  },
+  "power": {
+   "power": 12,
+   "burn": 10
+  },
+  "solar": {
+   "power": 5
+  },
+  "port": {
+   "rate": 2,
+   "power": -1
+  },
+  "turret": {
+   "power": -1
+  },
+  "silo": {
+   "power": -6
+  }
+ },
+ "recipeTime": {
+  "gear": 1,
+  "circuit": 2,
+  "sciencePack": 4,
+  "plastic": 2,
+  "chip": 5,
+  "fuelCell": 5,
+  "ammo": 2,
+  "rocketPart": 10
+ },
+ "recipeIn": {
+  "gear": {
+   "ironPlate": 2
+  },
+  "circuit": {
+   "ironPlate": 1,
+   "copperPlate": 1
+  },
+  "sciencePack": {
+   "gear": 1,
+   "circuit": 1
+  },
+  "plastic": {
+   "oil": 1,
+   "coal": 1
+  },
+  "chip": {
+   "circuit": 2,
+   "wafer": 1,
+   "plastic": 1
+  },
+  "fuelCell": {
+   "uranium": 2,
+   "ironPlate": 1
+  },
+  "ammo": {
+   "ironPlate": 1,
+   "coal": 1
+  },
+  "rocketPart": {
+   "chip": 2,
+   "fuelCell": 1,
+   "brick": 4,
+   "gear": 2
+  }
+ },
+ "enemyMoves": {
+  "grub": [
+   {
+    "k": "atk",
+    "dmg": 5
+   },
+   {
+    "k": "atk",
+    "dmg": 6
+   },
+   {
+    "k": "def",
+    "block": 5
+   }
+  ],
+  "wing": [
+   {
+    "k": "atk",
+    "dmg": 3,
+    "hits": 2
+   },
+   {
+    "k": "debuff",
+    "weak": 1,
+    "dmg": 2
+   }
+  ],
+  "spitter": [
+   {
+    "k": "atk",
+    "dmg": 8
+   },
+   {
+    "k": "buff",
+    "str": 2
+   },
+   {
+    "k": "atk",
+    "dmg": 4,
+    "vuln": 1
+   }
+  ],
+  "beast": [
+   {
+    "k": "atk",
+    "dmg": 10
+   },
+   {
+    "k": "atk",
+    "dmg": 5,
+    "hits": 2
+   },
+   {
+    "k": "buff",
+    "str": 2,
+    "block": 6
+   }
+  ],
+  "shell": [
+   {
+    "k": "def",
+    "block": 12,
+    "dmg": 6
+   },
+   {
+    "k": "atk",
+    "dmg": 14
+   },
+   {
+    "k": "atk",
+    "dmg": 4,
+    "hits": 3
+   }
+  ],
+  "spore": [
+   {
+    "k": "debuff",
+    "weak": 2,
+    "vuln": 2
+   },
+   {
+    "k": "atk",
+    "dmg": 12
+   },
+   {
+    "k": "atk",
+    "dmg": 6,
+    "hits": 2
+   }
+  ],
+  "queen": [
+   {
+    "k": "atk",
+    "dmg": 15
+   },
+   {
+    "k": "atk",
+    "dmg": 5,
+    "hits": 4
+   },
+   {
+    "k": "buff",
+    "str": 3,
+    "block": 15
+   },
+   {
+    "k": "debuff",
+    "weak": 2,
+    "vuln": 2,
+    "dmg": 6
+   }
+  ]
+ },
+ "research": {
+  "automation": {
+   "rp": 15,
+   "req": {
+    "quad": 3
+   }
+  },
+  "blueprint": {
+   "rp": 15,
+   "req": {
+    "seq": 3
+   }
+  },
+  "upgrade1": {
+   "rp": 20,
+   "req": {
+    "vec": 3
+   }
+  },
+  "smelting2": {
+   "rp": 25,
+   "req": {
+    "diff": 3
+   }
+  },
+  "logistics": {
+   "rp": 25,
+   "req": {
+    "seq": 4
+   }
+  },
+  "storage2": {
+   "rp": 25,
+   "req": {
+    "integ": 3
+   }
+  },
+  "chargeCap1": {
+   "rp": 30,
+   "req": {
+    "diff": 3,
+    "prob": 2
+   }
+  },
+  "labs": {
+   "rp": 35,
+   "req": {
+    "prob": 4
+   }
+  },
+  "electricity": {
+   "rp": 40,
+   "req": {
+    "trig": 4
+   }
+  },
+  "quizBoost1": {
+   "rp": 50,
+   "req": {
+    "quad": 4,
+    "prob": 4
+   }
+  },
+  "mapExpand1": {
+   "rp": 50,
+   "req": {
+    "seq": 5
+   }
+  },
+  "military": {
+   "rp": 50,
+   "req": {
+    "prob": 5
+   }
+  },
+  "solar": {
+   "rp": 70,
+   "req": {
+    "trig": 6
+   }
+  },
+  "plastics": {
+   "rp": 70,
+   "req": {
+    "trig": 5,
+    "diff": 3
+   }
+  },
+  "upgrade2": {
+   "rp": 90,
+   "req": {
+    "diff": 5,
+    "integ": 5
+   }
+  },
+  "chargeCap2": {
+   "rp": 90,
+   "req": {
+    "vec": 5,
+    "integ": 4
+   }
+  },
+  "electronics": {
+   "rp": 120,
+   "req": {
+    "vec": 5,
+    "integ": 5
+   }
+  },
+  "quizBoost2": {
+   "rp": 150,
+   "req": {
+    "diff": 6,
+    "seq": 6,
+    "trig": 6
+   }
+  },
+  "mapExpand2": {
+   "rp": 150,
+   "req": {
+    "seq": 6,
+    "vec": 4
+   }
+  },
+  "nuclear": {
+   "rp": 160,
+   "req": {
+    "vec": 7,
+    "prob": 5
+   }
+  },
+  "rocketry": {
+   "rp": 300,
+   "req": {
+    "quad": 6,
+    "prob": 6,
+    "diff": 6,
+    "seq": 6,
+    "vec": 6,
+    "integ": 6,
+    "trig": 6
+   }
+  }
+ },
+ "enemyHp": {
+  "grub": [
+   11,
+   15
+  ],
+  "wing": [
+   9,
+   12
+  ],
+  "spitter": [
+   18,
+   22
+  ],
+  "beast": [
+   28,
+   34
+  ],
+  "shell": [
+   50,
+   56
+  ],
+  "spore": [
+   44,
+   48
+  ],
+  "queen": [
+   120,
+   130
+  ]
+ }
+}

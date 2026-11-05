@@ -295,7 +295,7 @@ module.exports.desktop.push(async (page, t) => {
   await page.evaluate(() => {
     const s = MF.UI.state, F = MF.Factory;
     s.research.done.push('rocketry');
-    Object.assign(s.inv, { ironPlate: 200, brick: 100, circuit: 100, gear: 100, rocketPart: 10 });
+    Object.assign(s.inv, { ironPlate: 400, brick: 300, circuit: 200, gear: 200, rocketPart: MF.Balance.galaxy.rocketParts }); s.galaxy.fuel = 999;
     const f = s.factory; let x = 0, y = 0; while (F.at(s, x, y) || f.ore[y * f.w + x]) { x++; if (x >= f.w) { x = 0; y++; } }
     F.place(s, 'silo', x, y, 1);
     MF.UI.rerender();

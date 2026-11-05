@@ -33,7 +33,7 @@
     badge: (s) => (s.research.current ? null : R.TECHS.some((t) => R.status(s, t.id) === 'available' && s.rp >= t.rp) ? '!' : null),
     render(root, s) {
       root.appendChild(h('h2', { class: 'screen-title' }, '研究ツリー'));
-      root.appendChild(h('p', { class: 'small muted' }, '研究ポイント（研究P）を払って研究を始め、指定された分野の問題に正解すると完了。研究Pは正解や研究所でたまる。いま ',
+      root.appendChild(h('p', { class: 'small muted' }, '研究ポイント（研究P）を払って研究を始め、指定された分野の問題に正解すると完了（「難」の問題は2問ぶん進む）。研究Pは正解や研究所でたまる。いま ',
         h('b', { class: 'rp-now' }, Math.floor(s.rp) + ' 研究P'), '・完了 ' + s.research.done.length + ' / ' + R.TECHS.length));
       const cur = s.research.current ? R.byId[s.research.current] : null;
       if (cur) root.appendChild(UI.section('🔬 研究中：' + cur.name, h('div', { class: 'small muted' }, cur.desc), reqRows(s, cur, true)));

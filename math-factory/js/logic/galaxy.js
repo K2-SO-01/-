@@ -3,21 +3,26 @@
   'use strict';
   const U = MF.Util, G = MF.Game, F = MF.Factory, B = MF.Balance, Qs = MF.Questions;
   const GX = {};
-  B.galaxy = { rocketParts: 10, colonyParts: 5, turnEvery: 8, turnSecs: 40, eventEvery: 22, eventChance: 0.55, eventMinCorrect: 20, colonyBonus: 0.3, focusBonus: 4, colonyIncome: 3 };
+  B.galaxy = { rocketParts: 20, colonyParts: 8, launchFuel: 30, colonyFuel: 10, turnEvery: 8, turnSecs: 40, eventEvery: 22, eventChance: 0.55, eventMinCorrect: 20, colonyBonus: 0.3, focusBonus: 4, colonyIncome: 3 };
 
   // ---------- ロケット発射台 ----------
-  F.BUILDINGS.silo = { name: 'ロケット発射台', short: '発射台', icon: '🚀', color: '#4a4f6b', cost: { ironPlate: 40, brick: 30, circuit: 20, gear: 20 }, power: -6, desc: 'ロケット部品を集めて打ち上げる。最初の打ち上げで、この星を脱出できる。' };
-  F.RECIPES.rocketPart = { name: 'ロケット部品', in: { chip: 2, fuelCell: 1, brick: 4, gear: 2 }, time: 10 };
+  F.BUILDINGS.silo = { name: 'ロケット発射台', short: '発射台', icon: '🚀', color: '#4a4f6b', cost: { ironPlate: 200, brick: 150, circuit: 80, gear: 80 }, power: -6, desc: 'ロケット部品を集めて打ち上げる。最初の打ち上げで、この星を脱出できる。' };
+  F.RECIPES.rocketPart = { name: 'ロケット部品', in: { chip: 3, fuelCell: 1, brick: 5, gear: 4 }, time: 30 };
   F.buildingLocks.silo = (s) => MF.Research.has(s, 'rocketry');
   F.recipeLocks.rocketPart = (s) => MF.Research.has(s, 'rocketry');
   F.extraRoom.silo = (s, b, item, scale) => (item === 'rocketPart' ? Math.max(0, 40 - (b.inBuf.rocketPart || 0)) : 0);
+  F.extraNeeds.silo = () => ['rocketPart'];
   F.extraStep.silo = (s, b) => { b.state = (b.inBuf.rocketPart || 0) + (s.inv.rocketPart || 0) >= GX.partsNeeded(s) ? 'work' : 'noinput'; return false; };
   GX.silo = function (s) { return Object.values(s.factory.b).find((b) => b.type === 'silo' && !b.disabled) || null; };
   GX.partsNeeded = function (s) { return s.galaxy.unlocked ? B.galaxy.colonyParts : B.galaxy.rocketParts; };
   GX.partsHave = function (s) { const si = GX.silo(s); return (si ? Math.floor(si.inBuf.rocketPart || 0) : 0) + Math.floor(s.inv.rocketPart || 0); };
-  GX.canLaunch = function (s) { return !!GX.silo(s) && GX.partsHave(s) >= GX.partsNeeded(s); };
+  GX.fuelNeeded = function (s) { return s.galaxy.unlocked ? B.galaxy.colonyFuel : B.galaxy.launchFuel; };
+  GX.partsReady = function (s) { return !!GX.silo(s) && GX.partsHave(s) >= GX.partsNeeded(s); };
+  /** 打ち上げには部品に加えて「燃料充填」が必要。部品がそろってから、問題に正解するたびに燃料がたまる */
+  GX.canLaunch = function (s) { return GX.partsReady(s) && (s.galaxy.fuel || 0) >= GX.fuelNeeded(s); };
   GX.launch = function (s, now) {
-    if (!GX.canLaunch(s)) return { ok: false, reason: GX.silo(s) ? 'ロケット部品が足りない（' + GX.partsHave(s) + ' / ' + GX.partsNeeded(s) + '）' : 'ロケット発射台がない' };
+    if (!GX.canLaunch(s)) return { ok: false, reason: !GX.silo(s) ? 'ロケット発射台がない' : !GX.partsReady(s) ? 'ロケット部品が足りない（' + GX.partsHave(s) + ' / ' + GX.partsNeeded(s) + '）' : '燃料が足りない（' + Math.floor(s.galaxy.fuel || 0) + ' / ' + GX.fuelNeeded(s) + '）問題に正解して充填しよう' };
+    s.galaxy.fuel = 0;
     let need = GX.partsNeeded(s);
     const si = GX.silo(s);
     const fromSilo = Math.min(need, Math.floor(si.inBuf.rocketPart || 0));
@@ -357,6 +362,8 @@
   G.on('answer', (s, d) => {
     if (!d.ok) return;
     const g = s.galaxy;
+    // 燃料充填（部品がそろった発射台があるとき）
+    if (GX.partsReady(s) && (g.fuel || 0) < GX.fuelNeeded(s)) { g.fuel = Math.min(GX.fuelNeeded(s), (g.fuel || 0) + (d.level === 2 ? 2 : 1)); if (g.fuel >= GX.fuelNeeded(s)) G.notice(s, { type: 'good', text: '🚀 燃料充填完了！ 打ち上げられるよ' }); }
     // 惑星で勉強中：その星の資源も手に入る
     if (g.unlocked && g.focus !== null && g.focus !== undefined) {
       const p = GX.sys(s, g.focus);
@@ -368,7 +375,7 @@
   });
   G.register({
     id: 'galaxy',
-    init(s) { s.galaxy = { unlocked: false, launches: 0, ships: 0, systems: [], lanes: [], empires: {}, home: null, focus: null, turn: 0, clock: 0, timeAcc: 0, evClock: 0, event: null, incoming: null, log: [] }; },
+    init(s) { s.galaxy = { unlocked: false, launches: 0, ships: 0, fuel: 0, systems: [], lanes: [], empires: {}, home: null, focus: null, turn: 0, clock: 0, timeAcc: 0, evClock: 0, event: null, incoming: null, log: [] }; },
     tick(s, dt, now) {
       const g = s.galaxy;
       if (!g.unlocked) return;

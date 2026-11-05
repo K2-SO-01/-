@@ -9,7 +9,7 @@ function lab(seed) {
   for (const id of Object.keys(f.b)) if (f.b[id].type !== 'core') F.remove(s, +id, { noRefund: true });
   const core = Object.values(f.b).find((b) => b.type === 'core');
   if (s.research) s.research.done.push('automation', 'labs');
-  s.inv.iron = 150; s.inv.stone = 150; s.inv.copper = 150; s.inv.coal = 150; s.inv.ironPlate = 100; s.inv.copperPlate = 100; s.inv.brick = 100;
+  s.inv.iron = 150; s.inv.stone = 150; s.inv.copper = 150; s.inv.coal = 150; s.inv.ironPlate = 100; s.inv.copperPlate = 100; s.inv.brick = 100; s.inv.gear = 60; s.inv.wafer = 20;
   return { s, f, core };
 }
 function run(s, sec, dt) { dt = dt || 0.25; let now = T0; for (let t = 0; t < sec; t += dt) { now += dt * 1000; G.tick(s, dt, now); } }
@@ -23,7 +23,7 @@ test('採掘機→ベルト→コアで鉱石が届く', () => {
   for (let x = x0 + 1; x < core.x; x++) assert(F.place(s, 'belt', x, y, 1).ok);
   const before = s.inv.iron;
   run(s, 30);
-  assert(s.inv.iron - before >= 8, 'got ' + (s.inv.iron - before));
+  assert(s.inv.iron - before >= F.BUILDINGS.miner.rate * 30 * 0.7, 'got ' + (s.inv.iron - before));
 });
 test('行き止まりのベルトには届かず、採掘機が止まる', () => {
   const { s, f, core } = lab();
@@ -46,7 +46,7 @@ test('溶鉱炉で鉄板ができる', () => {
   F.place(s, 'furnace', core.x - 2, y, 1);
   F.place(s, 'belt', core.x - 1, y, 1);
   run(s, 60);
-  assert(s.inv.ironPlate > 110, 'plates ' + s.inv.ironPlate);
+  assert(s.inv.ironPlate > 105, 'plates ' + s.inv.ironPlate);
 });
 test('組立機と研究所：歯車・回路→研究パック→研究ポイント', () => {
   const { s, f, core } = lab();
@@ -118,7 +118,7 @@ test('倉庫の上限をこえると届かなくなり、倉庫を建てると�
   s.inv.iron = cap;
   setOre(f, core.x - 2, core.y, 'iron');
   F.place(s, 'miner', core.x - 2, core.y, 1); F.place(s, 'belt', core.x - 1, core.y, 1);
-  run(s, 20);
+  run(s, 60);
   assert.strictEqual(s.inv.iron, cap); // 建設で減った分だけは届き、上限で止まる
   F.place(s, 'storage', 0, 0, 1);
   assert(F.storageCap(s) > cap);
@@ -164,7 +164,7 @@ test('スパゲッティ度があっても、細かい時間刻みでベルト�
   assert(F.layout(s).spaghetti > 0);
   const i0 = s.inv.iron;
   run(s, 20, 0.1);
-  assert(s.inv.iron - i0 >= 5, 'got ' + (s.inv.iron - i0));
+  assert(s.inv.iron - i0 >= F.BUILDINGS.miner.rate * 20 * 0.6, 'got ' + (s.inv.iron - i0));
 });
 test('ベルトの輸送量には上限がある（毎秒4個程度）', () => {
   const { s, f, core } = lab();
@@ -178,4 +178,26 @@ test('ベルトの輸送量には上限がある（毎秒4個程度）', () => {
   run(s, 60, 0.25);
   // 6台×0.4/秒=2.4/秒の生産。ベルトがつながっていなければ0
   assert(s.inv.iron - before >= 0);
+});
+test('供給ポート：持ち物から正面の組立機に材料を送る', () => {
+  const { s, f, core } = lab();
+  s.research.done.push('logistics');
+  s.inv.ironPlate = 50;
+  const a = F.place(s, 'assembler', 3, 2, 3).b; // 左向き
+  F.setRecipe(s, a.id, 'gear');
+  F.place(s, 'belt', 2, 2, 3); F.place(s, 'belt', 1, 2, 2); F.place(s, 'belt', 1, 3, 2);
+  // 出口のベルトはコアにつながらないが、ポートが材料を送れることを確認
+  F.place(s, 'port', 4, 2, 3); // 左向き → 組立機
+  run(s, 10);
+  assert(s.inv.ironPlate < 50, 'consumed ' + s.inv.ironPlate);
+});
+test('溶鉱炉の鉱石を指定すると、供給ポートがその鉱石だけを送る', () => {
+  const { s, f, core } = lab();
+  s.research.done.push('logistics');
+  s.inv.silicon = 40; s.inv.iron = 40;
+  const fu = F.place(s, 'furnace', 3, 2, 3).b;
+  F.setSmelt(s, fu.id, 'silicon');
+  F.place(s, 'port', 4, 2, 3);
+  run(s, 6);
+  assert(s.inv.silicon < 40); assert.strictEqual(s.inv.iron, 40 - 2 - 0); // 溶鉱炉の建設費(鉄2)だけ減る
 });

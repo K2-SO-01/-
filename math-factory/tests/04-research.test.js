@@ -31,9 +31,9 @@ test('開拓：研究で土地が広がり、既存の設備はそのまま', ()
   const core = Object.values(s.factory.b).find((b) => b.type === 'core');
   s.research.done.push('logistics');
   s.rp = 999; R.start(s, 'mapExpand1');
-  answerN(s, 5, { q: { topic: 'seq' } });
+  answerN(s, R.byId.mapExpand1.req.seq, { q: { topic: 'seq' } });
   assert(R.has(s, 'mapExpand1'));
-  assert.strictEqual(s.factory.w, 18); assert.strictEqual(s.factory.h, 12);
+  assert.strictEqual(s.factory.w, MF.Balance.factory.expand1[0]); assert.strictEqual(s.factory.h, MF.Balance.factory.expand1[1]);
   assert.strictEqual(F.at(s, core.x, core.y).type, 'core');
 });
 test('強化：レベルが上がると速くなり、上限は研究で上がる。撤去で強化費も戻る', () => {

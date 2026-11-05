@@ -3,20 +3,23 @@ const { botFight } = require('./bot');
 const G = MF.Game, F = MF.Factory, GX = MF.Galaxy, U = MF.Util, Bt = MF.Battle;
 function withSilo(s) {
   s.research.done.push('rocketry', 'automation');
-  Object.assign(s.inv, { ironPlate: 200, brick: 100, circuit: 100, gear: 100 });
+  Object.assign(s.inv, { ironPlate: 400, brick: 300, circuit: 200, gear: 200 });
   const f = s.factory;
   let x = 0, y = 0; while (F.at(s, x, y) || f.ore[y * f.w + x]) { x++; if (x >= f.w) { x = 0; y++; } }
   F.place(s, 'silo', x, y, 1);
 }
-function launched(seed) { const s = fresh(seed); withSilo(s); s.inv.rocketPart = 10; GX.launch(s, T0); return s; }
+const NEED = () => MF.Balance.galaxy.rocketParts;
+function launched(seed) { const s = fresh(seed); withSilo(s); s.inv.rocketPart = NEED(); s.galaxy.fuel = 999; GX.launch(s, T0); return s; }
 
-test('ロケット：発射台と部品10個で打ち上げ→銀河が開く（星14・航路はすべてつながる・帝国3つ）', () => {
+test('ロケット：発射台と部品をそろえて打ち上げ→銀河が開く（星14・航路はすべてつながる・帝国3つ）', () => {
   const s = fresh();
   assert(!GX.launch(s, T0).ok);
   withSilo(s);
-  s.inv.rocketPart = 9;
+  s.inv.rocketPart = NEED() - 1;
   assert(!GX.launch(s, T0).ok);
-  s.inv.rocketPart = 10;
+  s.inv.rocketPart = NEED();
+  assert(!GX.launch(s, T0).ok, 'needs fuel');
+  answerN(s, MF.Balance.galaxy.launchFuel, { q: { level: 0 } });
   const r = GX.launch(s, T0);
   assert(r.ok && r.first);
   assert(s.galaxy.unlocked);
@@ -35,7 +38,7 @@ test('植民：となりの星だけ・コロニー船が必要。植民した�
     const free = GX.adj(s, s.galaxy.home).find((n) => !GX.sys(s, n).owner);
     if (free === undefined) continue;
     assert(!GX.colonize(s, free, T0).ok, 'no ship');
-    s.inv.rocketPart = 5; GX.launch(s, T0);
+    s.inv.rocketPart = MF.Balance.galaxy.colonyParts; s.galaxy.fuel = 99; GX.launch(s, T0);
     assert.strictEqual(s.galaxy.ships, 1);
     assert(GX.colonize(s, free, T0).ok);
     const p = GX.sys(s, free);

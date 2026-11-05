@@ -10,24 +10,25 @@
     { id: 'blueprint', tier: 1, icon: '📐', name: '設計図', rp: 15, req: { seq: 3 }, pre: [], desc: '工場の配置をコピーして貼りつけられる「設計図」ツールを解放。' },
     { id: 'upgrade1', tier: 1, icon: '⬆️', name: '設備改良Ⅰ', rp: 20, req: { vec: 3 }, pre: [], desc: '設備をLv3まで強化できる（はじめはLv2まで）。' },
     { id: 'smelting2', tier: 1, icon: '🔥', name: '高温溶鉱炉', rp: 25, req: { diff: 3 }, pre: [], desc: '溶鉱炉の速さ +30%。' },
-    { id: 'logistics', tier: 1, icon: '➡️', name: '物流工学', rp: 25, req: { seq: 4 }, pre: [], desc: 'ベルトの輸送量 +50%。' },
+    { id: 'logistics', tier: 1, icon: '➡️', name: '物流工学', rp: 25, req: { seq: 4 }, pre: [], desc: 'ベルトの輸送量 +50%。持ち物から材料を送りこむ「供給ポート」を解放。' },
     { id: 'storage2', tier: 1, icon: '📦', name: '大型倉庫', rp: 25, req: { integ: 3 }, pre: [], desc: '持ち物の上限 +50%。' },
     { id: 'chargeCap1', tier: 1, icon: '🧠', name: '演算コア拡張Ⅰ', rp: 30, req: { diff: 3, prob: 2 }, pre: [], desc: '演算チャージの上限 +10分。' },
-    { id: 'labs', tier: 2, icon: '🔬', name: '研究施設', rp: 35, req: { prob: 4 }, pre: ['automation'], desc: '研究所と「研究パック」のレシピを解放。研究ポイントを自動でかせげる。' },
+    { id: 'labs', tier: 2, icon: '🔬', name: '研究施設', rp: 40, req: { prob: 5 }, pre: ['automation'], desc: '研究所と「研究パック」のレシピを解放。研究ポイントを自動でかせげる。' },
     { id: 'electricity', tier: 2, icon: '⚡', name: '電力網', rp: 40, req: { trig: 4 }, pre: [], desc: '発電所の出力 +30%。' },
     { id: 'quizBoost1', tier: 2, icon: '📘', name: '公式集', rp: 50, req: { quad: 4, prob: 4 }, pre: ['automation'], desc: '問題に正解したときの資源 +20%。' },
-    { id: 'mapExpand1', tier: 2, icon: '🗺️', name: '開拓Ⅰ', rp: 50, req: { seq: 5 }, pre: ['logistics'], desc: '工場の土地が広がる（18×12）。新しい鉱脈も見つかる。' },
+    { id: 'mapExpand1', tier: 2, icon: '🗺️', name: '開拓Ⅰ', rp: 50, req: { seq: 5 }, pre: ['logistics'], desc: '工場の土地が広がる。新しい鉱脈も見つかる。' },
     { id: 'military', tier: 2, icon: '🗼', name: '防衛工学', rp: 50, req: { prob: 5 }, pre: ['automation'], desc: '砲台と弾薬のレシピを解放。襲撃の戦闘が有利になる。' },
-    { id: 'solar', tier: 3, icon: '☀️', name: 'ソーラーパネル', rp: 70, req: { trig: 6 }, pre: ['electricity'], desc: '燃料いらずで発電するソーラーパネルを解放。' },
-    { id: 'plastics', tier: 3, icon: '🛢️', name: '石油化学', rp: 70, req: { trig: 5, diff: 3 }, pre: ['automation'], desc: 'プラスチックのレシピを解放。' },
-    { id: 'upgrade2', tier: 3, icon: '⏫', name: '設備改良Ⅱ', rp: 90, req: { diff: 5, integ: 5 }, pre: ['upgrade1'], desc: '設備をLv5まで強化できる。' },
-    { id: 'chargeCap2', tier: 3, icon: '🧠', name: '演算コア拡張Ⅱ', rp: 90, req: { vec: 5, integ: 4 }, pre: ['chargeCap1'], desc: '演算チャージの上限 +15分。正解で増える量 +25%。' },
-    { id: 'electronics', tier: 4, icon: '💾', name: '電子工学', rp: 120, req: { vec: 5, integ: 5 }, pre: ['plastics', 'labs'], desc: '演算チップのレシピを解放（ウェハはシリコンを溶鉱炉で）。' },
-    { id: 'quizBoost2', tier: 4, icon: '📗', name: '解法パターン集', rp: 150, req: { diff: 6, seq: 6, trig: 6 }, pre: ['quizBoost1'], desc: '問題に正解したときの資源 さらに +25%、研究ポイント +50%。' },
-    { id: 'mapExpand2', tier: 4, icon: '🗺️', name: '開拓Ⅱ', rp: 150, req: { seq: 6, vec: 4 }, pre: ['mapExpand1'], desc: '工場の土地がさらに広がる（22×14）。' },
-    { id: 'nuclear', tier: 5, icon: '☢️', name: '核燃料', rp: 160, req: { vec: 7, prob: 5 }, pre: ['electronics'], desc: '燃料棒のレシピを解放（ウランから）。' },
-    { id: 'rocketry', tier: 6, icon: '🚀', name: 'ロケット工学', rp: 300, req: { quad: 6, prob: 6, diff: 6, seq: 6, vec: 6, integ: 6, trig: 6 }, pre: ['nuclear', 'upgrade2'], desc: 'ロケット発射台とロケット部品を解放。この星を脱出しよう！' },
+    { id: 'solar', tier: 3, icon: '☀️', name: 'ソーラーパネル', rp: 120, req: { trig: 6 }, pre: ['electricity'], desc: '燃料いらずで発電するソーラーパネルを解放。' },
+    { id: 'plastics', tier: 3, icon: '🛢️', name: '石油化学', rp: 120, req: { trig: 6, diff: 4 }, pre: ['automation'], desc: 'プラスチックのレシピを解放。' },
+    { id: 'upgrade2', tier: 3, icon: '⏫', name: '設備改良Ⅱ', rp: 250, req: { diff: 6, integ: 6 }, pre: ['upgrade1'], desc: '設備をLv5まで強化できる。' },
+    { id: 'chargeCap2', tier: 3, icon: '🧠', name: '演算コア拡張Ⅱ', rp: 200, req: { vec: 5, integ: 5 }, pre: ['chargeCap1'], desc: '演算チャージの上限 +15分。正解で増える量 +25%。' },
+    { id: 'electronics', tier: 4, icon: '💾', name: '電子工学', rp: 350, req: { vec: 7, integ: 7 }, pre: ['plastics', 'labs'], desc: '演算チップのレシピを解放（ウェハはシリコンを溶鉱炉で）。' },
+    { id: 'quizBoost2', tier: 4, icon: '📗', name: '解法パターン集', rp: 350, req: { diff: 7, seq: 7, trig: 7 }, pre: ['quizBoost1'], desc: '問題に正解したときの資源 さらに +25%、研究ポイント +50%。' },
+    { id: 'mapExpand2', tier: 4, icon: '🗺️', name: '開拓Ⅱ', rp: 300, req: { seq: 7, vec: 5 }, pre: ['mapExpand1'], desc: '工場の土地がさらに広がる。' },
+    { id: 'nuclear', tier: 5, icon: '☢️', name: '核燃料', rp: 450, req: { vec: 8, prob: 6 }, pre: ['electronics'], desc: '燃料棒のレシピを解放（ウランから）。' },
+    { id: 'rocketry', tier: 6, icon: '🚀', name: 'ロケット工学', rp: 1200, req: { quad: 9, prob: 9, diff: 9, seq: 9, vec: 9, integ: 9, trig: 9 }, pre: ['nuclear', 'upgrade2'], desc: 'ロケット発射台とロケット部品を解放。この星を脱出しよう！' },
   ];
+  MF.Balance.research = { hardWeight: 2 };
   R.byId = {};
   R.TECHS.forEach((t) => { R.byId[t.id] = t; });
   R.has = function (s, id) { return !!(s.research && s.research.done.indexOf(id) >= 0); };
@@ -79,8 +80,8 @@
   };
   /** 研究完了時の一回きりの効果 */
   R.apply = function (s, id) {
-    if (id === 'mapExpand1') F.expand(s, 18, 12);
-    if (id === 'mapExpand2') F.expand(s, 22, 14);
+    if (id === 'mapExpand1') F.expand(s, MF.Balance.factory.expand1[0], MF.Balance.factory.expand1[1]);
+    if (id === 'mapExpand2') F.expand(s, MF.Balance.factory.expand2[0], MF.Balance.factory.expand2[1]);
     if (R.onApply[id]) R.onApply[id](s);
   };
   R.onApply = {};
@@ -93,7 +94,8 @@
     const t = R.byId[r.current];
     if (!t || !t.req[d.topic]) return;
     const p = r.prog[r.current] = r.prog[r.current] || {};
-    p[d.topic] = (p[d.topic] || 0) + 1;
+    // 「難」の問題は2問ぶん進む（難しい問題に挑戦する人が損をしないように）
+    p[d.topic] = (p[d.topic] || 0) + (d.level === 2 ? MF.Balance.research.hardWeight : 1);
     R.checkDone(s);
   });
 
@@ -101,6 +103,7 @@
   F.buildingLocks.assembler = (s) => R.has(s, 'automation');
   F.buildingLocks.lab = (s) => R.has(s, 'labs');
   F.buildingLocks.solar = (s) => R.has(s, 'solar');
+  F.buildingLocks.port = (s) => R.has(s, 'logistics');
   F.recipeLocks.gear = (s) => R.has(s, 'automation');
   F.recipeLocks.circuit = (s) => R.has(s, 'automation');
   F.recipeLocks.sciencePack = (s) => R.has(s, 'labs');

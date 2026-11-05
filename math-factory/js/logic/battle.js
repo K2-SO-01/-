@@ -7,8 +7,8 @@
   const Bt = {};
   B.battle = {
     playerHp: 60, energy: 3, hand: 5, critSec: 15, critMult: 1.25,
-    raidMeter: 30, raidMinCorrect: 25, raidCountdownSec: 600, raidHpGrowth: 0.07, raidHpCap: 2.2,
-    turretBase: 4, turretPerLvl: 2, runFloors: 10, restHeal: 0.3, eliteEvery: 5,
+    raidMeter: 30, raidMinCorrect: 25, raidCountdownSec: 600, raidHpGrowth: 0.17, raidHpCap: 3.2, raidTierEvery: 1.5,
+    turretBase: 2, turretPerLvl: 1.5, runFloors: 10, restHeal: 0.35, eliteEvery: 5,
   };
 
   // ---------- カード ----------
@@ -91,7 +91,7 @@
     beast:   { name: 'クレナイジュウ', hp: [28, 34], look: { body: 'beast', eyes: 4 }, moves: [{ k: 'atk', dmg: 10 }, { k: 'atk', dmg: 5, hits: 2 }, { k: 'buff', str: 2, block: 6 }] },
     shell:   { name: '紅甲殻ガルド', hp: [50, 56], elite: true, look: { body: 'shell', eyes: 2 }, moves: [{ k: 'def', block: 12, dmg: 6 }, { k: 'atk', dmg: 14 }, { k: 'atk', dmg: 4, hits: 3 }] },
     spore:   { name: 'ホウシノカタマリ', hp: [44, 48], elite: true, look: { body: 'spore', eyes: 5 }, moves: [{ k: 'debuff', weak: 2, vuln: 2 }, { k: 'atk', dmg: 12 }, { k: 'atk', dmg: 6, hits: 2 }] },
-    queen:   { name: '紅蓮の女王クリムゾネア', hp: [120, 130], boss: true, look: { body: 'queen', eyes: 6 }, pattern: 'cycle', moves: [{ k: 'atk', dmg: 15 }, { k: 'atk', dmg: 5, hits: 4 }, { k: 'buff', str: 3, block: 15 }, { k: 'debuff', weak: 2, vuln: 2, dmg: 6 }] },
+    queen:   { name: '紅蓮の女王クリムゾネア', hp: [95, 100], boss: true, look: { body: 'queen', eyes: 6 }, pattern: 'cycle', moves: [{ k: 'atk', dmg: 13 }, { k: 'atk', dmg: 3, hits: 4 }, { k: 'buff', str: 2, block: 12 }, { k: 'debuff', weak: 2, vuln: 2, dmg: 5 }] },
   };
   Bt.ENCOUNTERS = [
     [['grub'], ['wing', 'wing'], ['grub']],
@@ -389,7 +389,7 @@
     const n = s.battle.raids;
     const elite = n > 0 && (n + 1) % B.battle.eliteEvery === 0;
     if (elite) return { enemies: U.randPick(s, Bt.ELITES), elite: true, tier: 2 };
-    const tier = Math.min(3, Math.floor(n / 2));
+    const tier = Math.min(3, Math.floor(n / B.battle.raidTierEvery));
     return { enemies: U.randPick(s, Bt.ENCOUNTERS[tier]), elite: false, tier };
   };
   Bt.raidHpMult = function (s) { return Math.min(B.battle.raidHpCap, 1 + B.battle.raidHpGrowth * s.battle.raids); };
@@ -627,13 +627,15 @@
   };
 
   // ---------- 砲台（研究「防衛工学」） ----------
-  F.BUILDINGS.turret = { name: '砲台', short: '砲台', icon: '🗼', color: '#6b2a2a', cost: { ironPlate: 10, gear: 5, stone: 10 }, power: -1, desc: '襲撃の戦闘中、毎ターン敵を撃つ（弾薬を1発使う）。ベルトで弾薬を運ぶか、持ち物の弾薬を使う。' };
+  F.BUILDINGS.turret = { name: '砲台', short: '砲台', icon: '🗼', color: '#6b2a2a', cost: { ironPlate: 15, gear: 8, stone: 15 }, power: -1, desc: '襲撃の戦闘中、毎ターン敵を撃つ（弾薬を1発使う）。ベルトで弾薬を運ぶか、持ち物の弾薬を使う。' };
   F.RECIPES.ammo = { name: '弾薬', in: { ironPlate: 1, coal: 1 }, time: 2 };
   F.buildingLocks.turret = (s) => MF.Research ? MF.Research.has(s, 'military') : true;
   F.recipeLocks.ammo = (s) => MF.Research ? MF.Research.has(s, 'military') : true;
   F.extraRoom = F.extraRoom || {};
   F.extraRoom.turret = (s, b, item, scale) => (item === 'ammo' ? Math.max(0, 20 * scale - (b.inBuf.ammo || 0)) : 0);
   F.extraStep = F.extraStep || {};
+  F.extraNeeds = F.extraNeeds || {};
+  F.extraNeeds.turret = () => ['ammo'];
   F.extraStep.turret = (s, b) => { b.state = (b.inBuf.ammo || 0) >= 1 || (s.inv.ammo || 0) >= 1 ? 'work' : 'noinput'; return false; };
 
   G.register({

@@ -6,9 +6,9 @@
   const F = {};
 
   B.factory = {
-    startW: 14, startH: 10,
+    startW: 16, startH: 12, expand1: [22, 15], expand2: [28, 18],
     chargeStart: 300, chargeMax: 900, chargePerAnswer: [40, 60, 90], chargeIdleSpeed: 0.25,
-    coreCap: 300, storageCap: 300,
+    coreCap: 200, storageCap: 250,
     offlineMaxHours: 8, offlineEff: 0.8,
     spaghettiPenalty: 0.35,
   };
@@ -19,14 +19,15 @@
 
   F.BUILDINGS = {
     core:      { name: '宇宙船のコア', short: 'コア', icon: '🛸', color: '#3a6d8c', power: 8, accepts: 'all', storage: true, desc: '不時着した宇宙船の心臓部。届いた品物を持ち物にしまい、少し電気もつくる。動かせない。' },
-    miner:     { name: '採掘機', short: '採掘', icon: '⛏️', color: '#7a6a3a', cost: { iron: 6, stone: 4 }, power: -2, rate: 0.4, onOre: true, desc: '鉱脈の上に置くと鉱石を掘り、向いている方向へ送り出す。' },
+    miner:     { name: '採掘機', short: '採掘', icon: '⛏️', color: '#7a6a3a', cost: { iron: 6, stone: 4 }, power: -2, rate: 0.25, onOre: true, desc: '鉱脈の上に置くと鉱石を掘り、向いている方向へ送り出す。' },
     belt:      { name: 'ベルトコンベア', short: 'ベルト', icon: '', color: '#3b3f46', cost: { iron: 1 }, power: 0, speed: 4, desc: '矢印の方向へ品物を運ぶ。曲げたり絡めたりしすぎると「スパゲッティ度」が上がる。' },
     furnace:   { name: '溶鉱炉', short: '溶鉱炉', icon: '🔥', color: '#8c3f2a', cost: { stone: 10, iron: 2 }, power: -3, time: 1.6, desc: '鉱石を溶かして鉄板・銅板・レンガ・ウェハにする。' },
-    assembler: { name: '組立機', short: '組立', icon: '⚙️', color: '#3d6b45', cost: { ironPlate: 10, copperPlate: 6 }, power: -4, desc: 'レシピを選ぶと、材料を組み立てて製品をつくる。' },
-    lab:       { name: '研究所', short: '研究', icon: '🔬', color: '#5a3d8c', cost: { ironPlate: 10, copperPlate: 10, brick: 6 }, power: -4, time: 4, rpPerPack: 8, desc: '研究パックを研究ポイントに変える。研究ツリーを進めるのに必要。' },
+    assembler: { name: '組立機', short: '組立', icon: '⚙️', color: '#3d6b45', cost: { ironPlate: 20, copperPlate: 12 }, power: -4, desc: 'レシピを選ぶと、材料を組み立てて製品をつくる。' },
+    lab:       { name: '研究所', short: '研究', icon: '🔬', color: '#5a3d8c', cost: { ironPlate: 30, copperPlate: 25, brick: 15, gear: 10 }, power: -4, time: 8, rpPerPack: 2, desc: '研究パックを研究ポイントに変える。研究ツリーを進めるのに必要。' },
     storage:   { name: '倉庫', short: '倉庫', icon: '📦', color: '#6b5530', cost: { iron: 10, stone: 12 }, power: 0, accepts: 'all', storage: true, desc: '届いた品物を持ち物にしまう。置くほど持てる量（上限）が増える。' },
     power:     { name: '発電所', short: '発電', icon: '⚡', color: '#8c7a2a', cost: { iron: 12, stone: 8, copper: 6 }, power: 12, fuel: 'coal', burn: 10, desc: '石炭を燃やして電気をつくる（10秒に1個）。ベルトで石炭を運ぶか、持ち物の石炭を使う。' },
-    solar:     { name: 'ソーラーパネル', short: 'ソーラー', icon: '☀️', color: '#2a4a6b', cost: { ironPlate: 8, copperPlate: 8, stone: 6 }, power: 5, desc: '燃料なしで電気をつくる。' },
+    solar:     { name: 'ソーラーパネル', short: 'ソーラー', icon: '☀️', color: '#2a4a6b', cost: { ironPlate: 15, copperPlate: 15, wafer: 3 }, power: 5, desc: '燃料なしで電気をつくる。' },
+    port:      { name: '供給ポート', short: '供給', icon: '📤', color: '#2a6b6b', cost: { ironPlate: 15, copperPlate: 10 }, power: -1, rate: 2, desc: '持ち物（コア・倉庫）から、正面のとなりの設備が必要とする材料を取り出して送りこむ。複雑なレシピもベルトなしで動かせる。' },
   };
   F.SMELT = {
     iron: { out: 'ironPlate', n: 1 }, copper: { out: 'copperPlate', n: 1 },
@@ -223,6 +224,14 @@
   };
   F.bpDelete = function (s, id) { const f = s.factory; f.blueprints = f.blueprints.filter((b) => b.id !== id); };
 
+  /** 溶鉱炉で溶かす鉱石を決める（null なら自動） */
+  F.setSmelt = function (s, id, ore) {
+    const b = s.factory.b[id];
+    if (!b || b.type !== 'furnace' || (ore && !F.SMELT[ore])) return false;
+    if (b.smelt !== ore) { for (const k of Object.keys(b.inBuf)) if (k !== ore) { G.add(s, k, Math.floor(b.inBuf[k])); delete b.inBuf[k]; } }
+    b.smelt = ore || null;
+    return true;
+  };
   F.count = function (s, type) { let n = 0; for (const id in s.factory.b) if (s.factory.b[id].type === type) n++; return n; };
 
   // ---------- 経路とスパゲッティ度（配置が変わったときだけ計算） ----------
@@ -296,6 +305,17 @@
     return c;
   };
   F.producesItems = function (b) { return b.type === 'miner' || b.type === 'furnace' || b.type === 'assembler'; };
+  F.hasFront = function (b) { return F.producesItems(b) || b.type === 'port'; };
+  /** 設備 t が受け取りたい材料の一覧（供給ポート用） */
+  F.needs = function (s, t) {
+    if (t.type === 'assembler') { const r = F.RECIPES[t.recipe]; return r ? Object.keys(r.in) : []; }
+    if (t.type === 'lab') return ['sciencePack'];
+    if (t.type === 'power') return ['coal'];
+    if (t.type === 'furnace') { if (t.smelt) return [t.smelt]; const cur = Object.keys(F.SMELT).find((o) => (t.inBuf[o] || 0) > 0); return cur ? [cur] : Object.keys(F.SMELT).filter((o) => (s.inv[o] || 0) > 0).slice(0, 1); }
+    if (F.extraNeeds && F.extraNeeds[t.type]) return F.extraNeeds[t.type](s, t);
+    return [];
+  };
+  F.extraNeeds = {};
 
   // ---------- 受け入れ ----------
   F.storageCap = function (s) {
@@ -309,7 +329,7 @@
     if (b.disabled) return 0;
     if (d.accepts === 'all') { const cap = capCache || F.storageCap(s); return Math.max(0, cap - (s.inv[item] || 0)); }
     const have = b.inBuf[item] || 0;
-    if (b.type === 'furnace') return F.SMELT[item] ? Math.max(0, 10 * scale - have) : 0;
+    if (b.type === 'furnace') return F.SMELT[item] && (!b.smelt || b.smelt === item) ? Math.max(0, 10 * scale - have) : 0;
     if (b.type === 'assembler') { const r = F.RECIPES[b.recipe]; return r && r.in[item] ? Math.max(0, (r.in[item] * 3 + 4) * scale - have) : 0; }
     if (b.type === 'lab') return item === 'sciencePack' ? Math.max(0, 10 * scale - have) : 0;
     if (b.type === 'power') return item === 'coal' ? Math.max(0, 20 * scale - have) : 0;
@@ -454,6 +474,21 @@
         if (used) { const rp = used * d.rpPerPack * (F.labMult ? F.labMult(s, b) : 1); s.rp += rp; f.produced.rp = (f.produced.rp || 0) + rp; G.emit(s, 'labRP', { rp }); }
         if (b.prog > 1) b.prog = 1;
         b.state = 'work'; working++;
+      } else if (b.type === 'port') {
+        // 正面の設備が必要な材料を、持ち物から送りこむ
+        const [dx, dy] = F.DIRS[b.dir];
+        const t = F.at(s, b.x + dx, b.y + dy);
+        const needs = t ? F.needs(s, t) : [];
+        if (!needs.length) { b.state = 'noinput'; continue; }
+        b.prog = Math.min(b.prog + F.buildingSpeed(s, b, d.rate) * base * dt, d.rate * Math.max(1, dt) * 2);
+        let moved = 0;
+        for (const item of needs) {
+          const n = Math.floor(Math.min(b.prog, s.inv[item] || 0, F.room(s, t, item, scale, capCache)));
+          if (n <= 0) continue;
+          s.inv[item] -= n; F.accept(s, t, item, n); b.prog -= n; moved += n;
+        }
+        b.state = moved || b.prog >= 1 ? 'work' : 'noinput';
+        if (moved) working++;
       } else if (F.extraStep && F.extraStep[b.type]) {
         if (F.extraStep[b.type](s, b, dt, base, now)) working++;
       }

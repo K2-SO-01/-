@@ -26,7 +26,8 @@
     if (b.type !== 'silo') return;
     const need = GX.partsNeeded(s), have = GX.partsHave(s);
     box.appendChild(h('div', { class: 'silo-box' }, h('div', { class: 'small' }, s.galaxy.unlocked ? 'コロニー船：ロケット部品 ' + need + ' 個で打ち上げ（いま船 ' + s.galaxy.ships + ' 隻）' : '脱出ロケット：ロケット部品 ' + need + ' 個で打ち上げ'),
-      UI.bar(Math.min(have, need), need, 'blue', have + ' / ' + need),
+      UI.bar(Math.min(have, need), need, 'blue', '部品 ' + have + ' / ' + need),
+      GX.partsReady(s) ? UI.bar(Math.min(s.galaxy.fuel || 0, GX.fuelNeeded(s)), GX.fuelNeeded(s), 'red', '燃料 ' + Math.floor(s.galaxy.fuel || 0) + ' / ' + GX.fuelNeeded(s) + '（正解で充填・難は2）') : h('div', { class: 'tiny muted' }, '部品がそろったら、問題に正解して燃料を充填する'),
       h('button', { class: 'btn primary', disabled: !GX.canLaunch(s), onclick: () => GUI.launch() }, '🚀 打ち上げ')));
   });
 
@@ -106,9 +107,11 @@
           h('ul', { class: 'checklist' },
             h('li', { class: has ? 'ok' : '' }, (has ? '✅' : '⬜') + ' 研究「ロケット工学」を完了する'),
             h('li', { class: silo ? 'ok' : '' }, (silo ? '✅' : '⬜') + ' 工場に「ロケット発射台」を建てる'),
-            h('li', { class: parts >= need ? 'ok' : '' }, (parts >= need ? '✅' : '⬜') + ' ロケット部品を ' + need + ' 個そろえる（いま ' + parts + ' 個）')),
-          UI.bar(Math.min(parts, need), need, 'blue', parts + ' / ' + need),
-          h('p', { class: 'tiny muted' }, 'ロケット部品 = 演算チップ2 + 燃料棒1 + レンガ4 + 歯車2（組立機）。発射台にベルトで運ぶか、持ち物に入れておけばOK。'),
+            h('li', { class: parts >= need ? 'ok' : '' }, (parts >= need ? '✅' : '⬜') + ' ロケット部品を ' + need + ' 個そろえる（いま ' + parts + ' 個）'),
+            h('li', { class: GX.canLaunch(s) ? 'ok' : '' }, (GX.canLaunch(s) ? '✅' : '⬜') + ' 燃料を充填する：部品がそろったあと、問題に ' + GX.fuelNeeded(s) + ' 問正解（いま ' + Math.floor(s.galaxy.fuel || 0) + '、「難」は2問ぶん）')),
+          UI.bar(Math.min(parts, need), need, 'blue', '部品 ' + parts + ' / ' + need),
+          GX.partsReady(s) ? UI.bar(Math.min(s.galaxy.fuel || 0, GX.fuelNeeded(s)), GX.fuelNeeded(s), 'red', '燃料 ' + Math.floor(s.galaxy.fuel || 0) + ' / ' + GX.fuelNeeded(s)) : null,
+          h('p', { class: 'tiny muted' }, 'ロケット部品 = 演算チップ3 + 燃料棒1 + レンガ5 + 歯車4（組立機）。発射台にベルトで運ぶか、持ち物に入れておけばOK。'),
           h('button', { class: 'btn primary big-btn', disabled: !GX.canLaunch(s), onclick: () => GUI.launch() }, '🚀 打ち上げ！')));
         return;
       }

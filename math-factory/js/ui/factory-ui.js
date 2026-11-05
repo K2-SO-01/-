@@ -11,7 +11,7 @@
       { id: 'rotate', icon: '🔄', label: '回す' },
       { id: 'remove', icon: '🗑', label: '撤去' },
     ],
-    paletteOrder: ['miner', 'belt', 'furnace', 'power', 'storage', 'assembler', 'lab'],
+    paletteOrder: ['miner', 'belt', 'furnace', 'power', 'storage', 'assembler', 'port', 'lab'],
     infoExtras: [],     // (s, b, box) => void  選んだ設備の情報欄に足す
     overlayDraw: [],    // (ctx, s, b, x, y, cs) => void
     toolHandlers: {},   // 追加のツール（強化・設計図など）
@@ -75,9 +75,9 @@
     rr(ctx, x + p, y + p, cs - 2 * p, cs - 2 * p, cs * 0.16); ctx.fill();
     ctx.strokeStyle = b.disabled ? '#ff5d5d' : 'rgba(255,255,255,.18)'; ctx.lineWidth = 1.5; ctx.stroke();
     // 向き（出口）
-    if (F.producesItems(b)) {
+    if (F.hasFront(b)) {
       ctx.save(); ctx.translate(x + cs / 2, y + cs / 2); ctx.rotate(b.dir * Math.PI / 2);
-      ctx.fillStyle = '#ffb02e'; ctx.beginPath(); ctx.moveTo(-cs * 0.12, -cs * 0.34); ctx.lineTo(0, -cs * 0.48); ctx.lineTo(cs * 0.12, -cs * 0.34); ctx.fill();
+      ctx.fillStyle = b.type === 'port' ? '#39d0ff' : '#ffb02e'; ctx.beginPath(); ctx.moveTo(-cs * 0.12, -cs * 0.34); ctx.lineTo(0, -cs * 0.48); ctx.lineTo(cs * 0.12, -cs * 0.34); ctx.fill();
       ctx.restore();
     }
     ctx.font = Math.floor(cs * 0.48) + 'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
@@ -315,7 +315,12 @@
       b.type !== 'belt' && b.type !== 'storage' && b.type !== 'core' ? h('span', { class: 'state-dot', style: { color: st[1] } }, '● ' + st[0]) : null));
     box.appendChild(h('div', { class: 'small muted' }, d.desc));
     if (b.type === 'miner') box.appendChild(h('div', { class: 'small' }, '掘る鉱石：', UI.itemChip(b.ore, null), '　速さ 毎分 ' + (F.buildingSpeed(s, b, d.rate) * 60).toFixed(0) + ' 個（フル稼働時）'));
-    if (b.type === 'furnace') box.appendChild(h('div', { class: 'small' }, '鉄鉱石→鉄板、銅鉱石→銅板、石材2→レンガ、シリコン→ウェハ'));
+    if (b.type === 'furnace') {
+      box.appendChild(h('div', { class: 'small' }, '鉄鉱石→鉄板、銅鉱石→銅板、石材2→レンガ、シリコン→ウェハ'));
+      const seg = h('div', { class: 'seg' });
+      [[null, '自動'], ['iron', '鉄'], ['copper', '銅'], ['stone', '石材'], ['silicon', 'シリコン']].forEach(([v, l]) => seg.appendChild(h('button', { class: 'seg-btn' + ((b.smelt || null) === v ? ' on' : ''), onclick: () => { F.setSmelt(s, b.id, v); renderInfo(); } }, l)));
+      box.appendChild(h('div', { class: 'small row' }, '溶かす鉱石：', seg, h('span', { class: 'tiny muted' }, '（供給ポートで送るときはここを選ぶ）')));
+    }
     if (b.type === 'assembler') {
       const sel = h('div', { class: 'recipe-list' });
       Object.keys(F.RECIPES).forEach((r) => {
@@ -328,6 +333,7 @@
       box.appendChild(h('div', { class: 'small' }, 'レシピ：'), sel);
     }
     if (b.type === 'power') box.appendChild(h('div', { class: 'small' }, '発電 ' + Math.round(d.power * F.levelMult(b)) + '⚡・燃料の石炭：ベルトで届いた分 ' + Math.floor(b.inBuf.coal || 0) + ' 個（なければ持ち物から）'));
+    if (b.type === 'port') { const [dx, dy] = F.DIRS[b.dir]; const t = F.at(s, b.x + dx, b.y + dy); const nd = t ? F.needs(s, t) : []; box.appendChild(h('div', { class: 'small ' + (nd.length ? 'good' : 'bad') }, nd.length ? '→ ' + F.BUILDINGS[t.type].name + ' に ' + nd.map((k) => G.ITEMS[k].name).join('・') + ' を送る（毎秒' + F.buildingSpeed(s, b, F.BUILDINGS.port.rate).toFixed(1) + '個まで）' : '⚠ 正面（青い▲の先）に組立機・研究所・砲台・発射台などを置こう')); }
     if (b.type === 'storage' || b.type === 'core') box.appendChild(h('div', { class: 'small' }, '持ち物の上限（1種類あたり）：' + F.storageCap(s)));
     const bufs = (o, label) => { const ks = Object.keys(o).filter((k) => o[k] >= 1); return ks.length ? h('div', { class: 'small row' }, label, ks.map((k) => UI.itemChip(k, Math.floor(o[k]), { noName: true }))) : null; };
     const ib = bufs(b.inBuf, '材料：'), ob = bufs(b.outBuf, '出口：');
