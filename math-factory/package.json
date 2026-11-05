@@ -1,0 +1,13 @@
+{
+  "name": "math-factory",
+  "version": "1.0.0",
+  "private": true,
+  "description": "数学ファクトリー：高校数学で工場を動かすブラウザゲーム",
+  "type": "commonjs",
+  "scripts": {
+    "test": "node tests/run.js",
+    "test:ui": "node tests/ui-smoke.js",
+    "sim": "node sim/simulate.js"
+  },
+  "license": "UNLICENSED"
+}
