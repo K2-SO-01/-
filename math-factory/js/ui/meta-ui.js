@@ -224,9 +224,10 @@
   UI.noticeHandlers.goal = (n) => { UI.toast(n.text, 'good', 4000); sfx('levelup'); if (MF.FX && MF.FX.confetti) MF.FX.confetti(); return true; };
 
   // ---------- 起動時：ログインボーナス ----------
-  MF.App.bootHooks.push((s) => {
+  MF.App.bootHooks.push((s, info) => {
     const r = M.login(s, Date.now());
     if (!r) return;
+    if (info && info.fresh) { setTimeout(() => UI.toast('📅 ログインボーナス：' + r.reward.text + '（毎日ログインでご褒美！）', 'good', 5000), 20000); return; }
     setTimeout(() => UI.modal({ title: '📅 ログインボーナス', body: h('div', {},
       h('p', {}, '連続 ' + r.streak + ' 日目！'),
       h('div', { class: 'login-row' }, M.LOGIN_REWARDS.map((x, i) => h('div', { class: 'login-day' + (i < r.day ? ' got' : '') + (i === r.day - 1 ? ' today' : '') }, h('b', {}, (i + 1) + '日目'), h('span', { class: 'tiny' }, x.text)))),

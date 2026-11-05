@@ -13,13 +13,23 @@ async function run(label, ctxOpts, fn) {
   page.on('console', (m) => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
   await page.goto(URL);
   await page.waitForSelector('.qpanel');
-  await page.waitForTimeout(900);
-  while (await page.$('.modal')) { await page.click('.modal-foot .btn >> nth=-1'); await page.waitForTimeout(200); }
+  await dismiss(page);
+  await page.evaluate(() => { MF.StoryUI.quiet = true; });
   try { await fn(page); } catch (e) { errors.push('test: ' + e.message); }
   await browser.close();
   console.log((errors.length ? '✗ ' : '✓ ') + label + (errors.length ? '\n  ' + errors.join('\n  ') : ''));
   return errors.length;
 }
+/** 起動時などに出るモーダル（オープニング・会話・ログボ）を閉じる */
+async function dismiss(page) {
+  let empty = 0;
+  for (let i = 0; i < 40 && empty < 3; i++) {
+    await page.waitForTimeout(350);
+    if (await page.$('.modal')) { empty = 0; const b = await page.$('.modal-foot .btn >> nth=-1'); if (b) await b.click().catch(() => {}); }
+    else empty++;
+  }
+}
+global.dismiss = dismiss;
 async function answerCurrent(page, correct) {
   const ans = await page.evaluate((ok) => {
     const q = MF.Game.Quiz.currentQuestion(MF.UI.state);
