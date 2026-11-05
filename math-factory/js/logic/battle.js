@@ -179,6 +179,9 @@
     drawCards(s, bt, B.battle.hand + (Bt.has(s, bt, 'looseleaf') ? 1 : 0));
     // 砲台の援護射撃（防衛戦のみ）
     if (bt.kind === 'raid') turretFire(s, bt);
+    // 同盟国の援護（銀河に出てから）
+    const ally = bt.kind === 'raid' && MF.Galaxy ? MF.Galaxy.allyFire(s) : 0;
+    if (ally > 0) { const alive = Bt.alive(bt); if (alive.length) { const e = alive[Math.floor(U.rand(s) * alive.length)]; const d = hurtEnemy(e, ally); log(bt, '🛰️ 同盟国の援護射撃！ ' + e.name + ' に ' + d + ' ダメージ'); } }
     checkOver(s, bt);
   }
   Bt.turrets = function (s) {

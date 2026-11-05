@@ -139,7 +139,7 @@
     if (!root) return;
     if (!bt) { UI.go(s.battle.run && s.battle.run.active ? 'run' : 'defense'); return; }
     root.innerHTML = '';
-    const title = bt.kind === 'raid' ? (bt.elite ? '💀 エリート襲撃' : '🚨 防衛戦') + '（第' + bt.raidNo + '波）' : '🛸 侵攻ラン 第' + s.battle.run.floor + '層' + (bt.boss ? '・ボス' : bt.elite ? '・エリート' : '');
+    const title = bt.war ? (bt.war.kind === 'attack' ? '🪐 惑星攻略戦' : '🛡️ 惑星防衛戦') : bt.kind === 'raid' ? (bt.elite ? '💀 エリート襲撃' : '🚨 防衛戦') + '（第' + bt.raidNo + '波）' : '🛸 侵攻ラン 第' + s.battle.run.floor + '層' + (bt.boss ? '・ボス' : bt.elite ? '・エリート' : '');
     root.appendChild(h('div', { class: 'bt-top' }, h('b', {}, title), h('span', { class: 'muted small' }, 'ターン ' + bt.turn), h('span', { class: 'spacer' }),
       h('span', { class: 'tiny muted' }, '山札 ' + bt.draw.length + '・捨て札 ' + bt.discard.length)));
     const alive = Bt.alive(bt);
@@ -241,6 +241,12 @@
     BUI.resultShown = true;
     const win = bt.over === 'win';
     sfx(win ? 'victory' : 'defeat');
+    if (bt.war && MF.Galaxy) {
+      const out = MF.Galaxy.finishWar(s, Date.now());
+      const msg = out.kind === 'attack' ? (out.win ? out.name + ' を ' + out.empire + ' から奪った！' : out.name + ' への攻撃は失敗した…') : (out.win ? out.name + ' を守りきった！' : out.lost ? out.name + ' を奪われてしまった…' : 'ふるさとの設備が壊された…');
+      UI.modal({ title: out.win ? '🏆 勝利！' : '💥 敗北…', body: h('p', {}, msg), buttons: [{ label: 'OK', cls: 'primary' }], onClose: () => { BUI.resultShown = false; UI.go('galaxy'); } });
+      return;
+    }
     if (bt.kind === 'raid') {
       const out = Bt.finishRaid(s, Date.now());
       if (win) {

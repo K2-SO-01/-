@@ -288,3 +288,34 @@ module.exports.desktop.push(async (page, t) => {
   await t.shot(page, 'd-settings2');
   await page.evaluate(() => { MF.UI.state.well.play.limitMin = 0; });
 });
+// ステップ10：ロケット・銀河・外交・イベント
+module.exports.desktop.push(async (page, t) => {
+  await nav(page, '銀河');
+  await t.shot(page, 'd-galaxy-locked');
+  await page.evaluate(() => {
+    const s = MF.UI.state, F = MF.Factory;
+    s.research.done.push('rocketry');
+    Object.assign(s.inv, { ironPlate: 200, brick: 100, circuit: 100, gear: 100, rocketPart: 10 });
+    const f = s.factory; let x = 0, y = 0; while (F.at(s, x, y) || f.ore[y * f.w + x]) { x++; if (x >= f.w) { x = 0; y++; } }
+    F.place(s, 'silo', x, y, 1);
+    MF.UI.rerender();
+  });
+  await page.click('text=🚀 打ち上げ！');
+  await page.waitForTimeout(2500);
+  while (await page.$('.modal')) { await page.click('.modal-foot .btn >> nth=-1'); await page.waitForTimeout(300); }
+  await nav(page, '銀河');
+  await page.waitForSelector('.gx-map');
+  // となりの空いている星をえらんで植民
+  await page.evaluate(() => { const s = MF.UI.state; s.galaxy.ships = 1; const n = MF.Galaxy.adj(s, s.galaxy.home).find((i) => !s.galaxy.systems[i].owner); if (n !== undefined) MF.GalaxyUI.sel = n; MF.UI.rerender(); });
+  const btn = await page.$('text=🏳️ 植民する');
+  if (btn && await btn.isEnabled()) await btn.click();
+  await t.shot(page, 'd-galaxy');
+  await page.evaluate(() => { MF.Galaxy.rollEvent(MF.UI.state, Date.now()); });
+  await page.click('.event-chip');
+  await t.shot(page, 'd-event');
+  await page.click('.ev-choices .menu-item >> nth=-1');
+  await page.waitForTimeout(300);
+  if (await page.$('.modal .qpanel')) { await t.answerCurrent(page, true); }
+  await page.waitForTimeout(1500);
+  while (await page.$('.modal')) { await page.click('.modal-foot .btn >> nth=-1'); await page.waitForTimeout(300); }
+});
