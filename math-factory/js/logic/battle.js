@@ -471,6 +471,11 @@
     if (s.stats.correct < B.battle.raidMinCorrect && !s.battle.forceRaids) return;
     if (!r.pending) r.meter += 1;
   });
+  /** 留守にしていたあいだは襲撃のカウントダウンを止める（いないあいだに負けるのは不公平なので） */
+  Bt.pauseRaid = function (s, awaySec) {
+    const r = s.battle.raid;
+    if (r.pending && awaySec > 0) r.pending.deadline += awaySec * 1000;
+  };
   Bt.checkRaid = function (s, now) {
     const r = s.battle.raid;
     if (r.pending) {

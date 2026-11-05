@@ -298,6 +298,8 @@ sup, sub { font-size: .68em; }
 .fac-guide li { margin: .25rem 0; }
 
 /* ---------- 研究 ---------- */
+.done-techs { display: flex; flex-wrap: wrap; gap: .3rem; margin-bottom: .4rem; }
+.done-chip { border-color: #2f7a45; color: #9ff0b5; }
 .tier-title { font-size: .9rem; color: var(--muted); margin: 1rem 0 .3rem; letter-spacing: .1em; }
 .tech-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: .55rem; }
 .tech { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: .6rem .7rem; display: flex; flex-direction: column; gap: .3rem; }
@@ -626,6 +628,26 @@ body.reduce-motion *, body.reduce-motion *::before, body.reduce-motion *::after 
   .level-row { margin-bottom: .4rem; }
   .q-input { min-height: 46px; font-size: 1.2rem; }
   .tools { flex-wrap: nowrap; }
+  #topbar { flex-wrap: wrap; row-gap: .25rem; padding-bottom: .3rem; }
+  /* 工場：スマホではマップを上に、ツールとパレットを親指の届く下に */
+  main.screen-factory { display: flex; flex-direction: column; }
+  .screen-factory > * { order: 20; }
+  .screen-factory > .fac-head { order: 0; } .screen-factory > .fac-head .screen-title { margin: 0 0 .2rem; font-size: 1.1rem; }
+  .screen-factory > .mission { order: 1; padding: .3rem .55rem; margin-bottom: .35rem; }
+  .screen-factory > .mission > .small { display: none; }
+  .screen-factory > .mission .ms-btns { margin-top: .15rem; }
+  .screen-factory > .fac-status { order: 2; margin-bottom: .35rem; padding: .3rem .55rem; }
+  .screen-factory > .fac-canvas-wrap { order: 3; }
+  .screen-factory > .tools { order: 4; margin-top: .4rem; }
+  .screen-factory > .palette { order: 5; }
+  .screen-factory > .fac-help { order: 6; font-size: .74rem; }
+  .screen-factory > .bp-box { order: 7; }
+  .screen-factory > .fac-info { order: 8; }
+  .res-strip { order: 3; flex: 1 0 100%; justify-content: flex-start; }
+  .top-extras { flex: 1; overflow-x: auto; scrollbar-width: none; }
+  .top-extras::-webkit-scrollbar { display: none; }
+  .toast { font-size: .82rem; padding: .4rem .65rem; }
+  #toast-root { width: calc(100vw - 24px); }
   .tool-btn { flex: 1; justify-content: center; padding: .3rem .1rem; font-size: .74rem; flex-direction: column; gap: 0; min-height: 46px; min-width: 0; }
   .req-row { grid-template-columns: 6em 1fr auto; }
   .fac-status { font-size: .8rem; gap: .2rem .7rem; }

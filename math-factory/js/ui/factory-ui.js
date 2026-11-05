@@ -132,7 +132,8 @@
     if (!cv) return;
     const f = UI.state.factory;
     const W = cv.parentNode.clientWidth;
-    const maxH = Math.max(260, window.innerHeight * 0.6);
+    const narrow = window.innerWidth <= 600;
+    const maxH = narrow ? Math.max(240, window.innerHeight * 0.48) : Math.max(260, window.innerHeight * 0.6);
     FUI.cs = Math.max(20, Math.min(54, Math.floor(Math.min(W / f.w, maxH / f.h))));
     const hgt = Math.min(f.h * FUI.cs, maxH);
     cv.style.height = hgt + 'px';

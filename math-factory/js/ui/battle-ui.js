@@ -357,6 +357,8 @@
     const left = s.battle.active ? '戦闘中' : U.fmtClock((s.battle.raid.pending.deadline - Date.now()) / 1000);
     return h('button', { class: 'raid-chip', onclick: () => UI.go(s.battle.active ? 'battle' : 'defense') }, '🚨 ' + left);
   });
+  MF.App.bootHooks.unshift((s, info) => { if (!info.fresh) { const away = (Date.now() - (s.lastTick || Date.now())) / 1000; if (away > 5) Bt.pauseRaid(s, away); } });
+  MF.App.catchUpHooks.unshift((s, sec) => Bt.pauseRaid(s, sec));
   UI.noticeHandlers.raid = (n) => {
     UI.toast(n.text, 'bad', 6000);
     sfx('alarm');

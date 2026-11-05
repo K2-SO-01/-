@@ -118,3 +118,13 @@ test('デッキ編集：持っている枚数まで・最低8枚・カード強�
 test('カードの説明文はすべて作れる', () => {
   for (const id of Object.keys(Bt.CARDS)) { assert(Bt.describe(id).length > 0, id); assert(Bt.describe(id + '+').length > 0); }
 });
+test('留守のあいだは襲撃のカウントダウンが止まる', () => {
+  const s = fresh();
+  s.battle.forceRaids = true; s.battle.raid.meter = 99;
+  Bt.checkRaid(s, T0);
+  const dl = s.battle.raid.pending.deadline;
+  Bt.pauseRaid(s, 3600);
+  assert.strictEqual(s.battle.raid.pending.deadline, dl + 3600 * 1000);
+  Bt.checkRaid(s, T0 + 3000 * 1000);
+  assert(s.battle.raid.pending, 'still pending');
+});

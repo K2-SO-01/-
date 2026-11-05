@@ -238,14 +238,31 @@
   };
 
   // ---------- トースト ----------
+  // 一度にたくさん出ると画面がうまるので、順番待ちにして少しずつ出す
+  UI.toastQueue = [];
   UI.toast = function (msg, kind, ms) {
     const root = UI.$('#toast-root');
     if (!root) return;
-    const t = h('div', { class: 'toast ' + (kind || '') }, msg);
-    root.appendChild(t);
-    while (root.children.length > 4) root.firstChild.remove();
-    setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 400); }, ms || 2600);
+    const text = String(msg);
+    if (UI.toastQueue.some((x) => x.text === text) || Array.from(root.children).some((c) => c.textContent === text)) return;
+    UI.toastQueue.push({ text, kind, ms });
+    if (UI.toastQueue.length > 12) UI.toastQueue.splice(0, UI.toastQueue.length - 12);
+    pumpToasts();
   };
+  function pumpToasts() {
+    const root = UI.$('#toast-root');
+    const max = window.matchMedia && window.matchMedia('(max-width: 600px)').matches ? 2 : 3;
+    while (root.querySelectorAll('.toast:not(.out)').length < max && UI.toastQueue.length) {
+      const it = UI.toastQueue.shift();
+      const t = h('div', { class: 'toast ' + (it.kind || '') }, it.text);
+      t.addEventListener('click', () => done());
+      root.appendChild(t);
+      const dur = Math.max(1400, (it.ms || 2600) - UI.toastQueue.length * 350);
+      let gone = false;
+      const done = () => { if (gone) return; gone = true; t.classList.add('out'); setTimeout(() => { t.remove(); pumpToasts(); }, 350); };
+      setTimeout(done, dur);
+    }
+  }
   UI.drainNotices = function () {
     const s = UI.state;
     const list = s.runtime.notices;

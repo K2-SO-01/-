@@ -27,10 +27,15 @@ jobs:
       - name: テスト（統計との一致を確認）
         run: npm test
 
+      - name: テスト（数学ファクトリー）
+        run: node math-factory/tests/run.js
+
       - name: 公開するファイルをまとめる
         run: |
           mkdir -p _site
           cp -r index.html stats.html about.html 404.html assets data _site/
+          mkdir -p _site/math-factory
+          cp -r math-factory/index.html math-factory/style.css math-factory/js _site/math-factory/
           touch _site/.nojekyll
 
       - name: gh-pages ブランチに公開

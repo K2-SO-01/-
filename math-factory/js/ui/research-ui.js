@@ -40,8 +40,10 @@
       const tiers = {};
       R.TECHS.forEach((t) => { (tiers[t.tier] = tiers[t.tier] || []).push(t); });
       Object.keys(tiers).forEach((k) => {
-        root.appendChild(h('h3', { class: 'tier-title' }, '第' + k + '段階'));
-        root.appendChild(h('div', { class: 'tech-grid' }, tiers[k].map((t) => techCard(s, t))));
+        const done = tiers[k].filter((t) => R.has(s, t.id)), rest = tiers[k].filter((t) => !R.has(s, t.id));
+        root.appendChild(h('h3', { class: 'tier-title' }, '第' + k + '段階' + (rest.length ? '' : '　✅ すべて完了')));
+        if (done.length) root.appendChild(h('div', { class: 'done-techs' }, done.map((t) => h('span', { class: 'chip done-chip', title: t.desc }, '✅ ' + t.icon + ' ' + t.name))));
+        if (rest.length) root.appendChild(h('div', { class: 'tech-grid' }, rest.map((t) => techCard(s, t))));
       });
     },
   });

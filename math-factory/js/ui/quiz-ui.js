@@ -110,7 +110,7 @@
         actions.append(h('button', { class: 'btn ghost', onclick: () => hint() }, '💡 ' + label));
         if (c.hints > 0 && c.hints < 2) actions.append(h('button', { class: 'btn ghost', onclick: () => { while (cur().hints < 3 && !cur().done) G.Quiz.revealHint(s, Date.now()); afterHint(); } }, '📖 解説'));
       }
-      if (opts.allowSkip !== false) actions.append(h('button', { class: 'btn ghost', onclick: () => skip() }, 'スキップ'));
+      if (opts.allowSkip !== false) actions.append(h('button', { class: 'btn ghost', title: 'スキップは不正解あつかい（弱点リストに入る）', onclick: () => skip() }, 'スキップ'));
     }
     function hintsHTML(q, n) {
       const parts = [];
@@ -314,6 +314,11 @@
     else UI.go('quiz');
   };
 
-  UI.noticeHandlers.level = (n) => { UI.toast(n.text, 'level', 3500); if (MF.Audio) MF.Audio.play(n.text.indexOf('上がった') >= 0 ? 'levelup' : 'hint'); if (n.text.indexOf('上がった') >= 0 && MF.FX) MF.FX.banner('LEVEL UP', n.text); return true; };
+  UI.noticeHandlers.level = (n) => {
+    const up = n.text.indexOf('上がった') >= 0;
+    if (MF.Audio) MF.Audio.play(up ? 'levelup' : 'hint');
+    if (up && MF.FX) MF.FX.banner('LEVEL UP', n.text); else UI.toast(n.text, 'level', 3500);
+    return true;
+  };
   MF.QuizUI = QuizUI;
 })(globalThis.MF = globalThis.MF || {});

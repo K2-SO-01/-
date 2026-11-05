@@ -71,9 +71,22 @@
     overlay('fx-combo', '<span>' + n + '</span> COMBO!', 1100);
     document.body.classList.remove('shake'); void document.body.offsetWidth; document.body.classList.add('shake');
   };
+  // バナーは重ならないように1つずつ
+  const bq = [];
+  let bShowing = false;
   FX.banner = function (title, sub) {
-    overlay('fx-banner', '<div class="fb-t">' + title + '</div>' + (sub ? '<div class="fb-s">' + sub + '</div>' : ''), calm() ? 1600 : 2000);
+    if (bq.length >= 3) bq.shift();
+    bq.push([title, sub]);
+    if (!bShowing) nextBanner();
   };
+  function nextBanner() {
+    const b = bq.shift();
+    if (!b) { bShowing = false; return; }
+    bShowing = true;
+    const ms = calm() ? 1600 : 2000;
+    overlay('fx-banner', '<div class="fb-t">' + b[0] + '</div>' + (b[1] ? '<div class="fb-s">' + b[1] + '</div>' : ''), ms);
+    setTimeout(nextBanner, ms + 100);
+  }
   FX.bossIntro = function (name) {
     if (MF.Audio) MF.Audio.play('alarm');
     overlay('fx-boss', '<div class="fx-warn"><span>⚠ WARNING ⚠</span></div><div class="fx-boss-name">' + name + '</div>', calm() ? 1200 : 2200);

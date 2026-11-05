@@ -86,7 +86,7 @@
     if (!SUI.pendingIntro && !SUI.pendingChapter) return;
     if (!SUI.calm()) { calmFor = 0; return; }
     calmFor += dt;
-    if (calmFor < 1.2) return;
+    if (calmFor < 2.3) return;
     calmFor = 0;
     const m = St.current(s);
     if (SUI.pendingChapter) { const ch = SUI.pendingChapter; SUI.pendingChapter = null; SUI.pendingIntro = false; SUI.chapterCard(ch, () => SUI.showIntro(St.current(s), () => UI.rerender())); return; }
