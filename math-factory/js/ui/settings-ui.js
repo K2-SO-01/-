@@ -1,0 +1,94 @@
+/* 数学ファクトリー：設定画面（遊びやすさ・セーブ管理） */
+(function (MF) {
+  'use strict';
+  const UI = MF.UI, G = MF.Game, U = MF.Util;
+  const h = UI.h;
+  const SettingsUI = { sections: [] };
+  MF.SettingsUI = SettingsUI;
+
+  function toggle(label, key, desc, after) {
+    const s = UI.state;
+    const id = 'set-' + key;
+    return h('label', { class: 'set-row', for: id },
+      h('span', { class: 'set-lbl' }, label, desc ? h('span', { class: 'muted small set-desc' }, desc) : null),
+      h('input', { type: 'checkbox', id, class: 'switch', checked: !!s.settings[key], onchange: (e) => { s.settings[key] = e.target.checked; MF.App.applySettings(); if (after) after(e.target.checked); } }));
+  }
+  SettingsUI.toggle = toggle;
+  function choice(label, key, options, after) {
+    const s = UI.state;
+    const seg = h('div', { class: 'seg' });
+    options.forEach(([v, l]) => seg.appendChild(h('button', { class: 'seg-btn' + (String(s.settings[key]) === String(v) ? ' on' : ''), onclick: () => { s.settings[key] = v; MF.App.applySettings(); if (after) after(v); UI.rerender(); } }, l)));
+    return h('div', { class: 'set-row' }, h('span', { class: 'set-lbl' }, label), seg);
+  }
+  SettingsUI.choice = choice;
+
+  // 表示・操作
+  SettingsUI.sections.push(() => UI.section('表示・操作',
+    choice('文字の大きさ', 'fontScale', [[0.9, '小'], [1, '中'], [1.15, '大'], [1.3, '特大']]),
+    choice('テンキー', 'keypad', [['auto', '自動'], ['always', '常に表示'], ['native', 'キーボード']]),
+    toggle('正解したら自動で次へ', 'autoNext', '解説をじっくり読みたいときはオフに'),
+    toggle('動きを減らす', 'reduceMotion', 'アニメーションや画面のゆれを止める'),
+    toggle('ハイコントラスト', 'highContrast', '文字と背景の差を大きくする')));
+
+  // セーブ管理
+  SettingsUI.sections.push(() => {
+    const s = UI.state;
+    const last = new Date(s.lastSaved || Date.now());
+    return UI.section('セーブデータ',
+      h('p', { class: 'small muted' }, '進み具合はこの端末のブラウザに自動で保存されます（10秒ごと・画面を閉じたとき）。最終保存：' + last.toLocaleString('ja-JP')),
+      h('div', { class: 'row' },
+        h('button', { class: 'btn', onclick: () => { MF.App.save(); UI.toast('保存したよ', 'good'); } }, '💾 今すぐ保存'),
+        h('button', { class: 'btn', onclick: () => exportModal() }, '📤 書き出し'),
+        h('button', { class: 'btn', onclick: () => importModal() }, '📥 読み込み'),
+        h('button', { class: 'btn danger', onclick: () => resetModal() }, '🗑 リセット')));
+  });
+
+  function exportModal() {
+    const text = MF.App.exportText();
+    const ta = h('textarea', { class: 'save-text', readonly: true, rows: 6 }, text);
+    const name = 'math-factory-save-' + U.dateStr(Date.now()) + '.json';
+    UI.modal({
+      title: 'セーブを書き出す',
+      body: h('div', {}, h('p', { class: 'small' }, 'ファイルとして保存するか、下の文字列をコピーしてメモなどに貼りつけておこう。別の端末で「読み込み」すると続きから遊べるよ。'), ta),
+      buttons: [
+        { label: 'コピー', cls: 'ghost', action: () => { ta.select(); try { navigator.clipboard.writeText(text).then(() => UI.toast('コピーしたよ', 'good')); } catch (e) { document.execCommand('copy'); UI.toast('コピーしたよ', 'good'); } return true; } },
+        { label: 'ファイルに保存', cls: 'primary', action: () => { MF.App.download(name, text); return true; } },
+        { label: '閉じる' },
+      ],
+    });
+  }
+  function importModal() {
+    const ta = h('textarea', { class: 'save-text', rows: 6, placeholder: 'ここにセーブの文字列を貼りつけ' });
+    const file = h('input', { type: 'file', accept: '.json,application/json,text/plain', onchange: (e) => {
+      const f = e.target.files[0]; if (!f) return;
+      const rd = new FileReader(); rd.onload = () => { ta.value = rd.result; }; rd.readAsText(f);
+    } });
+    UI.modal({
+      title: 'セーブを読み込む',
+      body: h('div', {}, h('p', { class: 'small' }, '⚠ 今の進み具合は上書きされます。'), file, ta),
+      buttons: [{ label: 'やめる', cls: 'ghost' }, { label: '読み込む', cls: 'primary', action: () => {
+        try { MF.App.importText(ta.value); } catch (e) { UI.toast('読み込めなかった：' + e.message, 'bad', 4000); return true; }
+      } }],
+    });
+  }
+  function resetModal() {
+    const inp = h('input', { class: 'text-in', placeholder: 'リセット と入力' });
+    UI.modal({
+      title: '最初からやり直す',
+      body: h('div', {}, h('p', {}, 'すべての進み具合（資源・工場・相棒・成績）が消えます。元に戻せません。念のため先に「書き出し」しておくのがおすすめ。'), h('p', { class: 'small' }, '確認のため「リセット」と入力してね。'), inp),
+      buttons: [{ label: 'やめる', cls: 'ghost' }, { label: 'リセットする', cls: 'danger', action: () => {
+        if (inp.value.trim() !== 'リセット') { UI.toast('「リセット」と入力してね', 'warn'); return true; }
+        MF.App.reset();
+      } }],
+    });
+  }
+
+  UI.screen('settings', {
+    title: '設定', icon: '⚙️', nav: 'more', navOrder: 99,
+    render(root) {
+      root.appendChild(h('h2', { class: 'screen-title' }, '設定'));
+      SettingsUI.sections.forEach((fn) => { const n = fn(); if (n) root.appendChild(n); });
+      root.appendChild(h('p', { class: 'muted small' }, '数学ファクトリー ・ 課金要素はありません。問題はすべてその場で自動生成しています。'));
+    },
+  });
+})(globalThis.MF = globalThis.MF || {});

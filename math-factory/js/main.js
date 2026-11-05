@@ -8,9 +8,52 @@
   App.bootHooks = [];   // (state, info) => void  起動直後（オフライン生産の報告など）
   App.frameHooks = [];  // (state, dt, now) => void 毎フレーム（画面の更新）
 
+  App.KEY = 'mathFactory.save.v1';
+  App.BACKUP_KEY = 'mathFactory.backup.v1';
+  App.storageOk = true;
   App.newState = function () { return G.createState(Date.now()); };
-  App.loadState = function () { return null; };   // ステップ2で localStorage 対応
-  App.save = function () { /* ステップ2 */ };
+  function lsGet(k) { try { return window.localStorage.getItem(k); } catch (e) { App.storageOk = false; return null; } }
+  function lsSet(k, v) { try { window.localStorage.setItem(k, v); return true; } catch (e) { App.storageOk = false; return false; } }
+  App.loadState = function () {
+    const raw = lsGet(App.KEY);
+    if (!raw) return null;
+    try { return G.deserialize(raw, Date.now()); }
+    catch (e) {
+      console.error('セーブデータが壊れています。バックアップから復元します', e);
+      const bk = lsGet(App.BACKUP_KEY);
+      if (bk) { try { const s = G.deserialize(bk, Date.now()); setTimeout(() => UI.toast('セーブが壊れていたのでバックアップから復元したよ', 'warn', 5000), 500); return s; } catch (e2) { console.error(e2); } }
+      return null;
+    }
+  };
+  App.save = function () {
+    const s = UI.state;
+    if (!s || App.resetting) return false;
+    s.lastSaved = Date.now();
+    const json = G.serialize(s);
+    const ok = lsSet(App.KEY, json);
+    if (!App.lastBackup || Date.now() - App.lastBackup > 5 * 60 * 1000) { lsSet(App.BACKUP_KEY, json); App.lastBackup = Date.now(); }
+    return ok;
+  };
+  App.exportText = function () { App.save(); return G.serialize(UI.state); };
+  App.download = function (filename, text, type) {
+    const blob = new Blob([text], { type: type || 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  };
+  App.importText = function (text) {
+    const s = G.deserialize(String(text).trim(), Date.now()); // 失敗したら例外
+    App.resetting = true;
+    lsSet(App.KEY, G.serialize(s));
+    location.reload();
+  };
+  App.reset = function () {
+    App.resetting = true;
+    try { window.localStorage.removeItem(App.KEY); window.localStorage.removeItem(App.BACKUP_KEY); } catch (e) { /* noop */ }
+    location.reload();
+  };
 
   App.applySettings = function () {
     const st = UI.state.settings;
@@ -51,6 +94,10 @@
     };
     requestAnimationFrame(frame);
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') UI.closeTopModal(); });
+    setInterval(() => App.save(), 10000);
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') App.save(); });
+    window.addEventListener('pagehide', () => App.save());
+    if (!App.storageOk) setTimeout(() => UI.toast('この環境では自動セーブが使えません。設定から書き出しで保存してね', 'warn', 6000), 800);
   };
   window.addEventListener('DOMContentLoaded', () => App.boot());
 })(globalThis.MF = globalThis.MF || {});

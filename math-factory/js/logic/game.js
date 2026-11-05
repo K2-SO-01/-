@@ -75,7 +75,7 @@
         current: null, lastTopics: [], served: 0,
       },
       stats: { answered: 0, correct: 0, byTopic: {}, days: {}, log: [], timeMs: 0 },
-      settings: { sound: true, bgm: true, fontScale: 1, reduceMotion: false, keypad: 'auto', volume: 0.6 },
+      settings: { sound: true, bgm: true, fontScale: 1, reduceMotion: false, highContrast: false, keypad: 'auto', autoNext: true, volume: 0.6 },
       flags: {},
       runtime: { notices: [], events: [] },
     };
