@@ -168,8 +168,22 @@
     });
     const ex = UI.$('#top-extras');
     if (ex) {
-      ex.innerHTML = '';
-      UI.headerExtras.forEach((fn) => { const n = fn(s); if (n) ex.appendChild(n); });
+      // 毎フレーム作り直すとクリックが取りこぼされるので、中身が変わったときだけ差しかえる
+      while (ex.children.length < UI.headerExtras.length) {
+        const slot = document.createElement('span');
+        slot.className = 'hx-slot';
+        slot.addEventListener('click', (e) => { const c = slot.firstElementChild; if (c && !c.contains(e.target)) c.click(); });
+        ex.appendChild(slot);
+      }
+      UI.headerExtras.forEach((fn, i) => {
+        const slot = ex.children[i];
+        const n = fn(s);
+        const html = n ? n.outerHTML : '';
+        if (slot.dataset.html === html) return;
+        slot.dataset.html = html;
+        slot.innerHTML = '';
+        if (n) slot.appendChild(n);
+      });
     }
   };
   UI.showInventory = function () {

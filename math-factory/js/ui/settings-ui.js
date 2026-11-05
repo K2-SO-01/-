@@ -17,7 +17,10 @@
   function choice(label, key, options, after) {
     const s = UI.state;
     const seg = h('div', { class: 'seg' });
-    options.forEach(([v, l]) => seg.appendChild(h('button', { class: 'seg-btn' + (String(s.settings[key]) === String(v) ? ' on' : ''), onclick: () => { s.settings[key] = v; MF.App.applySettings(); if (after) after(v); UI.rerender(); } }, l)));
+    options.forEach(([v, l]) => seg.appendChild(h('button', { class: 'seg-btn' + (String(s.settings[key]) === String(v) ? ' on' : ''), onclick: (e) => {
+      s.settings[key] = v; MF.App.applySettings(); if (after) after(v);
+      seg.querySelectorAll('.seg-btn').forEach((b) => b.classList.toggle('on', b === e.currentTarget));
+    } }, l)));
     return h('div', { class: 'set-row' }, h('span', { class: 'set-lbl' }, label), seg);
   }
   SettingsUI.choice = choice;

@@ -272,3 +272,19 @@ module.exports.desktop.push(async (page, t) => {
   await page.waitForSelector('.countdown');
   await t.shot(page, 'd-plan');
 });
+// ステップ9：勉強タイマーとプレイ時間の上限
+module.exports.desktop.push(async (page, t) => {
+  await page.click('.pomo-chip');
+  await page.click('.modal-foot >> text=▶ 集中スタート');
+  await page.evaluate(() => { MF.UI.state.well.pomo.endsAt = Date.now() - 10; });
+  await page.waitForSelector('.modal:has-text("休憩しよう")', { timeout: 4000 });
+  await t.shot(page, 'd-pomo-break');
+  await page.click('.modal-foot >> text=休憩する');
+  await page.evaluate(() => { const p = MF.UI.state.well.play; p.limitMin = 30; p.sec = 30 * 60 + 5; });
+  await page.waitForSelector('.modal:has-text("休憩の時間")', { timeout: 4000 });
+  await t.shot(page, 'd-limit');
+  await page.click('.modal-foot >> text=あと10分だけ');
+  await nav(page, '設定');
+  await t.shot(page, 'd-settings2');
+  await page.evaluate(() => { MF.UI.state.well.play.limitMin = 0; });
+});
