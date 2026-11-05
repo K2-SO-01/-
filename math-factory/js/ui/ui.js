@@ -219,6 +219,7 @@
     const body = h('div', { class: 'modal-body' });
     if (typeof o.body === 'string') body.innerHTML = o.body; else if (o.body) body.appendChild(o.body);
     box.appendChild(body);
+    if (o.buttons) o.buttons = o.buttons.filter(Boolean);
     if (o.buttons && o.buttons.length) {
       box.appendChild(h('div', { class: 'modal-foot' }, o.buttons.map((b) => h('button', {
         class: 'btn ' + (b.cls || ''), disabled: b.disabled,

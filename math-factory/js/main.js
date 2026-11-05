@@ -40,16 +40,29 @@
     document.body.appendChild(a); a.click();
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
   };
+  // Artifact（claude.ai）の中など、ブラウザ保存やファイル保存に制限がある場所かどうか
+  App.inArtifact = !!window.MF_ARTIFACT;
+  /** 状態を差しかえて、ページを読み直さずに最初から描き直す */
+  App.restart = function (s, info) {
+    UI.modalStack.slice().forEach((c) => c());
+    if (MF.QuizUI) MF.QuizUI.session = null;
+    if (MF.FactoryUI) MF.FactoryUI.sel = null;
+    UI.state = s;
+    App.applySettings();
+    App.bootHooks.forEach((fn) => { try { fn(s, info); } catch (e) { console.error(e); } });
+    UI.renderHeader();
+    UI.go('quiz');
+    App.resetting = false;
+    App.save();
+  };
   App.importText = function (text) {
     const s = G.deserialize(String(text).trim(), Date.now()); // 失敗したら例外
-    App.resetting = true;
     lsSet(App.KEY, G.serialize(s));
-    location.reload();
+    App.restart(s, { fresh: false, imported: true });
   };
   App.reset = function () {
-    App.resetting = true;
     try { window.localStorage.removeItem(App.KEY); window.localStorage.removeItem(App.BACKUP_KEY); } catch (e) { /* noop */ }
-    location.reload();
+    App.restart(App.newState(), { fresh: true });
   };
 
   App.applySettings = function () {
@@ -59,9 +72,11 @@
     document.body.classList.toggle('high-contrast', !!st.highContrast);
   };
 
-  App.boot = function () {
+  App.boot = function (hot) {
     let s = null, info = { fresh: false };
-    try { s = App.loadState(); } catch (e) { console.error(e); }
+    // 公開中のページが更新されたときは、直前の状態から再開する
+    if (hot && hot.save) { try { s = G.deserialize(hot.save, Date.now()); } catch (e) { s = null; } }
+    if (!s) { try { s = App.loadState(); } catch (e) { console.error(e); } }
     if (!s) { s = App.newState(); info.fresh = true; }
     UI.state = s;
     App.applySettings();
@@ -100,5 +115,15 @@
     window.addEventListener('pagehide', () => App.save());
     if (!App.storageOk) setTimeout(() => UI.toast('この環境では自動セーブが使えません。設定から書き出しで保存してね', 'warn', 6000), 800);
   };
-  window.addEventListener('DOMContentLoaded', () => App.boot());
+  function start(data) { App.boot(data || {}); }
+  function bootWithHot() {
+    const hot = window.claude && window.claude.hot;
+    if (hot && typeof hot.snapshot === 'function') {
+      try { hot.snapshot(() => { App.save(); return { save: UI.state ? G.serialize(UI.state) : null }; }); } catch (e) { /* noop */ }
+    }
+    if (hot && typeof hot.ready === 'function') hot.ready(start);
+    else start(hot && hot.data);
+  }
+  if (document.readyState === 'loading') window.addEventListener('DOMContentLoaded', bootWithHot);
+  else bootWithHot();
 })(globalThis.MF = globalThis.MF || {});

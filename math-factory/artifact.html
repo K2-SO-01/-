@@ -1,0 +1,50 @@
+<title>数学ファクトリー</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="theme-color" content="#111316">
+<meta name="description" content="高校数学の問題を解いて工場を動かす、自動化×カードバトル×宇宙進出の受験勉強ゲーム">
+<link rel="stylesheet" href="style.css">
+<!-- このファイルは tools/make-artifact.js が index.html から作ったもの。直接は編集しない -->
+<div id="app">
+  <header id="topbar">
+    <div class="brand"><span class="logo">∑</span><span class="brand-name">数学ファクトリー</span></div>
+    <div id="top-extras" class="top-extras"></div>
+    <div id="res-strip" class="res-strip" title="持ち物を見る"></div>
+  </header>
+  <nav id="nav" aria-label="画面の切り替え"></nav>
+  <main id="screen" class="screen" tabindex="-1"></main>
+</div>
+<div id="modal-root"></div>
+<div id="toast-root" aria-live="polite"></div>
+<canvas id="fx-canvas" aria-hidden="true"></canvas>
+<noscript><p style="padding:2em;color:#fff">このゲームを遊ぶには JavaScript を有効にしてください。</p></noscript>
+<script>window.MF_ARTIFACT = true;</script>
+<script src="js/logic/util.js"></script>
+<script src="js/logic/balance.js"></script>
+<script src="js/logic/questions.js"></script>
+<script src="js/logic/game.js"></script>
+<script src="js/logic/factory.js"></script>
+<script src="js/logic/research.js"></script>
+<script src="js/logic/pals.js"></script>
+<script src="js/logic/battle.js"></script>
+<script src="js/logic/meta.js"></script>
+<script src="js/logic/study.js"></script>
+<script src="js/logic/wellbeing.js"></script>
+<script src="js/logic/galaxy.js"></script>
+<script src="js/logic/story.js"></script>
+<script src="js/ui/ui.js"></script>
+<script src="js/ui/audio.js"></script>
+<script src="js/ui/fx.js"></script>
+<script src="js/ui/quiz-ui.js"></script>
+<script src="js/ui/factory-ui.js"></script>
+<script src="js/ui/factory-tools-ui.js"></script>
+<script src="js/ui/research-ui.js"></script>
+<script src="js/ui/pal-art.js"></script>
+<script src="js/ui/pals-ui.js"></script>
+<script src="js/ui/battle-ui.js"></script>
+<script src="js/ui/study-ui.js"></script>
+<script src="js/ui/meta-ui.js"></script>
+<script src="js/ui/settings-ui.js"></script>
+<script src="js/ui/well-ui.js"></script>
+<script src="js/ui/galaxy-ui.js"></script>
+<script src="js/ui/story-ui.js"></script>
+<script src="js/main.js"></script>

@@ -99,7 +99,10 @@
       f.blueprints.slice().reverse().forEach((bp) => list.appendChild(h('div', { class: 'bp-item' + (BP.cur && BP.cur.id === bp.id ? ' on' : '') },
         h('b', { class: 'small' }, bp.name), h('span', { class: 'tiny muted' }, bp.w + '×' + bp.h + '・' + bp.items.length + '個'),
         h('button', { class: 'btn small', onclick: () => { BP.cur = bp; BP.mode = 'paste'; BP.anchor = null; renderBP(); } }, '使う'),
-        h('button', { class: 'btn small ghost', onclick: () => { const n = window.prompt('設計図の名前', bp.name); if (n) { bp.name = n.slice(0, 20); renderBP(); } } }, '✏️'),
+        h('button', { class: 'btn small ghost', 'aria-label': '名前を変える', onclick: () => {
+          const inp = h('input', { class: 'text-in', id: 'bp-name', value: bp.name, maxlength: 20 });
+          UI.modal({ title: '設計図の名前', body: inp, buttons: [{ label: 'やめる', cls: 'ghost' }, { label: '保存', cls: 'primary', action: () => { const n = inp.value.trim(); if (n) { bp.name = n.slice(0, 20); renderBP(); } } }] });
+        } }, '✏️'),
         h('button', { class: 'btn small ghost', onclick: () => { F.bpDelete(s, bp.id); if (BP.cur && BP.cur.id === bp.id) BP.cur = null; renderBP(); } }, '🗑'))));
       bpBox.appendChild(list);
     }

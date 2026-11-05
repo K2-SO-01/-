@@ -49,9 +49,11 @@ a { color: var(--accent2); }
 
 /* ---------- 枠組み ---------- */
 #app { min-height: 100vh; }
+/* スマホのステータスバーの下に固定。上の帯はヘッダーと同じ色でぬる */
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 31; background: #1b1f25; }
 #topbar {
-  position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: .5rem;
-  min-height: var(--top-h); padding: .35rem .75rem; padding-top: calc(.35rem + env(safe-area-inset-top, 0px));
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 30; display: flex; align-items: center; gap: .5rem;
+  min-height: var(--top-h); padding-block: .35rem; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
   background: linear-gradient(#1b1f25, #15181c); border-bottom: 2px solid #000;
   box-shadow: 0 2px 0 rgba(255,176,46,.25), 0 4px 18px rgba(0,0,0,.4);
 }
@@ -68,13 +70,13 @@ a { color: var(--accent2); }
 .res-strip::-webkit-scrollbar { display: none; }
 .res-strip .item-chip { padding: 1px 6px 1px 2px; }
 
-main.screen { padding: 1rem .9rem calc(var(--nav-h) + 1.5rem + var(--safe-b)); max-width: 1100px; margin: 0 auto; outline: none; }
+main.screen { padding-block: 1rem calc(var(--nav-h) + 1.5rem + var(--safe-b)); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); max-width: 1100px; margin: 0 auto; outline: none; }
 .screen-title { font-size: 1.3rem; display: flex; align-items: center; gap: .5rem; }
 .screen-title::before { content: ''; width: 6px; height: 1.1em; background: var(--accent); border-radius: 2px; }
 
 #nav {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: flex; justify-content: space-around;
-  background: #14171b; border-top: 1px solid var(--line); padding-bottom: var(--safe-b); height: calc(var(--nav-h) + var(--safe-b));
+  background: #14171b; border-top: 1px solid var(--line); padding-bottom: var(--safe-b); padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); height: calc(var(--nav-h) + var(--safe-b));
 }
 .nav-btn {
   position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
@@ -619,7 +621,7 @@ body.reduce-motion *, body.reduce-motion *::before, body.reduce-motion *::after 
 @media (max-width: 600px) {
   .brand-name { display: none; }
   .hide-sm { display: none !important; }
-  main.screen { padding: .6rem .6rem calc(var(--nav-h) + 1.2rem + var(--safe-b)); }
+  main.screen { padding-block: .6rem calc(var(--nav-h) + 1.2rem + var(--safe-b)); }
   .qpanel { padding: .75rem; }
   .q-text { font-size: 1.1rem; line-height: 1.95; min-height: 2.5em; padding-bottom: .3rem; }
   .key { min-height: 46px; font-size: 1.2rem; }
@@ -647,7 +649,7 @@ body.reduce-motion *, body.reduce-motion *::before, body.reduce-motion *::after 
   .top-extras { flex: 1; overflow-x: auto; scrollbar-width: none; }
   .top-extras::-webkit-scrollbar { display: none; }
   .toast { font-size: .82rem; padding: .4rem .65rem; }
-  #toast-root { width: calc(100vw - 24px); }
+  #toast-root { width: calc(100vw - 32px); }
   .tool-btn { flex: 1; justify-content: center; padding: .3rem .1rem; font-size: .74rem; flex-direction: column; gap: 0; min-height: 46px; min-width: 0; }
   .req-row { grid-template-columns: 6em 1fr auto; }
   .fac-status { font-size: .8rem; gap: .2rem .7rem; }

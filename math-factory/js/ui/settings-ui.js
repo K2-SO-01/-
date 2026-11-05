@@ -48,7 +48,7 @@
     const s = UI.state;
     const last = new Date(s.lastSaved || Date.now());
     return UI.section('セーブデータ',
-      h('p', { class: 'small muted' }, '進み具合はこの端末のブラウザに自動で保存されます（10秒ごと・画面を閉じたとき）。最終保存：' + last.toLocaleString('ja-JP')),
+      h('p', { class: 'small muted' }, '進み具合はこの端末のブラウザに自動で保存されます（10秒ごと・画面を閉じたとき）。ほかの端末には引きつがれないので、続きを別の場所で遊ぶときは「書き出し」→「読み込み」。最終保存：' + last.toLocaleString('ja-JP')),
       h('div', { class: 'row' },
         h('button', { class: 'btn', onclick: () => { MF.App.save(); UI.toast('保存したよ', 'good'); } }, '💾 今すぐ保存'),
         h('button', { class: 'btn', onclick: () => exportModal() }, '📤 書き出し'),
@@ -62,10 +62,14 @@
     const name = 'math-factory-save-' + U.dateStr(Date.now()) + '.json';
     UI.modal({
       title: 'セーブを書き出す',
-      body: h('div', {}, h('p', { class: 'small' }, 'ファイルとして保存するか、下の文字列をコピーしてメモなどに貼りつけておこう。別の端末で「読み込み」すると続きから遊べるよ。'), ta),
+      body: h('div', {}, h('p', { class: 'small' }, MF.App.inArtifact ? '下の文字列をコピーして、メモなどに貼りつけておこう。別の端末やブラウザで「読み込み」に貼りつけると続きから遊べるよ。' : 'ファイルとして保存するか、下の文字列をコピーしてメモなどに貼りつけておこう。別の端末で「読み込み」すると続きから遊べるよ。'), ta),
       buttons: [
-        { label: 'コピー', cls: 'ghost', action: () => { ta.select(); try { navigator.clipboard.writeText(text).then(() => UI.toast('コピーしたよ', 'good')); } catch (e) { document.execCommand('copy'); UI.toast('コピーしたよ', 'good'); } return true; } },
-        { label: 'ファイルに保存', cls: 'primary', action: () => { MF.App.download(name, text); return true; } },
+        { label: 'コピー', cls: MF.App.inArtifact ? 'primary' : 'ghost', action: () => {
+          const fallback = () => { ta.focus(); ta.select(); let ok = false; try { ok = document.execCommand('copy'); } catch (e) { ok = false; } UI.toast(ok ? 'コピーしたよ' : '文字列を選んだので、長押しかCtrl+Cでコピーしてね', ok ? 'good' : 'info', 3500); };
+          try { navigator.clipboard.writeText(text).then(() => UI.toast('コピーしたよ', 'good'), fallback); } catch (e) { fallback(); }
+          return true;
+        } },
+        MF.App.inArtifact ? null : { label: 'ファイルに保存', cls: 'primary', action: () => { MF.App.download(name, text); return true; } },
         { label: '閉じる' },
       ],
     });
