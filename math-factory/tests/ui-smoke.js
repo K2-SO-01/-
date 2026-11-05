@@ -13,6 +13,8 @@ async function run(label, ctxOpts, fn) {
   page.on('console', (m) => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
   await page.goto(URL);
   await page.waitForSelector('.qpanel');
+  await page.waitForTimeout(900);
+  while (await page.$('.modal')) { await page.click('.modal-foot .btn >> nth=-1'); await page.waitForTimeout(200); }
   try { await fn(page); } catch (e) { errors.push('test: ' + e.message); }
   await browser.close();
   console.log((errors.length ? '✗ ' : '✓ ') + label + (errors.length ? '\n  ' + errors.join('\n  ') : ''));

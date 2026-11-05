@@ -280,7 +280,9 @@
       QuizUI.panel = QuizUI.createPanel(holder, {
         next: nextQ,
         onDone: (res, q) => { if (QuizUI.session && QuizUI.session.onDone) QuizUI.session.onDone(s, res, q); },
-        allowSkip: true,
+        allowSkip: !(sess && sess.allowSkip === false),
+        allowHints: !(sess && sess.allowHints === false),
+        oneShot: !!(sess && sess.oneShot),
       });
       const c = s.quiz.current;
       if (c && !c.done && (!sess || c.mode === sess.mode)) QuizUI.panel.load(G.Quiz.currentQuestion(s));
@@ -291,6 +293,7 @@
       root.appendChild(below);
     },
     leave() { if (QuizUI.panel) { QuizUI.panel.destroy(); QuizUI.panel = null; } },
+    update(s) { if (QuizUI.session && QuizUI.session.tick) QuizUI.session.tick(s); },
   });
   QuizUI.extraBelow = [];
   QuizUI.startSession = function (sess) {

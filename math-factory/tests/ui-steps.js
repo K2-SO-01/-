@@ -225,3 +225,28 @@ module.exports.mobile.push(async (page, t) => {
   await page.evaluate(() => { MF.UI.state.battle.hpBonus = 200; });
   await battleFlow(page, t, 'm');
 });
+// ステップ7：実績・ガチャ・統計・日替わり
+module.exports.desktop.push(async (page, t) => {
+  await nav(page, '受験');
+  await page.click('.tab:has-text("統計")');
+  await page.waitForSelector('.hbars');
+  await t.shot(page, 'd-stats');
+  await nav(page, '実績');
+  await t.shot(page, 'd-ach');
+  await page.click('.tab:has-text("ガチャ")');
+  await page.evaluate(() => { MF.UI.state.rp = 2000; MF.UI.rerender(); });
+  await page.click('text=10回（研究P 540）');
+  await page.waitForSelector('.gacha-res');
+  await page.waitForTimeout(500);
+  await t.shot(page, 'd-gacha');
+  await page.click('.modal-foot .btn');
+  await page.click('.tab:has-text("今日の目標")');
+  await t.shot(page, 'd-daily');
+  await page.click('text=挑戦する');
+  await page.waitForSelector('.session-bar');
+  await t.answerCurrent(page, true);
+  await t.shot(page, 'd-challenge');
+  await page.click('.session-bar >> text=終了');
+  await page.waitForSelector('.modal');
+  await page.click('.modal-foot .btn');
+});

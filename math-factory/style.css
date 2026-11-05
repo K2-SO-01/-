@@ -449,6 +449,48 @@ body.screen-hit::after { content: ''; position: fixed; inset: 0; background: rgb
   .hand { min-height: 160px; }
 }
 
+/* ---------- 実績・ガチャ・統計 ---------- */
+.title-badge { font-size: .74rem; color: var(--accent); white-space: nowrap; max-width: 12em; overflow: hidden; text-overflow: ellipsis; }
+.goal-strip { display: flex; align-items: center; gap: .6rem; width: 100%; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: .3rem .6rem; margin-bottom: .45rem; cursor: pointer; color: var(--text); }
+.goal-strip .bar { flex: 1; height: 14px; } .goal-strip .bar-lbl { line-height: 14px; font-size: .68rem; }
+.goal-strip.done { border-color: #2f7a45; }
+.ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: .4rem; }
+.ach { display: flex; gap: .55rem; align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: .45rem .6rem; opacity: .6; }
+.ach.got { opacity: 1; border-color: #8a6a20; background: linear-gradient(90deg, #2a2516, var(--panel)); }
+.ach-ico { font-size: 1.6rem; }
+.login-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: .25rem; margin: .4rem 0; }
+.login-day { display: flex; flex-direction: column; align-items: center; text-align: center; background: var(--bg2); border: 1px solid var(--line); border-radius: 8px; padding: .3rem .1rem; font-size: .72rem; min-height: 64px; }
+.login-day.got { border-color: #2f7a45; background: #18241c; }
+.login-day.today { border-color: var(--accent); box-shadow: 0 0 10px rgba(255,176,46,.4); }
+.gacha-btns { margin: .6rem 0; }
+.gacha-res { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: .45rem; }
+.gr-item, .skin { position: relative; display: flex; flex-direction: column; align-items: center; gap: .2rem; background: var(--bg2); border: 2px solid var(--line); border-radius: 10px; padding: .5rem .3rem; text-align: center; animation: popIn .35s both; }
+.gr-item.r2, .skin.r2 { border-color: #3d6fa8; } .gr-item.r3, .skin.r3 { border-color: #8a5ac8; box-shadow: 0 0 12px rgba(180,140,255,.35); } .gr-item.r4, .skin.r4 { border-color: #ffd23d; box-shadow: 0 0 16px rgba(255,210,61,.5); }
+.skin.locked { opacity: .55; }
+.skin.on { outline: 2px solid var(--accent); }
+.gr-rar { position: absolute; top: 3px; left: 5px; font-size: .66rem; font-weight: 900; color: var(--muted); }
+.skin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: .45rem; margin-bottom: .8rem; }
+.skin-prev { display: inline-flex; gap: 3px; padding: 8px 0; }
+.sw { width: 16px; height: 26px; border-radius: 4px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: .45rem; margin-bottom: .4rem; }
+.tile { display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: .55rem .7rem; }
+.tile-v { font-size: 1.35rem; font-weight: 800; font-family: var(--mono); }
+.tile-l { font-size: .74rem; color: var(--muted); }
+.hbars { display: flex; flex-direction: column; gap: .35rem; }
+.hb-row { display: grid; grid-template-columns: 7.5em 1fr 7.5em; gap: .5rem; align-items: center; font-size: .85rem; }
+.hb-track { height: 14px; background: #0c0e11; border-radius: 4px; overflow: hidden; }
+.hb-fill { display: block; height: 100%; background: var(--accent); border-radius: 0 4px 4px 0; }
+.hb-val { font-family: var(--mono); font-size: .78rem; color: var(--text); }
+.chart-svg { width: 100%; height: auto; display: block; }
+.chart-svg .grid { stroke: var(--line); stroke-width: 1; }
+.chart-svg .ax { fill: var(--muted); font-size: 11px; }
+.chart-svg .bar-m { fill: var(--accent); }
+.chart-svg .line-m { fill: none; stroke: var(--accent2); stroke-width: 2; }
+.chart-svg .dot-m { fill: var(--accent2); stroke: var(--panel); stroke-width: 2; }
+.chart-svg .hov:hover .bar-m { fill: #ffc966; }
+.chart-svg .hov:hover .dot-m { r: 6; }
+@media (max-width: 600px) { .hb-row { grid-template-columns: 6em 1fr 6.5em; font-size: .78rem; } .login-day { font-size: .6rem; } }
+
 /* ---------- 設定 ---------- */
 .set-row { display: flex; align-items: center; justify-content: space-between; gap: .8rem; padding: .55rem 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; cursor: pointer; }
 .set-row:last-child { border-bottom: 0; }
