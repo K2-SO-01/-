@@ -256,10 +256,45 @@ body.combo-fire #topbar { box-shadow: 0 2px 0 #ff4d2e, 0 6px 26px rgba(255,61,46
 .lim sup, .lim sub { vertical-align: baseline; font-size: 1em; }
 sup, sub { font-size: .68em; }
 
-/* ---------- 工場（ステップ1） ---------- */
-.shop-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: .6rem; }
-.shop-item { margin: 0; }
-.shop-head { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; }
+/* ---------- 工場 ---------- */
+.charge-chip { display: inline-flex; align-items: center; gap: .3rem; background: var(--bg2); border: 1px solid var(--line2); border-radius: 999px; padding: 2px 8px; cursor: pointer; font-size: .78rem; white-space: nowrap; min-height: 30px; }
+.charge-chip .cc-bar { width: 44px; height: 7px; background: #0b0d10; border-radius: 4px; overflow: hidden; }
+.charge-chip .cc-fill { display: block; height: 100%; background: linear-gradient(90deg, #1b7fa8, var(--accent2)); }
+.charge-chip .cc-t { font-family: var(--mono); font-weight: 700; }
+.charge-chip.low { border-color: var(--warn); }
+.charge-chip.empty { border-color: var(--bad); color: var(--bad); animation: pulse 1.4s infinite; }
+.fac-status { display: flex; gap: .4rem .9rem; flex-wrap: wrap; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: .45rem .7rem; font-size: .88rem; margin-bottom: .5rem; }
+.fac-status b { font-family: var(--mono); }
+.tools { display: flex; gap: .35rem; flex-wrap: wrap; margin-bottom: .4rem; }
+.tool-btn { display: inline-flex; align-items: center; gap: .3rem; min-height: 42px; padding: .3rem .75rem; border-radius: 9px; border: 1px solid var(--line2); background: var(--panel); cursor: pointer; color: var(--text); }
+.tool-btn.on { background: var(--accent); color: #1a1205; border-color: var(--accent-d); font-weight: 800; }
+.palette { display: flex; gap: .35rem; overflow-x: auto; padding: .2rem 0 .4rem; align-items: stretch; scrollbar-width: thin; }
+.pal-btn { flex: none; display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 76px; padding: .35rem .4rem; border-radius: 10px; border: 1px solid var(--line2); background: var(--panel); cursor: pointer; color: var(--text); }
+.pal-btn.on { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(255,176,46,.35); background: #2a2516; }
+.pal-btn.cant .pal-cost { opacity: .55; }
+.pal-btn.locked { opacity: .45; }
+.pal-ico { font-size: 1.3rem; line-height: 1.1; }
+.pal-name { font-size: .74rem; font-weight: 700; }
+.pal-cost { display: flex; gap: 2px; flex-wrap: wrap; justify-content: center; }
+.pal-cost .item-chip { padding: 0 4px 0 1px; font-size: .64rem; }
+.pal-cost .item-chip .sym { min-width: 14px; height: 14px; font-size: .52rem; }
+.dir-btn { align-self: center; flex: none; }
+.fac-help { min-height: 1.2em; margin-bottom: .35rem; }
+.fac-canvas-wrap { position: relative; border: 2px solid #000; border-radius: 10px; overflow: hidden; background: #0e1013; box-shadow: inset 0 0 0 1px var(--line); }
+.fac-canvas { display: block; width: 100%; touch-action: none; cursor: crosshair; }
+.zoom-btns { position: absolute; right: 6px; bottom: 6px; display: flex; gap: 4px; }
+.zoom-btns .icon-btn { background: rgba(20,23,27,.85); width: 36px; height: 36px; }
+.fac-info { min-height: 3em; }
+.info-head { display: flex; align-items: center; gap: .45rem; flex-wrap: wrap; margin-bottom: .25rem; }
+.info-ico { font-size: 1.4rem; }
+.state-dot { font-size: .82rem; font-weight: 700; }
+.recipe-list { display: flex; flex-wrap: wrap; gap: .3rem; margin: .3rem 0; }
+.recipe-btn { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: .3rem .5rem; border-radius: 8px; border: 1px solid var(--line2); background: var(--bg2); cursor: pointer; color: var(--text); min-height: 44px; }
+.recipe-btn.on { border-color: var(--accent); background: #2a2516; }
+.recipe-btn.locked { opacity: .45; }
+.fac-rates { display: flex; gap: .3rem; flex-wrap: wrap; align-items: center; margin: .3rem 0; }
+.fac-guide summary { cursor: pointer; font-weight: 700; }
+.fac-guide li { margin: .25rem 0; }
 
 /* ---------- 設定 ---------- */
 .set-row { display: flex; align-items: center; justify-content: space-between; gap: .8rem; padding: .55rem 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; cursor: pointer; }
@@ -296,4 +331,7 @@ body.reduce-motion *, body.reduce-motion *::before, body.reduce-motion *::after 
   .q-head { margin-bottom: .3rem; }
   .level-row { margin-bottom: .4rem; }
   .q-input { min-height: 46px; font-size: 1.2rem; }
+  .tools { flex-wrap: nowrap; }
+  .tool-btn { flex: 1; justify-content: center; padding: .3rem .2rem; font-size: .8rem; flex-direction: column; gap: 0; min-height: 46px; }
+  .fac-status { font-size: .8rem; gap: .2rem .7rem; }
 }

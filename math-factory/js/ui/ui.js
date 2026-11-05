@@ -3,6 +3,8 @@
   'use strict';
   const U = MF.Util, G = MF.Game;
   const UI = {};
+  // アプリ全体のフック（main.js で使う）。画面モジュールより先に用意しておく
+  MF.App = MF.App || { bootHooks: [], frameHooks: [], catchUpHooks: [] };
   UI.screens = {};
   UI.order = [];
   UI.current = null;

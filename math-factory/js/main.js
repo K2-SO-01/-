@@ -2,11 +2,8 @@
 (function (MF) {
   'use strict';
   const G = MF.Game, UI = MF.UI;
-  const App = {};
-  MF.App = App;
+  const App = MF.App;
   App.TICK_MS = 250;
-  App.bootHooks = [];   // (state, info) => void  起動直後（オフライン生産の報告など）
-  App.frameHooks = [];  // (state, dt, now) => void 毎フレーム（画面の更新）
 
   App.KEY = 'mathFactory.save.v1';
   App.BACKUP_KEY = 'mathFactory.backup.v1';
@@ -76,7 +73,11 @@
       const now = Date.now();
       let dt = (now - last) / 1000;
       last = now;
-      if (dt > 5) dt = 5; // タブ復帰時などの大きな飛びはオフライン処理に任せる
+      if (dt > 5) { // タブを閉じていた・スリープしていた間はオフライン生産として処理
+        App.catchUpHooks.forEach((fn) => { try { fn(UI.state, dt, now); } catch (e) { console.error(e); } });
+        UI.state.lastTick = now;
+        return;
+      }
       G.tick(UI.state, dt, now);
     }, App.TICK_MS);
     let lastF = performance.now();

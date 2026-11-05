@@ -48,3 +48,82 @@ module.exports = {
     },
   ],
 };
+// ステップ3：工場で採掘機とベルトを置いて、コアまで運ぶ
+async function cellPos(page, x, y) {
+  return page.evaluate(([x, y]) => {
+    const FUI = MF.FactoryUI, r = FUI.canvas.getBoundingClientRect(), cs = FUI.cs * FUI.zoom;
+    return { x: r.left + FUI.ox + (x + 0.5) * cs, y: r.top + FUI.oy + (y + 0.5) * cs };
+  }, [x, y]);
+}
+async function factoryFlow(page, t) {
+  await nav(page, '工場');
+  await page.evaluate(() => { const s = MF.UI.state; s.inv.iron = 200; s.inv.stone = 200; s.factory.charge = 600; });
+  // 鉄の鉱脈で、コアと同じ行か、縦→横でつなげられる場所を探す
+  const plan = await page.evaluate(() => {
+    const s = MF.UI.state, f = s.factory, F = MF.Factory;
+    const core = Object.values(f.b).find((b) => b.type === 'core');
+    let best = null;
+    for (let y = 0; y < f.h; y++) for (let x = 0; x < f.w; x++) {
+      if (f.ore[y * f.w + x] !== 'iron' || f.b[f.cells[y * f.w + x]]) continue;
+      if (x === core.x) continue;
+      const d = Math.abs(x - core.x) + Math.abs(y - core.y);
+      if (!best || d < best.d) best = { x, y, d };
+    }
+    return { core: { x: core.x, y: core.y }, m: best };
+  });
+  const { core, m } = plan;
+  await page.click('.tool-btn[data-id=build]');
+  await page.click('.pal-btn[data-type=miner]');
+  const vdir = m.y === core.y ? (m.x < core.x ? 1 : 3) : (m.y < core.y ? 2 : 0);
+  await page.evaluate((d) => { MF.FactoryUI.dir = d; }, vdir);
+  let p = await cellPos(page, m.x, m.y);
+  await page.mouse.click(p.x, p.y);
+  await page.click('.pal-btn[data-type=belt]');
+  const drag = async (cells) => {
+    const a = await cellPos(page, cells[0][0], cells[0][1]);
+    await page.mouse.move(a.x, a.y); await page.mouse.down();
+    for (const c of cells.slice(1)) { const q = await cellPos(page, c[0], c[1]); await page.mouse.move(q.x, q.y, { steps: 3 }); }
+    await page.mouse.up();
+  };
+  const sx = Math.sign(core.x - m.x);
+  if (m.y === core.y) {
+    const cells = []; for (let x = m.x + sx; x !== core.x; x += sx) cells.push([x, m.y]);
+    if (cells.length === 1) { await page.evaluate((d) => { MF.FactoryUI.dir = d; }, vdir); const q = await cellPos(page, cells[0][0], cells[0][1]); await page.mouse.click(q.x, q.y); }
+    else await drag(cells);
+  } else {
+    const sy = Math.sign(core.y - m.y);
+    const v = []; for (let y = m.y + sy; ; y += sy) { v.push([m.x, y]); if (y === core.y) break; }
+    await page.evaluate((d) => { MF.FactoryUI.dir = d; }, vdir);
+    if (v.length === 1) { const q = await cellPos(page, v[0][0], v[0][1]); await page.mouse.click(q.x, q.y); } else await drag(v);
+    const hcells = [[m.x, core.y]]; for (let x = m.x + sx; x !== core.x; x += sx) hcells.push([x, core.y]);
+    if (hcells.length === 1) { await page.evaluate(([x, y, d]) => { const b = MF.Factory.at(MF.UI.state, x, y); if (b) { b.dir = d; MF.UI.state.factory.ver++; } }, [m.x, core.y, sx > 0 ? 1 : 3]); }
+    else await drag(hcells);
+  }
+  const route = await page.evaluate(() => {
+    const s = MF.UI.state, L = MF.Factory.layout(s);
+    const miner = Object.values(s.factory.b).find((b) => b.type === 'miner');
+    return L.routes[miner.id];
+  });
+  if (!route || !route.dest) throw new Error('route not connected ' + JSON.stringify(route) + ' ' + JSON.stringify(plan));
+  const iron0 = await page.evaluate(() => MF.UI.state.inv.iron);
+  let iron1 = iron0;
+  for (let i = 0; i < 16 && !(iron1 > iron0); i++) { await page.waitForTimeout(500); iron1 = await page.evaluate(() => MF.UI.state.inv.iron); }
+  if (!(iron1 > iron0)) {
+    const dbg = await page.evaluate(() => { const s = MF.UI.state; const m = Object.values(s.factory.b).find((b) => b.type === 'miner'); return JSON.stringify({ m, power: s.factory.power, charge: s.factory.charge, cap: MF.Factory.storageCap(s) }); });
+    throw new Error('no delivery ' + iron0 + ' -> ' + iron1 + ' ' + dbg);
+  }
+  await page.click('.tool-btn[data-id=inspect]');
+  p = await cellPos(page, m.x, m.y);
+  await page.mouse.click(p.x, p.y);
+  await t.shot(page, (t.mobile ? 'm' : 'd') + '-factory-built');
+}
+module.exports.desktop.push(factoryFlow);
+module.exports.mobile.push(async (page, t) => factoryFlow(page, Object.assign({}, t, { mobile: true })));
+module.exports.desktop.push(async (page, t) => {
+  // 留守中の生産：1時間前に閉じたことにして再読み込み
+  await page.evaluate(() => { const s = MF.UI.state; MF.App.save(); const o = JSON.parse(localStorage.getItem(MF.App.KEY)); o.lastTick -= 3600 * 1000; o.factory.charge = 1200; localStorage.setItem(MF.App.KEY, JSON.stringify(o)); MF.App.resetting = true; });
+  await page.reload();
+  await page.waitForSelector('.modal:has-text("留守中の生産量")', { timeout: 5000 });
+  await t.shot(page, 'd-offline');
+  await page.click('.modal >> text=受け取る');
+});

@@ -71,11 +71,6 @@ test('難易度は正答率に応じて自動で上下する', () => {
   answerN(s, 6, { ok: false });
   assert.strictEqual(s.quiz.levels.seq, 0);
 });
-test('採掘機を買うと時間で資源が増える', () => {
-  const s = fresh();
-  s.inv.iron = 100; s.inv.stone = 100;
-  assert(MF.Factory.buyMiner(s, 'iron') || MF.Factory.place);
-});
 test('セーブデータの書き出しと読み込みで状態が保たれる', () => {
   const s = fresh();
   answerN(s, 4);
