@@ -152,3 +152,27 @@ module.exports.desktop.push(async (page, t) => {
   await page.mouse.move(p.x, p.y + 60);
   await t.shot(page, 'd-blueprint');
 });
+// ステップ5：相棒
+module.exports.desktop.push(async (page, t) => {
+  await page.evaluate(() => { const s = MF.UI.state; for (const tp of ['quad', 'trig', 'prob']) { const e = MF.Pals.addEgg(s, tp, Date.now()); e.prog = e.need; } });
+  await nav(page, '相棒');
+  await page.click('.hatch-btn');
+  await page.waitForSelector('.hatch-reveal:not(.hidden)', { timeout: 4000 });
+  await t.shot(page, 'd-hatch');
+  await page.click('.modal >> text=よろしくね！');
+  await page.click('.hatch-btn'); await page.waitForSelector('.hatch-reveal:not(.hidden)'); await page.click('.modal >> text=よろしくね！');
+  await page.click('.hatch-btn'); await page.waitForSelector('.hatch-reveal:not(.hidden)'); await page.click('.modal >> text=よろしくね！');
+  await t.shot(page, 'd-pals');
+  await page.click('.tab:has-text("図鑑")');
+  await t.shot(page, 'd-dex');
+  await nav(page, '工場');
+  await page.click('.tool-btn[data-id=inspect]');
+  const miner = await page.evaluate(() => { const b = Object.values(MF.UI.state.factory.b).find((x) => x.type === 'miner'); return { x: b.x, y: b.y }; });
+  const p = await cellPos(page, miner.x, miner.y);
+  await page.mouse.click(p.x, p.y);
+  await page.click('text=🐾 相棒を配置');
+  await page.click('.pick-item >> nth=0');
+  const assigned = await page.evaluate(() => !!Object.values(MF.UI.state.factory.b).find((x) => x.type === 'miner').pal);
+  if (!assigned) throw new Error('pal not assigned');
+  await t.shot(page, 'd-pal-assigned');
+});
