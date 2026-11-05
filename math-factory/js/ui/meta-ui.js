@@ -212,7 +212,7 @@
   });
 
   // ---------- 出題画面に「今日の目標」 ----------
-  MF.QuizUI.extraTop.push((s) => {
+  MF.QuizUI.extraRow.push((s) => {
     const now = Date.now(), cnt = M.todayCount(s, now), goal = s.meta.dailyGoal, done = s.meta.goalDone === U.dateStr(now);
     return h('button', { class: 'goal-strip' + (done ? ' done' : ''), onclick: () => UI.go('awards', { tab: 'daily' }) }, h('span', { class: 'small' }, done ? '✅ 今日の目標達成！' : '🎯 今日の目標'), UI.bar(Math.min(cnt, goal), goal, 'green', cnt + ' / ' + goal));
   });

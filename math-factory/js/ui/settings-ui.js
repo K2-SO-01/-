@@ -25,6 +25,16 @@
   }
   SettingsUI.choice = choice;
 
+  // 音
+  SettingsUI.sections.push(() => {
+    const s = UI.state;
+    const vol = h('input', { type: 'range', min: 0, max: 1, step: 0.05, value: s.settings.volume, class: 'vol', 'aria-label': '音量',
+      oninput: (e) => { s.settings.volume = +e.target.value; if (MF.Audio) MF.Audio.applyVolume(); }, onchange: () => { if (MF.Audio) MF.Audio.play('correct'); } });
+    return UI.section('音',
+      toggle('効果音', 'sound', '正解・建設・バトルなどの音', () => { if (MF.Audio) MF.Audio.applyVolume(); }),
+      toggle('BGM', 'bgm', '画面ごとに雰囲気が変わる音楽', () => { if (MF.Audio) { MF.Audio.applyVolume(); MF.Audio.startBgm(); } }),
+      h('div', { class: 'set-row' }, h('span', { class: 'set-lbl' }, '音量'), vol));
+  });
   // 表示・操作
   SettingsUI.sections.push(() => UI.section('表示・操作',
     choice('文字の大きさ', 'fontScale', [[0.9, '小'], [1, '中'], [1.15, '大'], [1.3, '特大']]),

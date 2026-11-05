@@ -155,5 +155,6 @@
     ctx.fillStyle = '#111';
     ctx.beginPath(); ctx.arc(cx - r * 0.35, cy - r * 0.05, r * 0.18, 0, 7); ctx.arc(cx + r * 0.35, cy - r * 0.05, r * 0.18, 0, 7); ctx.fill();
   });
+  UI.noticeHandlers.palLevel = (n) => { UI.toast(n.text, 'good', 2500); if (MF.Audio) MF.Audio.play('levelup'); return true; };
   UI.noticeHandlers.egg = (n) => { UI.toast(n.text, 'good', 3200); if (MF.Audio) MF.Audio.play('egg'); return true; };
 })(globalThis.MF = globalThis.MF || {});

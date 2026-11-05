@@ -76,8 +76,9 @@
     root.scrollTop = 0;
     window.scrollTo(0, 0);
     UI.renderNav();
-    if (MF.Audio) MF.Audio.play('click');
+    if (MF.Audio) { MF.Audio.play('click'); MF.Audio.setMood(UI.moodOf(id)); }
   };
+  UI.moodOf = (id) => (id === 'battle' || id === 'run' ? 'battle' : id === 'galaxy' ? 'galaxy' : ['study', 'awards', 'settings', 'story', 'pals'].indexOf(id) >= 0 ? 'calm' : 'factory');
   UI.rerender = function () {
     if (!UI.current) return;
     const root = UI.$('#screen');

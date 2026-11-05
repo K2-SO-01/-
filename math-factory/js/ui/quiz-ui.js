@@ -227,6 +227,7 @@
   QuizUI.panel = null;
   QuizUI.session = null; // 復習など特別な出題（ステップ2以降）
   QuizUI.extraTop = []; // 他の画面が出題画面の上に足す部品
+  QuizUI.extraRow = [];
 
   UI.screen('quiz', {
     title: '計算ラボ', short: '計算', icon: '🧮', nav: 'main', navOrder: 1,
@@ -236,6 +237,7 @@
       const sess = QuizUI.session;
       QuizUI.extraTop.forEach((fn) => { const n = fn(s); if (n) root.appendChild(n); });
       const top = h('div', { class: 'quiz-top' }, h('div', { id: 'combo-meter', class: 'combo-meter' }));
+      QuizUI.extraRow.forEach((fn) => { const n = fn(s); if (n) top.appendChild(n); });
       if (sess) {
         top.appendChild(h('div', { class: 'session-bar' }, h('b', {}, sess.title), sess.status ? h('span', { class: 'muted small', id: 'session-status' }, sess.status()) : null,
           h('button', { class: 'btn small ghost', onclick: () => { QuizUI.endSession(); } }, '終了')));
@@ -296,6 +298,7 @@
     update(s) { if (QuizUI.session && QuizUI.session.tick) QuizUI.session.tick(s); },
   });
   QuizUI.extraBelow = [];
+  QuizUI.extraRow = []; // コンボ表示と同じ行に並べる部品
   QuizUI.startSession = function (sess) {
     QuizUI.session = sess;
     const s = UI.state;
@@ -311,5 +314,6 @@
     else UI.go('quiz');
   };
 
+  UI.noticeHandlers.level = (n) => { UI.toast(n.text, 'level', 3500); if (MF.Audio) MF.Audio.play(n.text.indexOf('上がった') >= 0 ? 'levelup' : 'hint'); if (n.text.indexOf('上がった') >= 0 && MF.FX) MF.FX.banner('LEVEL UP', n.text); return true; };
   MF.QuizUI = QuizUI;
 })(globalThis.MF = globalThis.MF || {});

@@ -588,6 +588,30 @@ input[type=date], select { background: #0d0f12; color: var(--text); border: 1px 
 
 body.high-contrast { --text: #ffffff; --muted: #d0d6dc; --line: #6a7482; --line2: #8a95a5; --panel: #0e1013; --panel2: #1a1d22; --bg: #000; }
 
+/* ---------- 演出 ---------- */
+.fx-overlay { position: fixed; inset: 0; z-index: 115; pointer-events: none; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.fx-combo { font-size: 2.6rem; font-weight: 900; color: #fff2c9; text-shadow: 0 0 18px #ff6a2e, 0 3px 0 #7a1a08; letter-spacing: .05em; animation: comboIn 1.1s forwards; font-style: italic; }
+.fx-combo span { font-size: 4rem; color: #ffb02e; }
+@keyframes comboIn { 0% { transform: scale(.3) rotate(-8deg); opacity: 0; } 25% { transform: scale(1.15) rotate(-4deg); opacity: 1; } 70% { transform: scale(1) rotate(-4deg); opacity: 1; } 100% { transform: scale(1.2) translateY(-40px); opacity: 0; } }
+.fx-banner { justify-content: flex-start; padding-top: 18vh; }
+.fx-banner .fb-t, .fx-banner .fb-s { background: linear-gradient(90deg, transparent, rgba(20,22,26,.92) 20%, rgba(20,22,26,.92) 80%, transparent); width: 100%; text-align: center; animation: bannerIn 2s forwards; }
+.fx-banner .fb-t { font-size: 2rem; font-weight: 900; color: var(--accent); letter-spacing: .12em; padding-top: .6rem; border-top: 2px solid var(--accent); }
+.fx-banner .fb-s { font-size: 1rem; padding-bottom: .6rem; border-bottom: 2px solid var(--accent); }
+@keyframes bannerIn { 0% { transform: scaleY(0); opacity: 0; } 12% { transform: scaleY(1); opacity: 1; } 85% { opacity: 1; } 100% { opacity: 0; } }
+.fx-boss { background: rgba(120,0,10,.35); animation: bossFlash 2.2s forwards; }
+.fx-warn { font-size: 2.4rem; font-weight: 900; color: #ff3d3d; letter-spacing: .3em; padding: .4rem 2rem; width: 100%; text-align: center; background: repeating-linear-gradient(135deg, #ffcf4a 0 18px, #111 18px 36px); -webkit-background-clip: border-box; text-shadow: 0 0 10px #000, 0 0 2px #000; animation: warnBlink .3s 5; }
+.fx-warn span { display: inline-block; background: #1a0306; color: #ff4040; padding: .1rem 1.2rem; border: 2px solid #ff4040; text-shadow: 0 0 12px #ff0000; }
+.fx-boss-name { margin-top: 1rem; font-size: 1.6rem; font-weight: 900; color: #fff; text-shadow: 0 0 16px #ff2a2a; animation: popIn .6s .4s both; }
+@keyframes warnBlink { 50% { opacity: .3; } }
+@keyframes bossFlash { 0% { opacity: 0; } 10% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; } }
+.fx-alert { box-shadow: inset 0 0 80px 20px rgba(255,40,40,.6); animation: fadeOut 1.2s forwards; }
+.fx-launch { background: radial-gradient(ellipse at 50% 100%, rgba(255,140,40,.4), rgba(0,0,0,.6)); animation: bossFlash 2.4s forwards; }
+.fx-rocket { font-size: 4rem; animation: rocketUp 2.4s ease-in forwards; }
+@keyframes rocketUp { 0% { transform: translateY(40vh) rotate(-45deg); } 20% { transform: translateY(36vh) rotate(-45deg) translateX(2px); } 100% { transform: translateY(-70vh) rotate(-45deg); } }
+body.shake #app { animation: hitshake .35s; }
+.vol { width: 160px; accent-color: var(--accent); }
+.quiz-top .goal-strip { flex: 1; width: auto; margin: 0; min-width: 160px; }
+
 body.reduce-motion *, body.reduce-motion *::before, body.reduce-motion *::after { animation: none !important; transition: none !important; }
 
 @media (max-width: 600px) {
