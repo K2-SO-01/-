@@ -79,3 +79,11 @@ test('研究の効果：公式集で正解の資源が増える', () => {
   answerN(a, 3); answerN(b, 3);
   assert(b.inv.iron > a.inv.iron);
 });
+test('研究の「解く」で決めた分野は、研究が終わると「おまかせ」にもどる', () => {
+  const s = fresh();
+  s.rp = 100; R.start(s, 'automation');
+  s.quiz.topic = 'quad'; s.quiz.topicFrom = 'research';
+  answerN(s, 3, { q: { topic: 'quad' } });
+  assert(R.has(s, 'automation'));
+  assert.strictEqual(s.quiz.topic, 'auto');
+});

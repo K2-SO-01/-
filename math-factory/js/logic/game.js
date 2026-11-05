@@ -74,7 +74,7 @@
         combo: 0, maxCombo: 0, topic: 'auto', levelMode: 'auto', levels: {}, recent: {},
         current: null, lastTopics: [], served: 0,
       },
-      stats: { answered: 0, correct: 0, byTopic: {}, days: {}, log: [], timeMs: 0 },
+      stats: { answered: 0, correct: 0, solved: 0, byTopic: {}, days: {}, log: [], timeMs: 0 },
       settings: { sound: true, bgm: true, fontScale: 1, reduceMotion: false, highContrast: false, keypad: 'auto', autoNext: true, volume: 0.6, pomoFocus: 25, pomoBreak: 5 },
       flags: {},
       runtime: { notices: [], events: [] },
@@ -238,6 +238,7 @@
     if (first) recordFirst(s, c, res.ok && c.hints === 0, ms, now);
     const out = { ok: res.ok, invalid: false, attempt: c.attempts, topic: c.topic, level: c.level, ms, answer: Qs.answerText(q) };
     if (res.ok) {
+      s.stats.solved = (s.stats.solved || 0) + 1; // 何回目でも正解した問題の数
       const pure = first && c.hints === 0;
       if (pure) { s.quiz.combo++; if (s.quiz.combo > s.quiz.maxCombo) s.quiz.maxCombo = s.quiz.combo; }
       const rw = Quiz.rewardFor(s, c, ms);

@@ -466,7 +466,7 @@
     return { win: false, auto: true, damaged };
   };
   G.on('answer', (s, d) => {
-    if (!d.ok || d.mode === 'battle') return;
+    if (!d.ok || d.mode === 'battle' || d.mode === 'exam' || d.mode === 'challenge') return; // 模試やチャレンジの答えでは群れは近づかない
     const r = s.battle.raid;
     if (s.stats.correct < B.battle.raidMinCorrect && !s.battle.forceRaids) return;
     if (!r.pending) r.meter += 1;

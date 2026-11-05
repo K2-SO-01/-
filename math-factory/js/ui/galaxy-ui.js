@@ -96,6 +96,7 @@
   }
   UI.screen('galaxy', {
     title: '銀河', icon: '🌌', nav: 'more', navOrder: 6,
+    sig: (s) => { const g = s.galaxy; return [g.unlocked, g.ships, g.turn, !!g.incoming, Math.floor(g.fuel || 0), GX.partsHave(s), GX.canLaunch(s), g.unlocked ? GX.owned(s, 'player').length : 0, MF.Research.has(s, 'rocketry'), !!GX.silo(s)].join('|'); },
     badge: (s) => (s.galaxy.incoming ? '!' : s.galaxy.ships > 0 ? '🚀' : null),
     render(root, s) {
       const g = s.galaxy;

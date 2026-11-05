@@ -41,3 +41,9 @@ test('ストーリー：卵のミッションでは卵が必ずもらえ、襲�
   MF.Battle.checkRaid(s, T0 + 999999);
   assert(s.battle.raid.pending);
 });
+test('最初のミッションは、まちがえてからやり直して正解した問題も数える', () => {
+  const s = fresh();
+  for (let i = 0; i < 3; i++) { G.Quiz.next(s, T0); const q = G.Quiz.currentQuestion(s); G.Quiz.answer(s, '99999', T0 + 1); G.Quiz.answer(s, MF.Questions.answerText(q), T0 + 2); }
+  St.check(s, T0);
+  assert.strictEqual(St.current(s).id, 'miner');
+});

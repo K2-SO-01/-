@@ -107,6 +107,7 @@
   ];
   UI.screen('pals', {
     title: '相棒', icon: '🐾', nav: 'main', navOrder: 4,
+    sig: (s) => s.pals.eggs.map((e) => e.id + ':' + e.prog).join(',') + '|' + s.pals.list.map((p) => p.id + ':' + p.lvl + ':' + (p.at || '')).join(',') + '|' + Object.keys(s.pals.dex).length,
     badge: (s) => { const n = P.readyEggs(s).length; return n ? '🥚' : null; },
     render(root, s, params) {
       if (params && params.tab) PUI.tab = params.tab;

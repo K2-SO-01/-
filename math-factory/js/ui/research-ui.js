@@ -9,7 +9,7 @@
     return h('div', { class: 'req-rows' }, Object.keys(t.req).map((k) => {
       const have = Math.min(t.req[k], p[k] || 0);
       return h('div', { class: 'req-row' }, h('span', { class: 'req-name' }, Qs.TOPICS[k].name), UI.bar(have, t.req[k], have >= t.req[k] ? 'green' : 'blue', have + ' / ' + t.req[k]),
-        showBtn && have < t.req[k] ? h('button', { class: 'btn small', onclick: () => { s.quiz.topic = k; s.quiz.current = null; UI.go('quiz'); } }, '解く') : null);
+        showBtn && have < t.req[k] ? h('button', { class: 'btn small', onclick: () => { s.quiz.topic = k; s.quiz.topicFrom = 'research'; s.quiz.current = null; UI.go('quiz'); } }, '解く') : null);
     }));
   }
   function techCard(s, t) {
@@ -30,6 +30,7 @@
   }
   UI.screen('research', {
     title: '研究ツリー', short: '研究', icon: '🔬', nav: 'main', navOrder: 3,
+    sig: (s) => s.research.done.length + '|' + s.research.current + '|' + JSON.stringify(s.research.prog[s.research.current] || {}) + '|' + R.TECHS.filter((t) => R.status(s, t.id) === 'available' && s.rp >= t.rp).length,
     badge: (s) => (s.research.current ? null : R.TECHS.some((t) => R.status(s, t.id) === 'available' && s.rp >= t.rp) ? '!' : null),
     render(root, s) {
       root.appendChild(h('h2', { class: 'screen-title' }, '研究ツリー'));

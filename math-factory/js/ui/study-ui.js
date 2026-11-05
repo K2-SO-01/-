@@ -66,6 +66,7 @@
 
   UI.screen('study', {
     title: '受験対策', short: '受験', icon: '📚', nav: 'main', navOrder: 6,
+    sig: (s) => [StudyUI.tab, s.study.weak.length, S.dueWeak(s, Date.now()).length, s.study.graduated, s.study.exams.length, !!s.study.exam, StudyUI.tab === 'stats' || StudyUI.tab === 'report' ? s.stats.answered : 0].join('|'),
     badge: (s) => { const n = S.dueWeak(s, Date.now()).length; return n ? String(Math.min(99, n)) : null; },
     render(root, s, params) {
       if (params && params.tab) StudyUI.tab = params.tab;

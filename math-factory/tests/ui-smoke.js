@@ -10,7 +10,8 @@ async function run(label, ctxOpts, fn) {
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
-  page.on('console', (m) => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
+  page.on('console', (m) => { if (m.type() === 'error') errors.push('console: ' + m.text()); if (process.env.DBG && m.text().startsWith('[rerender]')) console.log('   ' + label + ' ' + m.text()); });
+  if (process.env.DBG) await page.addInitScript(() => { window.MF_DEBUG = 1; });
   await page.goto(URL);
   await page.waitForSelector('.qpanel');
   await dismiss(page);

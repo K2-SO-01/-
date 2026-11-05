@@ -1,8 +1,8 @@
 // 各ステップで増える画面のチェック
 async function nav(page, label) {
-  const direct = await page.$('#nav .nav-btn:has-text("' + label + '")');
-  if (direct && await direct.isVisible()) { await direct.click(); }
-  else { await page.click('#nav .nav-more'); await page.click('.menu-tile:has-text("' + label + '")'); }
+  const direct = page.locator('#nav .nav-btn:has-text("' + label + '")').first();
+  if (await direct.isVisible().catch(() => false)) await direct.click();
+  else { await page.locator('#nav .nav-more').click(); await page.locator('.menu-tile:has-text("' + label + '")').click(); }
   await page.waitForTimeout(100);
 }
 module.exports = {
@@ -19,7 +19,10 @@ module.exports = {
       await page.reload();
       await page.waitForSelector('.qpanel');
       const after = await page.evaluate(() => MF.UI.state.stats.answered);
-      if (after !== before) throw new Error('save/load mismatch ' + before + ' vs ' + after);
+      if (after !== before) {
+        const dbg = await page.evaluate(() => { let raw = null; try { raw = localStorage.getItem(MF.App.KEY); } catch (e) { raw = 'ERR ' + e.message; } let o = null; try { o = JSON.parse(raw); } catch (e) { /* noop */ } return { rawLen: raw && raw.length, savedAnswered: o && o.stats && o.stats.answered, savedAt: o && o.lastSaved, created: o && o.createdAt, intro: MF.UI.state.story.introSeen, storageOk: MF.App.storageOk }; });
+        throw new Error('save/load mismatch ' + before + ' vs ' + after + ' ' + JSON.stringify(dbg));
+      }
       await nav(page, '受験');
       await page.waitForSelector('.weak-item');
       await t.shot(page, 'd-weak');
@@ -206,8 +209,8 @@ async function battleFlow(page, t, prefix) {
   }
   await page.waitForSelector('.modal');
   await t.shot(page, prefix + '-battle-result');
-  const choose = await page.$('.modal .card-choices .card-el');
-  if (choose) await choose.click(); else await page.click('.modal-foot .btn');
+  const choose = page.locator('.modal .card-choices .card-el').first();
+  if (await choose.count()) await choose.click(); else await page.click('.modal-foot .btn');
   await page.waitForTimeout(200);
 }
 module.exports.desktop.push(async (page, t) => {
@@ -272,7 +275,7 @@ module.exports.desktop.push(async (page, t) => {
   await page.waitForSelector('.countdown');
   await t.shot(page, 'd-plan');
 });
-// ステップ9：勉強タイマーとプレイ時間の上限
+// ステップ9：勉強タイマー
 module.exports.desktop.push(async (page, t) => {
   await page.click('.pomo-chip');
   await page.click('.modal-foot >> text=▶ 集中スタート');
@@ -280,13 +283,8 @@ module.exports.desktop.push(async (page, t) => {
   await page.waitForSelector('.modal:has-text("休憩しよう")', { timeout: 4000 });
   await t.shot(page, 'd-pomo-break');
   await page.click('.modal-foot >> text=休憩する');
-  await page.evaluate(() => { const p = MF.UI.state.well.play; p.limitMin = 30; p.sec = 30 * 60 + 5; });
-  await page.waitForSelector('.modal:has-text("休憩の時間")', { timeout: 4000 });
-  await t.shot(page, 'd-limit');
-  await page.click('.modal-foot >> text=あと10分だけ');
   await nav(page, '設定');
   await t.shot(page, 'd-settings2');
-  await page.evaluate(() => { MF.UI.state.well.play.limitMin = 0; });
 });
 // ステップ10：ロケット・銀河・外交・イベント
 module.exports.desktop.push(async (page, t) => {
@@ -307,8 +305,8 @@ module.exports.desktop.push(async (page, t) => {
   await page.waitForSelector('.gx-map');
   // となりの空いている星をえらんで植民
   await page.evaluate(() => { const s = MF.UI.state; s.galaxy.ships = 1; const n = MF.Galaxy.adj(s, s.galaxy.home).find((i) => !s.galaxy.systems[i].owner); if (n !== undefined) MF.GalaxyUI.sel = n; MF.UI.rerender(); });
-  const btn = await page.$('text=🏳️ 植民する');
-  if (btn && await btn.isEnabled()) await btn.click();
+  const btn = page.locator('text=🏳️ 植民する').first();
+  if (await btn.count() && await btn.isEnabled()) await btn.click();
   await t.shot(page, 'd-galaxy');
   await page.evaluate(() => { MF.Galaxy.rollEvent(MF.UI.state, Date.now()); });
   await page.click('.event-chip');

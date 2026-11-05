@@ -86,11 +86,13 @@
     root.innerHTML = '';
     UI.screens[UI.current].render(root, UI.state, UI.params || {});
     window.scrollTo(0, y);
-    UI.renderNav();
+    UI.updateNav(); // メニューは作り直さない（タップの取りこぼし防止）
   };
+  UI.navSigNow = function () { return UI.order.map((id) => { const d = UI.screens[id]; return id + ':' + (d.badge ? d.badge(UI.state) || '' : '') + (UI.isLocked(id) ? 'L' : ''); }).join('|'); };
   UI.renderNav = function () {
     const nav = UI.$('#nav');
     if (!nav) return;
+    UI.navSig = UI.navSigNow();
     nav.innerHTML = '';
     const main = UI.order.filter((id) => UI.screens[id].nav === 'main').sort((a, b) => (UI.screens[a].navOrder || 0) - (UI.screens[b].navOrder || 0));
     const more = UI.order.filter((id) => UI.screens[id].nav === 'more');
@@ -98,7 +100,7 @@
       const d = UI.screens[id];
       const lock = UI.isLocked(id);
       const badge = d.badge ? d.badge(UI.state) : null;
-      return h('button', { class: 'nav-btn' + (UI.current === id ? ' active' : '') + (lock ? ' locked' : ''), onclick: () => UI.go(id), 'aria-label': d.title },
+      return h('button', { class: 'nav-btn' + (UI.current === id ? ' active' : '') + (lock ? ' locked' : ''), onclick: () => UI.go(id), 'aria-label': d.title, dataset: { id } },
         h('span', { class: 'nav-ico' }, d.icon), h('span', { class: 'nav-lbl' }, d.short || d.title), badge ? h('span', { class: 'nav-badge' }, badge) : null);
     };
     main.forEach((id) => nav.appendChild(mk(id)));
@@ -274,6 +276,72 @@
     }
   };
   UI.noticeHandlers = {};
+
+  // ---------- 自動で描き直す部品 ----------
+  // 問題を解くと変わる表示（ミッション・今日の目標・研究など）は、中身が変わったら描き直す
+  UI.liveSet = new Set();
+  UI.live = function (fn, cls) {
+    const box = h('div', { class: 'live ' + (cls || '') });
+    box._fn = fn;
+    box.addEventListener('click', (e) => { const c = box.firstElementChild; if (c && !c.contains(e.target)) c.click(); });
+    UI.refreshLive(box);
+    UI.liveSet.add(box);
+    return box;
+  };
+  UI.refreshLive = function (box) {
+    let n = null;
+    try { n = box._fn(UI.state); } catch (e) { console.error(e); }
+    const html = n ? n.outerHTML : '';
+    if (box._html === html) return;
+    box._html = html;
+    box.innerHTML = '';
+    if (n) box.appendChild(n);
+  };
+  UI.updateLive = function () {
+    for (const box of UI.liveSet) {
+      if (!box.isConnected) { UI.liveSet.delete(box); continue; }
+      UI.refreshLive(box);
+    }
+  };
+  // メニューのバッジ（卵がかえる・研究できる・襲撃 など）も変わったら描き直す
+  UI.navSig = '';
+  // ボタンを作り直すとタップが取りこぼされるので、バッジと鍵の表示だけをその場で書きかえる
+  UI.updateNav = function () {
+    const sig = UI.navSigNow();
+    if (sig === UI.navSig) return;
+    UI.navSig = sig;
+    const btns = document.querySelectorAll('#nav .nav-btn[data-id]');
+    if (!btns.length) { UI.renderNav(); return; }
+    btns.forEach((btn) => {
+      const d = UI.screens[btn.dataset.id];
+      if (!d) return;
+      btn.classList.toggle('locked', !!UI.isLocked(btn.dataset.id));
+      const want = d.badge ? d.badge(UI.state) || '' : '';
+      let el = btn.querySelector('.nav-badge');
+      if (!want) { if (el) el.remove(); return; }
+      if (!el) { el = document.createElement('span'); el.className = 'nav-badge'; btn.appendChild(el); }
+      if (el.textContent !== want) el.textContent = want;
+    });
+    // 「メニュー」ボタンの赤い点（その他の画面に知らせがあるとき）
+    const more = document.querySelector('#nav .nav-more');
+    if (more) {
+      const any = UI.order.some((id) => UI.screens[id].nav === 'more' && UI.screens[id].badge && UI.screens[id].badge(UI.state));
+      let dot = more.querySelector('.nav-badge');
+      if (any && !dot) { dot = document.createElement('span'); dot.className = 'nav-badge dot'; dot.textContent = '●'; more.appendChild(dot); }
+      if (!any && dot) dot.remove();
+    }
+  };
+  // 画面の中身が変わったら描き直す（入力中・小窓が開いているときは待つ）
+  UI.updateScreen = function () {
+    const d = UI.screens[UI.current];
+    if (!d || !d.sig || UI.modalStack.length) return;
+    const a = document.activeElement;
+    if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT')) return;
+    let sig = '';
+    try { sig = d.sig(UI.state); } catch (e) { return; }
+    if (UI.screenSig === undefined || UI.screenSigFor !== UI.current) { UI.screenSig = sig; UI.screenSigFor = UI.current; return; }
+    if (sig !== UI.screenSig) { if (window.MF_DEBUG) console.log('[rerender] ' + UI.current + ' ' + UI.screenSig + ' -> ' + sig); UI.screenSig = sig; UI.rerender(); }
+  };
 
   // 進捗バー
   UI.bar = function (v, max, cls, label) {

@@ -74,6 +74,8 @@
       R.apply(s, id);
       G.notice(s, { type: 'research', text: '🔬 研究完了：' + R.byId[id].name, id });
       G.emit(s, 'researchDone', { id });
+      // 研究の「解く」ボタンで分野を決めていたら「おまかせ」にもどす
+      if (s.quiz.topicFrom === 'research') { s.quiz.topic = 'auto'; s.quiz.topicFrom = null; }
       return true;
     }
     return false;

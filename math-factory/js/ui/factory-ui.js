@@ -342,6 +342,10 @@
     if (F.producesItems(b)) {
       const L = F.layout(s), r = L.routes[b.id];
       box.appendChild(h('div', { class: 'small ' + (r && r.dest ? 'good' : 'bad') }, r && r.dest ? '→ 送り先：' + F.BUILDINGS[s.factory.b[r.dest].type].name + (r.path.length ? '（ベルト ' + r.path.length + ' マス）' : '（となり）') : '⚠ 送り先がない！ 出口（オレンジの▲）の先にベルトか設備を置こう'));
+      // 送り先がコア・倉庫で、持ち物が上限なら理由を出す
+      const dst = r && r.dest ? s.factory.b[r.dest] : null;
+      const full = dst && F.BUILDINGS[dst.type].accepts === 'all' ? Object.keys(b.outBuf).filter((k) => b.outBuf[k] >= 1 && (s.inv[k] || 0) >= F.storageCap(s)) : [];
+      if (full.length) box.appendChild(h('div', { class: 'small warn' }, '⚠ 持ち物の ' + full.map((k) => G.ITEMS[k].name).join('・') + ' が上限（' + F.storageCap(s) + '）なので止まっている。倉庫を建てるか、研究「大型倉庫」で上限が増える'));
     }
     for (const fn of FUI.infoExtras) fn(s, b, box, renderInfo);
     if (b.type !== 'core') box.appendChild(h('div', { class: 'row', style: { marginTop: '.5rem' } },

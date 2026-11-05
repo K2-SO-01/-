@@ -65,7 +65,7 @@
     return el;
   };
   MF.QuizUI.extraTop.unshift((s) => SUI.banner(s));
-  MF.FactoryUI.belowExtras.unshift((s) => { const b = SUI.banner(s); if (b) setTimeout(() => { const head = document.querySelector('.fac-head'); if (head && b.parentNode) head.after(b); }, 0); return b; });
+  MF.FactoryUI.belowExtras.unshift(() => { const b = UI.live((st) => SUI.banner(st)); setTimeout(() => { const head = document.querySelector('.fac-head'); if (head && b.parentNode) head.after(b); }, 0); return b; });
 
   // ---------- 通知 ----------
   UI.noticeHandlers.mission = (n) => {

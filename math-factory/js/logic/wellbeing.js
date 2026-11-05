@@ -1,9 +1,9 @@
-/* 数学ファクトリー：勉強とのバランス（ポモドーロ式の勉強タイマー・1日のプレイ時間の上限） */
+/* 数学ファクトリー：勉強とのバランス（ポモドーロ式の勉強タイマー） */
 (function (MF) {
   'use strict';
   const U = MF.Util, G = MF.Game, B = MF.Balance;
   const W = {};
-  B.well = { focusBonus: 0.1, pomoRewardRp: 10, snoozeMin: 10, maxSnooze: 2 };
+  B.well = { focusBonus: 0.1, pomoRewardRp: 10 };
 
   // ---------- ポモドーロ ----------
   W.pomoStart = function (s, now) {
@@ -35,38 +35,11 @@
   // 集中中は正解の資源が少し増える
   G.addMultiplier((s, topic, kind) => (kind === 'quiz' && s.well && s.well.pomo.state === 'focus' ? 1 + B.well.focusBonus : 1));
 
-  // ---------- 1日のプレイ時間 ----------
-  W.addPlay = function (s, sec, now) {
-    const pl = s.well.play;
-    const day = U.dateStr(now);
-    if (pl.day !== day) { pl.day = day; pl.sec = 0; pl.snoozes = 0; pl.snoozeUntil = 0; pl.shown = false; }
-    pl.sec += sec;
-    pl.total = (pl.total || 0) + sec;
-  };
-  W.limitSec = function (s) { return (s.well.play.limitMin || 0) * 60; };
-  W.overLimit = function (s, now) {
-    const pl = s.well.play;
-    if (!pl.limitMin || pl.day !== U.dateStr(now)) return false;
-    return pl.sec >= W.limitSec(s) && now >= (pl.snoozeUntil || 0);
-  };
-  W.snooze = function (s, now) {
-    const pl = s.well.play;
-    if (pl.snoozes >= B.well.maxSnooze) return false;
-    pl.snoozes++;
-    pl.snoozeUntil = now + B.well.snoozeMin * 60000;
-    return true;
-  };
-  W.remaining = function (s, now) {
-    const pl = s.well.play;
-    if (!pl.limitMin) return null;
-    if (pl.day !== U.dateStr(now)) return W.limitSec(s);
-    return Math.max(0, W.limitSec(s) - pl.sec);
-  };
-
   G.register({
     id: 'well',
+    migrate(s) { delete s.well.play; }, // 以前の「1日のプレイ上限」の設定は使わない
     init(s) {
-      s.well = { pomo: { state: 'idle', endsAt: 0, focusMin: 25, breakMin: 5, longBreakMin: 15, cycles: 0, done: 0 }, play: { day: null, sec: 0, limitMin: 0, snoozes: 0, snoozeUntil: 0, total: 0 } };
+      s.well = { pomo: { state: 'idle', endsAt: 0, focusMin: 25, breakMin: 5, longBreakMin: 15, cycles: 0, done: 0 } };
     },
     tick(s, dt, now) { W.pomoTick(s, now); },
   });

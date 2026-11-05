@@ -128,3 +128,12 @@ test('留守のあいだは襲撃のカウントダウンが止まる', () => {
   Bt.checkRaid(s, T0 + 3000 * 1000);
   assert(s.battle.raid.pending, 'still pending');
 });
+test('模試や日替わりチャレンジの答えでは、襲撃のメーターは進まない', () => {
+  const s = fresh();
+  s.battle.forceRaids = true;
+  answerN(s, 5, { q: { mode: 'exam' } });
+  answerN(s, 5, { q: { mode: 'challenge' } });
+  assert.strictEqual(s.battle.raid.meter, 0);
+  answerN(s, 3);
+  assert.strictEqual(s.battle.raid.meter, 3);
+});

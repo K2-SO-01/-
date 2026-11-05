@@ -102,6 +102,7 @@
   }
   UI.screen('defense', {
     title: '防衛', icon: '⚔️', nav: 'main', navOrder: 5,
+    sig: (s) => [!!s.battle.raid.pending, s.battle.raid.meter, s.battle.raids, s.battle.raidWins, !!s.battle.active, !!(s.battle.run && s.battle.run.active), s.battle.relics.length, s.battle.deck.length].join('|'),
     badge: (s) => (s.battle.raid.pending ? '!' : null),
     render(root, s) {
       root.appendChild(h('h2', { class: 'screen-title' }, '防衛司令室'));
@@ -359,6 +360,8 @@
   });
   MF.App.bootHooks.unshift((s, info) => { if (!info.fresh) { const away = (Date.now() - (s.lastTick || Date.now())) / 1000; if (away > 5) Bt.pauseRaid(s, away); } });
   MF.App.catchUpHooks.unshift((s, sec) => Bt.pauseRaid(s, sec));
+  // 模試・日替わりチャレンジの最中は、襲撃のカウントダウンを止める
+  MF.App.frameHooks.push((s, dt) => { const ss = MF.QuizUI.session; if (ss && (ss.mode === 'exam' || ss.mode === 'challenge')) Bt.pauseRaid(s, dt); });
   UI.noticeHandlers.raid = (n) => {
     UI.toast(n.text, 'bad', 6000);
     sfx('alarm');

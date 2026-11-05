@@ -235,9 +235,9 @@
       if (QuizUI.panel) { QuizUI.panel.destroy(); QuizUI.panel = null; }
       if (params && params.session) QuizUI.session = params.session;
       const sess = QuizUI.session;
-      QuizUI.extraTop.forEach((fn) => { const n = fn(s); if (n) root.appendChild(n); });
+      QuizUI.extraTop.forEach((fn) => root.appendChild(UI.live(fn)));
       const top = h('div', { class: 'quiz-top' }, h('div', { id: 'combo-meter', class: 'combo-meter' }));
-      QuizUI.extraRow.forEach((fn) => { const n = fn(s); if (n) top.appendChild(n); });
+      QuizUI.extraRow.forEach((fn) => top.appendChild(UI.live(fn)));
       if (sess) {
         top.appendChild(h('div', { class: 'session-bar' }, h('b', {}, sess.title), sess.status ? h('span', { class: 'muted small', id: 'session-status' }, sess.status()) : null,
           h('button', { class: 'btn small ghost', onclick: () => { QuizUI.endSession(); } }, '終了')));
@@ -249,7 +249,7 @@
         const mk = (id, label, color) => h('button', {
           class: 'tchip' + (s.quiz.topic === id ? ' on' : ''), style: color ? { '--tc': color } : null,
           onclick: () => {
-            s.quiz.topic = id;
+            s.quiz.topic = id; s.quiz.topicFrom = null;
             const c = s.quiz.current;
             if (c && !c.done && c.attempts === 0 && c.hints === 0 && id !== 'auto' && c.topic !== id) s.quiz.current = null;
             UI.rerender();

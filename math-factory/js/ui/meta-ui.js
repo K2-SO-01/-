@@ -199,6 +199,7 @@
   }
   UI.screen('awards', {
     title: '実績・ご褒美', short: '実績', icon: '🏆', nav: 'more', navOrder: 7,
+    sig: (s) => [Object.keys(s.meta.ach).length, M.todayCount(s, Date.now()), s.meta.goalDone, s.meta.tickets, s.meta.shards, Object.keys(s.meta.skins).length, MUI.tab === 'gacha' ? Math.floor(s.rp / 60) : 0].join('|'),
     render(root, s, params) {
       if (params && params.tab) MUI.tab = params.tab;
       root.appendChild(h('h2', { class: 'screen-title' }, '実績・ご褒美'));

@@ -102,6 +102,8 @@
       try {
         UI.renderHeader();
         UI.drainNotices();
+        App.slowAcc = (App.slowAcc || 0) + dt;
+        if (App.slowAcc > 0.25) { App.slowAcc = 0; UI.updateLive(); UI.updateNav(); UI.updateScreen(); }
         const d = UI.screens[UI.current];
         if (d && d.update) d.update(UI.state, dt, Date.now());
         App.frameHooks.forEach((fn) => fn(UI.state, dt, Date.now()));

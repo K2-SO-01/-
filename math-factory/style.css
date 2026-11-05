@@ -66,6 +66,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 .brand-name { font-size: 1rem; }
 .top-extras { display: flex; gap: .35rem; align-items: center; }
 .hx-slot:empty { display: none; }
+.live { display: contents; }
 .res-strip { display: flex; gap: .3rem; overflow-x: auto; scrollbar-width: none; flex: 1; justify-content: flex-end; cursor: pointer; padding: 2px 0; }
 .res-strip::-webkit-scrollbar { display: none; }
 .res-strip .item-chip { padding: 1px 6px 1px 2px; }
@@ -635,9 +636,9 @@ body.reduce-motion *, body.reduce-motion *::before, body.reduce-motion *::after 
   main.screen-factory { display: flex; flex-direction: column; }
   .screen-factory > * { order: 20; }
   .screen-factory > .fac-head { order: 0; } .screen-factory > .fac-head .screen-title { margin: 0 0 .2rem; font-size: 1.1rem; }
-  .screen-factory > .mission { order: 1; padding: .3rem .55rem; margin-bottom: .35rem; }
-  .screen-factory > .mission > .small { display: none; }
-  .screen-factory > .mission .ms-btns { margin-top: .15rem; }
+  .screen-factory .mission { order: 1; padding: .3rem .55rem; margin-bottom: .35rem; }
+  .screen-factory .mission > .small { display: none; }
+  .screen-factory .mission .ms-btns { margin-top: .15rem; }
   .screen-factory > .fac-status { order: 2; margin-bottom: .35rem; padding: .3rem .55rem; }
   .screen-factory > .fac-canvas-wrap { order: 3; }
   .screen-factory > .tools { order: 4; margin-top: .4rem; }

@@ -23,21 +23,3 @@ test('集中中は正解の資源が少し増える', () => {
   answerN(a, 4); answerN(b, 4);
   assert(b.inv.stone > a.inv.stone);
 });
-test('プレイ時間の上限：超えたら休憩、延長は2回まで、日付が変わるとリセット', () => {
-  const s = fresh();
-  s.well.play.limitMin = 30;
-  W.addPlay(s, 29 * 60, T0);
-  assert(!W.overLimit(s, T0));
-  W.addPlay(s, 61, T0);
-  assert(W.overLimit(s, T0));
-  assert(W.snooze(s, T0));
-  assert(!W.overLimit(s, T0 + MIN));
-  assert(W.overLimit(s, T0 + 11 * MIN));
-  assert(W.snooze(s, T0 + 11 * MIN));
-  assert(!W.snooze(s, T0 + 30 * MIN));
-  W.addPlay(s, 10, T0 + 86400000);
-  assert(!W.overLimit(s, T0 + 86400000));
-  s.well.play.limitMin = 0;
-  W.addPlay(s, 99999, T0 + 86400000);
-  assert(!W.overLimit(s, T0 + 86400000));
-});
