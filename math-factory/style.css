@@ -491,6 +491,18 @@ body.screen-hit::after { content: ''; position: fixed; inset: 0; background: rgb
 .chart-svg .hov:hover .dot-m { r: 6; }
 @media (max-width: 600px) { .hb-row { grid-template-columns: 6em 1fr 6.5em; font-size: .78rem; } .login-day { font-size: .6rem; } }
 
+/* ---------- 模試・カウントダウン ---------- */
+.exam-kinds { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: .6rem; }
+.countdown { display: flex; flex-direction: column; align-items: center; padding: 1rem; margin: .6rem 0; border-radius: 14px; background: repeating-linear-gradient(135deg, rgba(255,176,46,.08) 0 14px, transparent 14px 28px), var(--panel); border: 2px solid var(--accent); }
+.cd-name { font-size: .95rem; color: var(--muted); }
+.cd-days { font-size: 2.4rem; font-weight: 900; color: var(--accent); font-family: var(--mono); }
+.menu-items { display: flex; flex-direction: column; gap: .35rem; }
+.menu-item { display: flex; align-items: center; gap: .6rem; text-align: left; background: var(--bg2); border: 1px solid var(--line2); border-radius: 10px; padding: .55rem .7rem; min-height: 48px; cursor: pointer; color: var(--text); }
+.menu-item span:nth-child(2) { flex: 1; }
+.menu-item:hover { border-color: var(--accent); }
+.chip.due { border-color: var(--warn); color: var(--warn); }
+.cd-chip { background: var(--bg2); border: 1px solid var(--accent); color: var(--accent); border-radius: 999px; padding: 2px 9px; font-size: .76rem; min-height: 30px; cursor: pointer; white-space: nowrap; }
+
 /* ---------- 設定 ---------- */
 .set-row { display: flex; align-items: center; justify-content: space-between; gap: .8rem; padding: .55rem 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; cursor: pointer; }
 .set-row:last-child { border-bottom: 0; }

@@ -250,3 +250,25 @@ module.exports.desktop.push(async (page, t) => {
   await page.waitForSelector('.modal');
   await page.click('.modal-foot .btn');
 });
+// ステップ8：模試・レポート・カウントダウン
+module.exports.desktop.push(async (page, t) => {
+  await page.evaluate(() => { const s = MF.UI.state; s.battle.active = null; if (s.battle.run) s.battle.run.active = false; });
+  await nav(page, '受験');
+  await page.click('.tab:has-text("模試")');
+  await page.click('.node-btn:has-text("ミニ模試")');
+  await page.click('.modal-foot >> text=はじめる');
+  await page.waitForSelector('.session-bar');
+  for (let i = 0; i < 3; i++) { await t.answerCurrent(page, i !== 1); await page.waitForTimeout(1400); if (await page.$('text=次の問題 ▶')) await page.click('text=次の問題 ▶'); }
+  await t.shot(page, 'd-exam');
+  await page.evaluate(() => { MF.UI.state.study.exam.deadline = Date.now() - 1; });
+  await page.waitForSelector('.modal:has-text("の結果")', { timeout: 5000 });
+  await t.shot(page, 'd-exam-result');
+  await page.click('.modal-foot >> text=閉じる');
+  await page.click('.tab:has-text("週間レポート")');
+  await t.shot(page, 'd-report');
+  await page.click('.tab:has-text("カウントダウン")');
+  await page.fill('input[type=date]', '2027-01-16');
+  await page.dispatchEvent('input[type=date]', 'change');
+  await page.waitForSelector('.countdown');
+  await t.shot(page, 'd-plan');
+});
