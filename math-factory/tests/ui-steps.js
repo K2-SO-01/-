@@ -176,3 +176,52 @@ module.exports.desktop.push(async (page, t) => {
   if (!assigned) throw new Error('pal not assigned');
   await t.shot(page, 'd-pal-assigned');
 });
+// ステップ6：襲撃と侵攻ラン
+async function answerModal(page, ok) {
+  const ans = await page.evaluate((ok) => { const q = MF.Game.Quiz.currentQuestion(MF.UI.state); return ok ? MF.Questions.answerText(q) : MF.Util.fstr(MF.Util.fadd(q.answer, 1)); }, ok);
+  const kp = await page.$('.modal .keypad');
+  if (kp) { for (const ch of ans) await page.click('.modal .keypad .key >> text="' + (ch === '-' ? '−' : ch) + '"'); await page.click('.modal .keypad .key-ok'); }
+  else { await page.fill('.modal .q-input', ans); await page.press('.modal .q-input', 'Enter'); }
+}
+async function battleFlow(page, t, prefix) {
+  await page.evaluate(() => { const s = MF.UI.state; s.battle.forceRaids = true; s.battle.raid.meter = 99; MF.Battle.checkRaid(s, Date.now()); });
+  await nav(page, '防衛');
+  await page.waitForSelector('text=迎え撃つ！');
+  await t.shot(page, prefix + '-defense');
+  await page.click('text=迎え撃つ！');
+  await page.waitForSelector('.enemies');
+  await t.shot(page, prefix + '-battle');
+  for (let k = 0; k < 40; k++) {
+    const over = await page.evaluate(() => { const bt = MF.UI.state.battle.active; return !bt || !!bt.over; });
+    if (over) break;
+    const playable = await page.evaluate(() => { const s = MF.UI.state, bt = s.battle.active; return bt.hand.findIndex((c) => MF.Battle.cost(s, bt, c) <= bt.player.energy); });
+    if (playable < 0) { await page.click('text=ターン終了 ▶'); await page.waitForTimeout(150); continue; }
+    await page.click('.hand .card-el >> nth=' + playable);
+    await page.waitForSelector('.modal .qpanel');
+    if (k === 0) await t.shot(page, prefix + '-card-question');
+    await answerModal(page, k % 4 !== 3);
+    await page.waitForTimeout(1300);
+    if (await page.$('.modal >> text=つづける ▶')) await page.click('.modal >> text=つづける ▶');
+    await page.waitForTimeout(100);
+  }
+  await page.waitForSelector('.modal');
+  await t.shot(page, prefix + '-battle-result');
+  const choose = await page.$('.modal .card-choices .card-el');
+  if (choose) await choose.click(); else await page.click('.modal-foot .btn');
+  await page.waitForTimeout(200);
+}
+module.exports.desktop.push(async (page, t) => {
+  await page.evaluate(() => { MF.UI.state.battle.hpBonus = 200; });
+  await battleFlow(page, t, 'd');
+  // 侵攻ラン：出撃→ノード選択→戦闘画面
+  await nav(page, '防衛');
+  await page.click('text=🚀 出撃する');
+  await page.waitForSelector('.node-btn');
+  await t.shot(page, 'd-run');
+  await page.click('.node-btn >> nth=0');
+  await page.waitForSelector('.enemies');
+});
+module.exports.mobile.push(async (page, t) => {
+  await page.evaluate(() => { MF.UI.state.battle.hpBonus = 200; });
+  await battleFlow(page, t, 'm');
+});

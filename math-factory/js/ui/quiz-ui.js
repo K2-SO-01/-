@@ -186,6 +186,7 @@
       shake();
       sfx('wrong');
       QuizUI.updateCombo();
+      if (opts.oneShot) { let g = 0; while (cur() && !cur().done && g++ < 5) G.Quiz.revealHint(s, Date.now()); }
       const c = cur();
       P.value = ''; input.value = '';
       if (c.done) {
