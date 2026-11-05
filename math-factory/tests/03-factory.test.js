@@ -8,7 +8,7 @@ function lab(seed) {
   f.ore = f.ore.map(() => null);
   for (const id of Object.keys(f.b)) if (f.b[id].type !== 'core') F.remove(s, +id, { noRefund: true });
   const core = Object.values(f.b).find((b) => b.type === 'core');
-  F.remove; // core stays
+  if (s.research) s.research.done.push('automation', 'labs');
   s.inv.iron = 150; s.inv.stone = 150; s.inv.copper = 150; s.inv.coal = 150; s.inv.ironPlate = 100; s.inv.copperPlate = 100; s.inv.brick = 100;
   return { s, f, core };
 }

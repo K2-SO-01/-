@@ -26,6 +26,7 @@
     lab:       { name: '研究所', short: '研究', icon: '🔬', color: '#5a3d8c', cost: { ironPlate: 10, copperPlate: 10, brick: 6 }, power: -4, time: 4, rpPerPack: 8, desc: '研究パックを研究ポイントに変える。研究ツリーを進めるのに必要。' },
     storage:   { name: '倉庫', short: '倉庫', icon: '📦', color: '#6b5530', cost: { iron: 10, stone: 12 }, power: 0, accepts: 'all', storage: true, desc: '届いた品物を持ち物にしまう。置くほど持てる量（上限）が増える。' },
     power:     { name: '発電所', short: '発電', icon: '⚡', color: '#8c7a2a', cost: { iron: 12, stone: 8, copper: 6 }, power: 12, fuel: 'coal', burn: 10, desc: '石炭を燃やして電気をつくる（10秒に1個）。ベルトで石炭を運ぶか、持ち物の石炭を使う。' },
+    solar:     { name: 'ソーラーパネル', short: 'ソーラー', icon: '☀️', color: '#2a4a6b', cost: { ironPlate: 8, copperPlate: 8, stone: 6 }, power: 5, desc: '燃料なしで電気をつくる。' },
   };
   F.SMELT = {
     iron: { out: 'ironPlate', n: 1 }, copper: { out: 'copperPlate', n: 1 },
@@ -141,7 +142,7 @@
       G.give(s, F.costOf(s, b.type));
       for (const k of Object.keys(b.inBuf)) G.add(s, k, Math.floor(b.inBuf[k]));
       for (const k of Object.keys(b.outBuf)) G.add(s, k, Math.floor(b.outBuf[k]));
-      if (F.onRemoveRefund) F.onRemoveRefund(s, b);
+      if (b.spent) G.give(s, b.spent);
     }
     if (F.onRemove) F.onRemove(s, b);
     f.cells[F.idx(f, b.x, b.y)] = 0;
@@ -157,6 +158,71 @@
     b.recipe = recipe;
     return true;
   };
+  // ---------- 強化 ----------
+  F.maxLevel = function () { return 2; }; // 研究で上がる
+  F.canUpgrade = function (s, b) { return !!b && b.type !== 'belt' && b.type !== 'core' && b.lvl < F.maxLevel(s); };
+  F.upgradeCost = function (s, b) {
+    const base = F.costOf(s, b.type), k = Math.pow(1.7, b.lvl), c = {};
+    for (const key of Object.keys(base)) c[key] = Math.ceil(base[key] * k);
+    if (b.lvl >= 2) c.gear = 3 * b.lvl;
+    if (b.lvl >= 3) c.circuit = 3 * (b.lvl - 2);
+    return c;
+  };
+  F.upgrade = function (s, id) {
+    const b = s.factory.b[id];
+    if (!b) return { ok: false, reason: '設備がない' };
+    if (b.type === 'belt' || b.type === 'core') return { ok: false, reason: 'この設備は強化できない（ベルトは研究で速くなる）' };
+    if (b.lvl >= F.maxLevel(s)) return { ok: false, reason: 'これ以上は研究「設備改良」が必要（今の上限 Lv' + F.maxLevel(s) + '）' };
+    const cost = F.upgradeCost(s, b);
+    if (!G.pay(s, cost)) return { ok: false, reason: '資源が足りない：' + G.costText(cost) };
+    b.spent = b.spent || {};
+    for (const k of Object.keys(cost)) b.spent[k] = (b.spent[k] || 0) + cost[k];
+    b.lvl++;
+    s.factory.ver++;
+    G.emit(s, 'upgrade', { type: b.type, lvl: b.lvl });
+    return { ok: true, b };
+  };
+
+  // ---------- 設計図 ----------
+  F.bpCapture = function (s, x1, y1, x2, y2, name) {
+    const f = s.factory;
+    const xa = Math.min(x1, x2), xb = Math.max(x1, x2), ya = Math.min(y1, y2), yb = Math.max(y1, y2);
+    const items = [];
+    for (let y = ya; y <= yb; y++) for (let x = xa; x <= xb; x++) {
+      const b = F.at(s, x, y);
+      if (b && b.type !== 'core') items.push({ dx: x - xa, dy: y - ya, type: b.type, dir: b.dir, recipe: b.recipe || null });
+    }
+    if (!items.length) return null;
+    f.bpNext = (f.bpNext || 0) + 1;
+    const bp = { id: f.bpNext, name: name || ('設計図' + f.bpNext), w: xb - xa + 1, h: yb - ya + 1, items };
+    f.blueprints.push(bp);
+    if (f.blueprints.length > 12) f.blueprints.shift();
+    G.emit(s, 'blueprint', { n: items.length });
+    return bp;
+  };
+  F.bpRotate = function (bp) {
+    return Object.assign({}, bp, { w: bp.h, h: bp.w, items: bp.items.map((it) => Object.assign({}, it, { dx: bp.h - 1 - it.dy, dy: it.dx, dir: (it.dir + 1) % 4 })) });
+  };
+  F.bpCost = function (s, bp) {
+    const c = {};
+    for (const it of bp.items) { const k = F.costOf(s, it.type); for (const r of Object.keys(k)) c[r] = (c[r] || 0) + k[r]; }
+    return c;
+  };
+  /** 貼りつけ。置けないマス（重なり・鉱脈なし・資源不足）は飛ばす */
+  F.bpPaste = function (s, bp, ax, ay) {
+    let placed = 0;
+    const skipped = {};
+    for (const it of bp.items) {
+      const x = ax + it.dx, y = ay + it.dy;
+      const res = F.place(s, it.type, x, y, it.dir, { recipe: it.recipe || undefined });
+      if (res.ok) { placed++; if (it.recipe && res.b.type === 'assembler') F.setRecipe(s, res.b.id, it.recipe); }
+      else skipped[res.reason.split('：')[0]] = (skipped[res.reason.split('：')[0]] || 0) + 1;
+    }
+    if (placed) G.emit(s, 'blueprintPaste', { placed });
+    return { placed, skipped };
+  };
+  F.bpDelete = function (s, id) { const f = s.factory; f.blueprints = f.blueprints.filter((b) => b.id !== id); };
+
   F.count = function (s, type) { let n = 0; for (const id in s.factory.b) if (s.factory.b[id].type === type) n++; return n; };
 
   // ---------- 経路とスパゲッティ度（配置が変わったときだけ計算） ----------
@@ -291,7 +357,7 @@
         if (rest > 0 && (s.inv.coal || 0) >= rest) { if (apply) { s.inv.coal -= rest; b.fuel += rest; } }
       }
       const ok = b.fuel >= need - 1e-9 || (!apply && ((b.inBuf.coal || 0) + (s.inv.coal || 0)) > 0);
-      if (ok) { if (apply) b.fuel -= need; supply += F.BUILDINGS.power.power * F.levelMult(b); fueled++; b.state = 'work'; }
+      if (ok) { if (apply) b.fuel -= need; supply += F.BUILDINGS.power.power * F.levelMult(b) * (F.powerPlantMult ? F.powerPlantMult(s) : 1); fueled++; b.state = 'work'; }
       else b.state = 'nofuel';
     }
     for (const fn of F.powerSupply) supply += fn(s) || 0;

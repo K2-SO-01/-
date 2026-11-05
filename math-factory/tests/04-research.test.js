@@ -1,0 +1,81 @@
+const { T0, fresh, solve, answerN } = require('./helpers');
+const G = MF.Game, F = MF.Factory, R = MF.Research;
+
+test('研究：研究ポイントを払い、指定分野の正解数がたまると完了する', () => {
+  const s = fresh();
+  assert(!F.isUnlocked(s, 'assembler'));
+  s.rp = 0;
+  assert(!R.start(s, 'automation').ok);
+  s.rp = 100;
+  assert(R.start(s, 'automation').ok);
+  assert.strictEqual(s.rp, 85);
+  answerN(s, 3, { q: { topic: 'prob' } });
+  assert(!R.has(s, 'automation'), 'other topic does not count');
+  answerN(s, 3, { q: { topic: 'quad' } });
+  assert(R.has(s, 'automation'));
+  assert(F.isUnlocked(s, 'assembler'));
+  assert(F.recipeUnlocked(s, 'gear'));
+});
+test('前提がない研究は始められない／研究を切り替えても払ったポイントは失われない', () => {
+  const s = fresh();
+  s.rp = 1000;
+  assert(!R.start(s, 'labs').ok);
+  R.start(s, 'smelting2');
+  const rp = s.rp;
+  R.start(s, 'logistics');
+  R.start(s, 'smelting2');
+  assert.strictEqual(s.rp, rp - R.byId.logistics.rp);
+});
+test('開拓：研究で土地が広がり、既存の設備はそのまま', () => {
+  const s = fresh();
+  const core = Object.values(s.factory.b).find((b) => b.type === 'core');
+  s.research.done.push('logistics');
+  s.rp = 999; R.start(s, 'mapExpand1');
+  answerN(s, 5, { q: { topic: 'seq' } });
+  assert(R.has(s, 'mapExpand1'));
+  assert.strictEqual(s.factory.w, 18); assert.strictEqual(s.factory.h, 12);
+  assert.strictEqual(F.at(s, core.x, core.y).type, 'core');
+});
+test('強化：レベルが上がると速くなり、上限は研究で上がる。撤去で強化費も戻る', () => {
+  const s = fresh();
+  Object.assign(s.inv, { iron: 250, stone: 250, gear: 50, copper: 50 });
+  const b = F.place(s, 'storage', 0, 0, 1).b;
+  const cap1 = F.storageCap(s);
+  assert(F.upgrade(s, b.id).ok);
+  assert.strictEqual(b.lvl, 2);
+  assert(F.storageCap(s) > cap1);
+  assert(!F.upgrade(s, b.id).ok, 'max 2 without research');
+  s.research.done.push('upgrade1');
+  assert(F.upgrade(s, b.id).ok);
+  assert.strictEqual(b.lvl, 3);
+  const iron = s.inv.iron;
+  F.remove(s, b.id);
+  assert(s.inv.iron > iron + 10, 'refund upgrade cost');
+});
+test('設計図：コピー→回転→貼りつけ。置けない所は飛ばす', () => {
+  const s = fresh();
+  Object.assign(s.inv, { iron: 250, stone: 250 });
+  const f = s.factory;
+  f.ore = f.ore.map(() => null);
+  for (const id of Object.keys(f.b)) if (f.b[id].type !== 'core') F.remove(s, +id, { noRefund: true });
+  F.place(s, 'storage', 0, 0, 1); F.place(s, 'belt', 1, 0, 1); F.place(s, 'belt', 2, 0, 2);
+  const bp = F.bpCapture(s, 0, 0, 2, 0);
+  assert.strictEqual(bp.items.length, 3);
+  assert.deepStrictEqual([bp.w, bp.h], [3, 1]);
+  const rot = F.bpRotate(bp);
+  assert.deepStrictEqual([rot.w, rot.h], [1, 3]);
+  assert.strictEqual(rot.items.find((i) => i.type === 'belt' && i.dy === 1).dir, 2);
+  const r = F.bpPaste(s, rot, 5, 1);
+  assert.strictEqual(r.placed, 3);
+  const r2 = F.bpPaste(s, bp, 0, 0);
+  assert.strictEqual(r2.placed, 0);
+  assert(Object.keys(r2.skipped).length > 0);
+  assert.deepStrictEqual(F.bpCost(s, bp), { iron: 12, stone: 12 });
+});
+test('研究の効果：公式集で正解の資源が増える', () => {
+  const a = fresh(5), b = fresh(5);
+  b.research.done.push('quizBoost1');
+  a.quiz.topic = b.quiz.topic = 'quad';
+  answerN(a, 3); answerN(b, 3);
+  assert(b.inv.iron > a.inv.iron);
+});

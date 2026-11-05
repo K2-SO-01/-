@@ -127,3 +127,28 @@ module.exports.desktop.push(async (page, t) => {
   await t.shot(page, 'd-offline');
   await page.click('.modal >> text=受け取る');
 });
+// ステップ4：研究画面・強化・設計図
+module.exports.desktop.push(async (page, t) => {
+  await page.evaluate(() => { const s = MF.UI.state; s.rp = 200; });
+  await nav(page, '研究');
+  await page.waitForSelector('.tech');
+  await page.click('.tech:has-text("設計図") >> text=研究を始める');
+  await page.evaluate(() => { const s = MF.UI.state; s.research.prog.blueprint = { seq: 3 }; MF.Research.checkDone(s); });
+  await t.shot(page, 'd-research');
+  await nav(page, '工場');
+  await page.evaluate(() => { Object.assign(MF.UI.state.inv, { iron: 280, stone: 280, gear: 20 }); });
+  await page.click('.tool-btn[data-id=upgrade]');
+  const miner = await page.evaluate(() => { const b = Object.values(MF.UI.state.factory.b).find((x) => x.type === 'miner'); return { x: b.x, y: b.y }; });
+  let p = await cellPos(page, miner.x, miner.y);
+  await page.mouse.click(p.x, p.y);
+  const lvl = await page.evaluate(() => Object.values(MF.UI.state.factory.b).find((x) => x.type === 'miner').lvl);
+  if (lvl !== 2) throw new Error('upgrade failed lvl=' + lvl);
+  await page.click('.tool-btn[data-id=blueprint]');
+  const core = await page.evaluate(() => { const b = Object.values(MF.UI.state.factory.b).find((x) => x.type === 'core'); return { x: b.x, y: b.y }; });
+  p = await cellPos(page, miner.x, miner.y); await page.mouse.click(p.x, p.y);
+  p = await cellPos(page, miner.x + (core.x > miner.x ? 1 : -1), miner.y); await page.mouse.click(p.x, p.y);
+  const n = await page.evaluate(() => MF.UI.state.factory.blueprints.length);
+  if (n !== 1) throw new Error('blueprint not captured');
+  await page.mouse.move(p.x, p.y + 60);
+  await t.shot(page, 'd-blueprint');
+});
