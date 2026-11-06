@@ -6,7 +6,7 @@
   const GUI = { sel: null };
   MF.GalaxyUI = GUI;
   const sfx = (n) => { if (MF.Audio) MF.Audio.play(n); };
-  const ownerColor = (s, o) => (o === 'player' ? '#ffb02e' : o ? GX.empById[o].color : '#5a6270');
+  const ownerColor = (s, o) => (o === 'player' ? '#b6ff3b' : o ? GX.empById[o].color : '#5a6270');
   const ownerName = (o) => (o === 'player' ? 'あなた' : o ? GX.empById[o].name : '無所属');
 
   GUI.launch = function () {
@@ -35,21 +35,27 @@
   function mapSvg(s) {
     const g = s.galaxy;
     const parts = ['<svg viewBox="0 0 100 100" class="gx-map" role="img" aria-label="銀河マップ">'];
-    parts.push('<defs><radialGradient id="neb" cx="50%" cy="50%" r="60%"><stop offset="0" stop-color="#2a1f4a" stop-opacity=".7"/><stop offset="1" stop-color="#0b0d14" stop-opacity="0"/></radialGradient></defs><rect width="100" height="100" fill="url(#neb)"/>');
-    const r = U.rng(7); for (let i = 0; i < 60; i++) parts.push('<circle cx="' + (r.next() * 100).toFixed(1) + '" cy="' + (r.next() * 100).toFixed(1) + '" r="' + (r.next() * 0.35 + 0.1).toFixed(2) + '" fill="#fff" opacity="' + (r.next() * 0.6 + 0.2).toFixed(2) + '"/>');
+    parts.push('<rect width="100" height="100" fill="#000"/>');
+    // 星（小さな点）
+    const r = U.rng(7); for (let i = 0; i < 60; i++) { const sz = r.next() < 0.15 ? 0.6 : 0.35; parts.push('<rect x="' + (r.next() * 100).toFixed(1) + '" y="' + (r.next() * 100).toFixed(1) + '" width="' + sz + '" height="' + sz + '" fill="' + (r.next() < 0.5 ? '#e3ffb0' : '#4c7520') + '" opacity="' + (r.next() * 0.6 + 0.3).toFixed(2) + '"/>'); }
     g.lanes.forEach((l) => { const [a, b] = l.split('-').map(Number); const A = g.systems[a], Bs = g.systems[b]; parts.push('<line x1="' + A.x + '" y1="' + A.y + '" x2="' + Bs.x + '" y2="' + Bs.y + '" class="lane"/>'); });
+    const PL = ['..####..', '.#h####.', '#h######', '########', '########', '######d#', '.####dd.', '..####..'];
     g.systems.forEach((p) => {
       const col = ownerColor(s, p.owner);
       const sel = GUI.sel === p.id;
+      const sz = p.home ? 5.6 : 4.4, half = sz / 2;
+      const pc = p.home ? '#ffd23b' : (p.color || '#888');
+      const planet = MF.Sprite.svg(PL, { '#': pc, h: MF.Sprite.shade(pc, 0.25), d: MF.Sprite.shade(pc, -0.3) }, sz, 'gx-planet').replace('<svg ', '<svg x="' + (p.x - half) + '" y="' + (p.y - half) + '" ');
+      const corner = (k) => { const e = 5, L = 1.6, w = 0.45, X = p.x, Y = p.y; return ['M' + (X - e) + ' ' + (Y - e) + 'h' + L + 'v' + w + 'h' + (w - L) + 'v' + (L - w) + 'h' + (-w) + 'z', 'M' + (X + e) + ' ' + (Y - e) + 'h' + (-L) + 'v' + w + 'h' + (L - w) + 'v' + (L - w) + 'h' + w + 'z', 'M' + (X - e) + ' ' + (Y + e) + 'h' + L + 'v' + (-w) + 'h' + (w - L) + 'v' + (w - L) + 'h' + (-w) + 'z', 'M' + (X + e) + ' ' + (Y + e) + 'h' + (-L) + 'v' + (-w) + 'h' + (L - w) + 'v' + (w - L) + 'h' + w + 'z'][k]; };
       parts.push('<g class="sys" data-id="' + p.id + '">' +
-        '<circle cx="' + p.x + '" cy="' + p.y + '" r="6" fill="transparent"/>' +
-        (p.owner ? '<circle cx="' + p.x + '" cy="' + p.y + '" r="4.8" fill="' + col + '" opacity=".22"/>' : '') +
-        '<circle cx="' + p.x + '" cy="' + p.y + '" r="' + (p.home ? 2.8 : 2.2) + '" fill="' + (p.home ? '#ffd23d' : (p.color || '#888')) + '" stroke="' + col + '" stroke-width="' + (p.owner ? 0.9 : 0.4) + '"/>' +
-        (sel ? '<circle cx="' + p.x + '" cy="' + p.y + '" r="4.2" fill="none" stroke="#39d0ff" stroke-width=".6" stroke-dasharray="1 .8"/>' : '') +
-        (p.capital ? '<text x="' + p.x + '" y="' + (p.y - 3.4) + '" text-anchor="middle" font-size="3">👑</text>' : '') +
-        (g.focus === p.id ? '<text x="' + (p.x + 3) + '" y="' + (p.y - 2.5) + '" font-size="3">📖</text>' : '') +
-        (g.incoming && g.incoming.target === p.id ? '<text x="' + (p.x - 5.5) + '" y="' + (p.y - 2.5) + '" font-size="3.2">⚠️</text>' : '') +
-        '<text x="' + p.x + '" y="' + (p.y + 5.6) + '" text-anchor="middle" class="sys-name">' + U.esc(p.name) + '</text></g>');
+        '<rect x="' + (p.x - 6) + '" y="' + (p.y - 6) + '" width="12" height="12" fill="transparent"/>' +
+        (p.owner ? '<rect x="' + (p.x - 4) + '" y="' + (p.y - 4) + '" width="8" height="8" fill="' + col + '" opacity=".16"/><rect x="' + (p.x - 4) + '" y="' + (p.y - 4) + '" width="8" height="8" fill="none" stroke="' + col + '" stroke-width=".4"/>' : '') +
+        planet +
+        (sel ? '<path d="' + [0, 1, 2, 3].map(corner).join('') + '" fill="#dcff9a"/>' : '') +
+        (p.capital ? MF.Px.svgAt('crown', p.x - 1.6, p.y - 7.4, 3.2, '#ffd23b') : '') +
+        (g.focus === p.id ? MF.Px.svgAt('bookopen', p.x + 3, p.y - 6, 3.2, '#e3ffb0') : '') +
+        (g.incoming && g.incoming.target === p.id ? MF.Px.svgAt('warn', p.x - 6.4, p.y - 6, 3.4, '#ff5a3c') : '') +
+        '<text x="' + p.x + '" y="' + (p.y + 7.2) + '" text-anchor="middle" class="sys-name">' + U.esc(p.name) + '</text></g>');
     });
     parts.push('</svg>');
     const el = h('div', { class: 'gx-wrap', html: parts.join('') });
@@ -126,7 +132,7 @@
       const side = h('div', { class: 'gx-side' });
       if (GUI.sel === null || !g.systems[GUI.sel]) GUI.sel = g.home;
       side.appendChild(sysCard(s, g.systems[GUI.sel]));
-      side.appendChild(h('div', { class: 'legend small' }, h('span', {}, h('i', { style: { background: '#ffb02e' } }), 'あなた'), GX.EMPIRES.map((E) => h('span', {}, h('i', { style: { background: E.color } }), E.name)), h('span', {}, h('i', { style: { background: '#5a6270' } }), '無所属')));
+      side.appendChild(h('div', { class: 'legend small' }, h('span', {}, h('i', { style: { background: '#b6ff3b' } }), 'あなた'), GX.EMPIRES.map((E) => h('span', {}, h('i', { style: { background: E.color } }), E.name)), h('span', {}, h('i', { style: { background: '#5a6270' } }), '無所属')));
       layout.appendChild(side);
       root.appendChild(layout);
       root.appendChild(h('h3', { class: 'tier-title' }, 'ライバル帝国'));

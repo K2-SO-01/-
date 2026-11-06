@@ -5,6 +5,7 @@
   const h = UI.h;
   const PUI = { tab: 'list' };
   MF.PalsUI = PUI;
+  PUI.mini = {}; // 工場マップに描く小さな絵のキャッシュ
   PUI.skinOf = (s, pal) => (MF.Meta && MF.Meta.palSkin ? MF.Meta.palSkin(s, pal) : null);
   PUI.portrait = (s, pal, size) => h('span', { class: 'pal-portrait', html: Art.svg(pal.sp, { size: size || 72, skin: PUI.skinOf(s, pal) }) });
 
@@ -149,12 +150,10 @@
     const pal = P.get(s, b.pal);
     if (!pal) return;
     const sp = P.byId[pal.sp];
-    const r = cs * 0.17, cx = x + cs - r - cs * 0.06, cy = y + cs - r - cs * 0.06;
-    ctx.fillStyle = (PUI.skinOf(s, pal) || {}).color || sp.look.color;
-    ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.fill();
-    ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.2; ctx.stroke();
-    ctx.fillStyle = '#111';
-    ctx.beginPath(); ctx.arc(cx - r * 0.35, cy - r * 0.05, r * 0.18, 0, 7); ctx.arc(cx + r * 0.35, cy - r * 0.05, r * 0.18, 0, 7); ctx.fill();
+    // 小さな相棒のドット絵を右下に
+    const key = pal.sp + '|' + JSON.stringify(PUI.skinOf(s, pal) || {});
+    const spr = PUI.mini[key] || (PUI.mini[key] = MF.PalArt.sprite(pal.sp, { skin: PUI.skinOf(s, pal) || {} }));
+    if (spr) { ctx.fillStyle = '#000'; FUI.dot(ctx, x, y, cs / 16, 8, 8, 7, 7); MF.Sprite.draw(ctx, spr.rows, spr.pal, x + cs * 0.5, y + cs * 0.5, cs * 0.44); }
   });
   UI.noticeHandlers.palLevel = (n) => { UI.toast(n.text, 'good', 2500); if (MF.Audio) MF.Audio.play('levelup'); return true; };
   UI.noticeHandlers.egg = (n) => { UI.toast(n.text, 'good', 3200); if (MF.Audio) MF.Audio.play('egg'); return true; };

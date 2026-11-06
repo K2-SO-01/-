@@ -25,9 +25,10 @@
       p.vy += p.g; p.x += p.vx; p.y += p.vy; p.rot += p.vr || 0;
       ctx.globalAlpha = Math.max(0, 1 - k);
       ctx.fillStyle = p.color;
-      if (p.shape === 'rect') { ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.fillRect(-p.r, -p.r * 0.5, p.r * 2, p.r); ctx.restore(); }
-      else if (p.shape === 'text') { ctx.font = 'bold ' + p.r + 'px sans-serif'; ctx.fillText(p.text, p.x, p.y); }
-      else { ctx.beginPath(); ctx.arc(p.x, p.y, p.r * (1 - k * 0.5), 0, 7); ctx.fill(); }
+      // ドット絵の粒：回さない四角を、整数の位置に置く
+      if (p.shape === 'rect') { const w = Math.max(2, Math.round(p.r * (Math.abs(Math.cos(p.rot)) > 0.5 ? 2 : 1))); ctx.fillRect(Math.round(p.x), Math.round(p.y), w, Math.max(2, Math.round(p.r))); }
+      else if (p.shape === 'text') { ctx.font = p.r + 'px "DotGothic16", monospace'; ctx.fillText(p.text, Math.round(p.x), Math.round(p.y)); }
+      else { const z = Math.max(2, Math.round(p.r * (1 - k * 0.5) * 1.6)); ctx.fillRect(Math.round(p.x - z / 2), Math.round(p.y - z / 2), z, z); }
     }
     ctx.globalAlpha = 1;
     if (FX.parts.length) requestAnimationFrame(loop); else { FX.running = false; ctx.clearRect(0, 0, innerWidth, innerHeight); }
@@ -39,10 +40,10 @@
     const t0 = performance.now();
     for (let i = 0; i < n; i++) {
       const a = Math.random() * Math.PI * 2, sp = 2 + Math.random() * 5;
-      FX.parts.push({ x: o.x, y: o.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 2, g: 0.15, r: 2 + Math.random() * 3, color: i % 3 === 0 ? '#fff' : o.color || '#ffb02e', t0, life: 600 + Math.random() * 500 });
+      FX.parts.push({ x: o.x, y: o.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 2, g: 0.15, r: 2 + Math.random() * 3, color: i % 3 === 0 ? '#fff' : o.color || '#b6ff3b', t0, life: 600 + Math.random() * 500 });
     }
     // 「+」の文字が舞う
-    for (let i = 0; i < 3; i++) FX.parts.push({ x: o.x + (Math.random() - 0.5) * 60, y: o.y, vx: (Math.random() - 0.5) * 1.5, vy: -2 - Math.random() * 2, g: 0.02, r: 16, shape: 'text', text: ['∑', '∫', 'π', '√', '+'][Math.floor(Math.random() * 5)], color: o.color || '#ffb02e', t0, life: 900 });
+    for (let i = 0; i < 3; i++) FX.parts.push({ x: o.x + (Math.random() - 0.5) * 60, y: o.y, vx: (Math.random() - 0.5) * 1.5, vy: -2 - Math.random() * 2, g: 0.02, r: 16, shape: 'text', text: ['∑', '∫', 'π', '√', '+'][Math.floor(Math.random() * 5)], color: o.color || '#b6ff3b', t0, life: 900 });
     kick();
   };
   FX.puff = function (o) {
@@ -54,7 +55,7 @@
   FX.confetti = function () {
     if (calm()) return;
     const t0 = performance.now();
-    const cols = ['#ffb02e', '#39d0ff', '#52d273', '#ff5d5d', '#b48cff', '#fff'];
+    const cols = ['#b6ff3b', '#e3ffb0', '#ffd23b', '#74a12c', '#ff5a3c', '#ffffff'];
     for (let i = 0; i < 120; i++) FX.parts.push({ x: Math.random() * innerWidth, y: -20 - Math.random() * 200, vx: (Math.random() - 0.5) * 2, vy: 2 + Math.random() * 3, g: 0.03, r: 4 + Math.random() * 4, shape: 'rect', rot: Math.random() * 6, vr: (Math.random() - 0.5) * 0.3, color: cols[i % cols.length], t0, life: 2600 + Math.random() * 1200 });
     kick();
   };

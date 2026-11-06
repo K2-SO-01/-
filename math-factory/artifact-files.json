@@ -15,6 +15,7 @@
  "js/logic/story.js",
  "js/ui/ui.js",
  "js/ui/pixel-icons.js",
+ "js/ui/pixel-sprites.js",
  "js/ui/audio.js",
  "js/ui/fx.js",
  "js/ui/quiz-ui.js",

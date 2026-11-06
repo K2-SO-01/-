@@ -8,12 +8,17 @@
   const sfx = (n) => { if (MF.Audio) MF.Audio.play(n); };
 
   // ナビ（船のAI）の顔
+  // 船のコンピューターの顔（ドット絵のモニター）
+  const NAVI = {
+    base: ['........a.......', '........f.......', '.......fff......', '.ffffffffffffff.', '.fssssssssssssf.', '.fssssssssssssf.', null, null, null, null, '.fssssssssssssf.', '.ffffffffffffff.', '......ffff......', '....ffffffff....'],
+    normal: ['.fsseesssseessf.', '.fsseesssseessf.', '.fssssssssssssf.', '.fssssmmmmssssf.'],
+    happy: ['.fsssessssesssf.', '.fssesessesessf.', '.fsssmssssmsssf.', '.fssssmmmmssssf.'],
+  };
   SUI.navi = function (size, mood) {
-    const eye = mood === 'happy' ? '<path d="M33 46 q5 -6 10 0 M57 46 q5 -6 10 0" stroke="#39d0ff" stroke-width="4" fill="none" stroke-linecap="round"/>' : '<rect x="32" y="40" width="12" height="10" rx="3" fill="#39d0ff"/><rect x="56" y="40" width="12" height="10" rx="3" fill="#39d0ff"/>';
-    return '<svg viewBox="0 0 100 100" width="' + (size || 72) + '" height="' + (size || 72) + '" class="navi-svg" aria-label="ナビ"><line x1="50" y1="14" x2="50" y2="4" stroke="#8a95a5" stroke-width="3"/><circle cx="50" cy="4" r="4" fill="#ffb02e"/>' +
-      '<rect x="18" y="16" width="64" height="56" rx="16" fill="#2a3340" stroke="#8a95a5" stroke-width="3"/><rect x="25" y="28" width="50" height="30" rx="9" fill="#0d1218"/>' + eye +
-      '<path d="M42 64 q8 5 16 0" stroke="#39d0ff" stroke-width="3" fill="none" stroke-linecap="round"/><rect x="10" y="38" width="8" height="18" rx="3" fill="#ffb02e"/><rect x="82" y="38" width="8" height="18" rx="3" fill="#ffb02e"/>' +
-      '<rect x="30" y="74" width="40" height="18" rx="6" fill="#2a3340" stroke="#8a95a5" stroke-width="3"/><text x="50" y="88" text-anchor="middle" font-size="12" fill="#ffb02e" font-family="serif">∑</text></svg>';
+    const face = NAVI[mood === 'happy' ? 'happy' : 'normal'];
+    let k = 0;
+    const rows = NAVI.base.map((r) => r || face[k++]);
+    return MF.Sprite.svg(MF.Sprite.grid(rows, 'center'), { a: '#ffd23b', f: '#4c7520', s: '#061004', e: '#b6ff3b', m: '#b6ff3b' }, size || 72, 'navi-svg', 'ナビ');
   };
   /** 会話を1行ずつ見せる */
   SUI.talk = function (lines, opts) {

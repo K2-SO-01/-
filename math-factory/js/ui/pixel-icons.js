@@ -1105,6 +1105,14 @@
     return (svgCache[name] = '<svg class="px-svg" viewBox="0 0 16 16" aria-hidden="true" shape-rendering="crispEdges">' +
       (d['+'] ? '<path d="' + d['+'] + '" fill="currentColor" opacity=".45"/>' : '') + '<path d="' + d['#'] + '" fill="currentColor"/></svg>');
   };
+  /** SVG の中に置くアイコン（x, y, 大きさ, 色） */
+  Px.svgAt = function (name, x, y, size, color) {
+    const rows = Px.rows(name);
+    if (!rows) return '';
+    const d = paths(rows);
+    return '<svg x="' + x + '" y="' + y + '" width="' + size + '" height="' + size + '" viewBox="0 0 16 16" shape-rendering="crispEdges">' +
+      (d['+'] ? '<path d="' + d['+'] + '" fill="' + color + '" opacity=".45"/>' : '') + '<path d="' + d['#'] + '" fill="' + color + '"/></svg>';
+  };
   /** アイコンの要素（文字の大きさに合わせて 1em 四方） */
   Px.icon = function (name, label) {
     const s = document.createElement('span');

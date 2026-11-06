@@ -19,7 +19,7 @@
     belowExtras: [],
   };
   MF.FactoryUI = FUI;
-  const STATE_TXT = { work: ['稼働中', '#52d273'], idle: ['待機', '#9aa3ad'], noinput: ['材料待ち', '#ffcf4a'], full: ['出口が詰まっている', '#ff5d5d'], nofuel: ['燃料（石炭）切れ', '#ff5d5d'], lowpower: ['電力不足', '#ff9a3d'], norecipe: ['レシピ未設定', '#ffcf4a'], broken: ['故障中（修理が必要）', '#ff5d5d'] };
+  const STATE_TXT = { work: ['稼働中', '#b6ff3b'], idle: ['待機', '#74a12c'], noinput: ['材料待ち', '#ffd23b'], full: ['出口が詰まっている', '#ff5a3c'], nofuel: ['燃料（石炭）切れ', '#ff5a3c'], lowpower: ['電力不足', '#ff9a3d'], norecipe: ['レシピ未設定', '#ffd23b'], broken: ['故障中（修理が必要）', '#ff5a3c'] };
   FUI.STATE_TXT = STATE_TXT;
 
   // ---------- ヘッダーの「演算チャージ」 ----------
@@ -32,67 +32,79 @@
       h('span', { class: 'cc-t' }, low ? '省電力' : U.fmtClock(f.charge)));
   });
 
-  // ---------- 描画 ----------
+  // ---------- 描画（ドット絵：1マスを16×16の小さな点で描く） ----------
+  const GREEN = '#b6ff3b', DIM = '#2b4214';
+  /** 1マスの中の点 (px, py) から w×h 個ぶんの四角をぬる（u は点の大きさ） */
+  function dot(ctx, x, y, u, px, py, w, hh) { ctx.fillRect(Math.floor(x + px * u), Math.floor(y + py * u), Math.ceil((w || 1) * u), Math.ceil((hh || 1) * u)); }
+  FUI.dot = dot;
+  /** 上向きの矢印（マスの上のふち）。回転させて使う */
+  function arrowUp(ctx, u, color) { ctx.fillStyle = color; dot(ctx, -8 * u, -8 * u, u, 7, 0, 2, 1); dot(ctx, -8 * u, -8 * u, u, 6, 1, 4, 1); dot(ctx, -8 * u, -8 * u, u, 5, 2, 6, 1); }
   function drawTile(ctx, x, y, cs, ore) {
-    ctx.fillStyle = (x + y) % 2 ? '#1a1e23' : '#1c2026';
-    ctx.fillRect(x * cs, y * cs, cs, cs);
+    const u = cs / 16, X = x * cs, Y = y * cs;
+    ctx.fillStyle = '#020302'; ctx.fillRect(X, Y, cs, cs);
+    ctx.fillStyle = DIM; dot(ctx, X, Y, u, 0, 0, 1, 1); // マス目の点
     if (ore) {
       const c = G.ITEMS[ore].color;
-      ctx.fillStyle = c + '30';
-      ctx.fillRect(x * cs + 1, y * cs + 1, cs - 2, cs - 2);
-      ctx.fillStyle = c + 'b0';
+      ctx.fillStyle = c + '1c'; ctx.fillRect(X + u, Y + u, cs - 2 * u, cs - 2 * u);
       const r = U.rng((x * 73856093) ^ (y * 19349663));
-      for (let i = 0; i < 5; i++) { const px = x * cs + 3 + r.next() * (cs - 6), py = y * cs + 3 + r.next() * (cs - 6); ctx.beginPath(); ctx.arc(px, py, Math.max(1.5, cs * (0.05 + r.next() * 0.05)), 0, 7); ctx.fill(); }
+      ctx.fillStyle = c;
+      for (let i = 0; i < 6; i++) { const px = 2 + Math.floor(r.next() * 11), py = 2 + Math.floor(r.next() * 11); dot(ctx, X, Y, u, px, py, 2, 2); }
+      ctx.fillStyle = c + '90';
+      for (let i = 0; i < 5; i++) dot(ctx, X, Y, u, 1 + Math.floor(r.next() * 14), 1 + Math.floor(r.next() * 14), 1, 1);
     }
   }
-  function rr(ctx, x, y, w, hh, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + hh, r); ctx.arcTo(x + w, y + hh, x, y + hh, r); ctx.arcTo(x, y + hh, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+  function rr(ctx, x, y, w, hh) { ctx.beginPath(); ctx.rect(x, y, w, hh); }
   FUI.rr = rr;
   function drawBelt(ctx, b, cs, t, flowItem) {
-    const x = b.x * cs, y = b.y * cs;
+    const u = cs / 16;
     ctx.save();
-    ctx.translate(x + cs / 2, y + cs / 2);
+    ctx.translate(b.x * cs + cs / 2, b.y * cs + cs / 2);
     ctx.rotate(b.dir * Math.PI / 2);
-    ctx.fillStyle = '#2b3037'; ctx.fillRect(-cs * 0.42, -cs / 2, cs * 0.84, cs);
-    ctx.fillStyle = '#3b414a'; ctx.fillRect(-cs * 0.42, -cs / 2, cs * 0.08, cs); ctx.fillRect(cs * 0.34, -cs / 2, cs * 0.08, cs);
-    const off = flowItem ? (t * 1.6) % 1 : 0;
-    ctx.strokeStyle = flowItem ? '#ffb02e' : '#59606b'; ctx.lineWidth = Math.max(1.5, cs * 0.06);
-    for (let i = -1; i < 2; i++) {
-      const yy = (i + 0.5 - off) * cs * 0.5;
-      if (yy < -cs / 2 || yy > cs / 2) continue;
-      ctx.beginPath(); ctx.moveTo(-cs * 0.2, yy + cs * 0.12); ctx.lineTo(0, yy - cs * 0.06); ctx.lineTo(cs * 0.2, yy + cs * 0.12); ctx.stroke();
+    const o = -cs / 2;
+    ctx.fillStyle = '#0b1207'; dot(ctx, o, o, u, 2, 0, 12, 16);
+    ctx.fillStyle = '#3a5a1c'; dot(ctx, o, o, u, 2, 0, 1, 16); dot(ctx, o, o, u, 13, 0, 1, 16);
+    const step = flowItem ? Math.floor(t * 12) % 8 : 0; // 8点ごとに山形が流れる
+    ctx.fillStyle = flowItem ? GREEN : '#2f4a17';
+    for (let k = -1; k < 2; k++) {
+      const py = 3 + k * 8 - step + 8;
+      if (py < 0 || py > 13) continue;
+      dot(ctx, o, o, u, 7, py, 2, 1); dot(ctx, o, o, u, 6, py + 1, 1, 1); dot(ctx, o, o, u, 9, py + 1, 1, 1); dot(ctx, o, o, u, 5, py + 2, 1, 1); dot(ctx, o, o, u, 10, py + 2, 1, 1);
     }
     if (flowItem && G.ITEMS[flowItem]) {
       ctx.fillStyle = G.ITEMS[flowItem].color;
-      for (let i = 0; i < 2; i++) { const yy = ((1 - ((t * 1.6 + i * 0.5) % 1)) - 0.5) * cs; ctx.beginPath(); ctx.arc(0, yy, cs * 0.12, 0, 7); ctx.fill(); }
+      for (let i = 0; i < 2; i++) { const py = Math.floor(((1 - ((t * 1.6 + i * 0.5) % 1))) * 16) - 2; if (py >= 0 && py <= 12) dot(ctx, o, o, u, 6, py, 4, 4); }
     }
     ctx.restore();
   }
+  const iconOf = (d) => (MF.Px && d.icon ? MF.Px.EMOJI[d.icon.replace(/️/g, '')] : null);
   function drawBuilding(ctx, s, b, cs, t) {
     const d = F.BUILDINGS[b.type];
-    const x = b.x * cs, y = b.y * cs, p = Math.max(2, cs * 0.08);
-    const skin = FUI.skinColor ? FUI.skinColor(s, b) : null;
-    ctx.fillStyle = skin || d.color;
-    rr(ctx, x + p, y + p, cs - 2 * p, cs - 2 * p, cs * 0.16); ctx.fill();
-    ctx.strokeStyle = b.disabled ? '#ff5d5d' : 'rgba(255,255,255,.18)'; ctx.lineWidth = 1.5; ctx.stroke();
+    const u = cs / 16, x = b.x * cs, y = b.y * cs;
+    const col = (FUI.skinColor ? FUI.skinColor(s, b) : null) || d.color;
+    const MS = MF.Sprite;
+    ctx.fillStyle = MS ? MS.shade(col, -0.18) : col; dot(ctx, x, y, u, 1, 1, 14, 14);
+    ctx.fillStyle = b.disabled ? '#ff5a3c' : (MS ? MS.shade(col, 0.22) : col);
+    dot(ctx, x, y, u, 1, 1, 14, 1); dot(ctx, x, y, u, 1, 14, 14, 1); dot(ctx, x, y, u, 1, 1, 1, 14); dot(ctx, x, y, u, 14, 1, 1, 14);
     // 向き（出口）
-    if (F.hasFront(b)) {
-      ctx.save(); ctx.translate(x + cs / 2, y + cs / 2); ctx.rotate(b.dir * Math.PI / 2);
-      ctx.fillStyle = b.type === 'port' ? '#39d0ff' : '#ffb02e'; ctx.beginPath(); ctx.moveTo(-cs * 0.12, -cs * 0.34); ctx.lineTo(0, -cs * 0.48); ctx.lineTo(cs * 0.12, -cs * 0.34); ctx.fill();
-      ctx.restore();
-    }
-    ctx.font = Math.floor(cs * 0.48) + 'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    const wob = b.state === 'work' && !document.body.classList.contains('reduce-motion') ? Math.sin(t * 8 + b.id) * cs * 0.02 : 0;
-    ctx.fillText(d.icon, x + cs / 2, y + cs / 2 + wob + 1);
-    if (b.type === 'miner' && b.ore) { ctx.fillStyle = G.ITEMS[b.ore].color; ctx.beginPath(); ctx.arc(x + cs * 0.22, y + cs * 0.78, cs * 0.1, 0, 7); ctx.fill(); }
-    if (b.type === 'assembler' && b.recipe && G.ITEMS[b.recipe]) { ctx.fillStyle = G.ITEMS[b.recipe].color; ctx.fillRect(x + cs * 0.14, y + cs * 0.7, cs * 0.16, cs * 0.16); }
+    if (F.hasFront(b)) { ctx.save(); ctx.translate(x + cs / 2, y + cs / 2); ctx.rotate(b.dir * Math.PI / 2); arrowUp(ctx, u, b.type === 'port' ? '#e3ffb0' : GREEN); ctx.restore(); }
+    const bob = b.state === 'work' && !document.body.classList.contains('reduce-motion') && Math.floor(t * 4 + b.id) % 2 ? -u : 0;
+    const ic = iconOf(d);
+    if (ic) MF.Px.draw(ctx, ic, x + 4 * u, y + 4 * u + bob, 8 * u, MS ? MS.shade(col, 0.45) : '#fff');
+    if (b.type === 'miner' && b.ore) { ctx.fillStyle = G.ITEMS[b.ore].color; dot(ctx, x, y, u, 3, 11, 2, 2); }
+    if (b.type === 'assembler' && b.recipe && G.ITEMS[b.recipe]) { ctx.fillStyle = G.ITEMS[b.recipe].color; dot(ctx, x, y, u, 3, 11, 2, 2); }
     // 状態ランプ
     const st = STATE_TXT[b.state] || STATE_TXT.idle;
-    if (b.type !== 'core' && b.type !== 'storage') { ctx.fillStyle = st[1]; ctx.beginPath(); ctx.arc(x + cs - p - cs * 0.1, y + p + cs * 0.1, cs * 0.075, 0, 7); ctx.fill(); }
-    // 進み具合
-    if (b.prog > 0 && b.state === 'work' && b.type !== 'miner') { ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.fillRect(x + p + 2, y + cs - p - 5, cs - 2 * p - 4, 3); ctx.fillStyle = '#ffb02e'; ctx.fillRect(x + p + 2, y + cs - p - 5, (cs - 2 * p - 4) * Math.min(1, b.prog), 3); }
+    if (b.type !== 'core' && b.type !== 'storage') { ctx.fillStyle = st[1]; dot(ctx, x, y, u, 11, 3, 2, 2); }
+    // 進み具合（点のゲージ）
+    if (b.prog > 0 && b.state === 'work' && b.type !== 'miner') { ctx.fillStyle = '#000'; dot(ctx, x, y, u, 3, 12, 10, 1); ctx.fillStyle = GREEN; const n = Math.round(10 * Math.min(1, b.prog)); for (let i = 0; i < n; i += 2) dot(ctx, x, y, u, 3 + i, 12, 1, 1); }
     for (const fn of FUI.overlayDraw) fn(ctx, s, b, x, y, cs, t);
   }
+  /** えらんだマスの四すみに、カギかっこの印 */
+  function brackets(ctx, X, Y, cs, color) {
+    const u = cs / 16; ctx.fillStyle = color;
+    [[0, 0, 1, 1], [15, 0, -1, 1], [0, 15, 1, -1], [15, 15, -1, -1]].forEach(([px, py, sx, sy]) => { dot(ctx, X, Y, u, sx > 0 ? px : px - 3, py, 4, 1); dot(ctx, X, Y, u, px, sy > 0 ? py : py - 3, 1, 4); });
+  }
+  FUI.brackets = brackets;
   FUI.draw = function () {
     const cv = FUI.canvas;
     if (!cv || !document.body.contains(cv)) return;
@@ -102,27 +114,26 @@
     if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
     const ctx = cv.getContext('2d');
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.fillStyle = '#0e1013'; ctx.fillRect(0, 0, W, H);
+    ctx.imageSmoothingEnabled = false;
+    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
     const cs = FUI.cs * FUI.zoom;
     ctx.save();
-    ctx.translate(FUI.ox, FUI.oy);
+    ctx.translate(Math.round(FUI.ox), Math.round(FUI.oy));
     const t = performance.now() / 1000;
     for (let y = 0; y < f.h; y++) for (let x = 0; x < f.w; x++) drawTile(ctx, x, y, cs, f.ore[y * f.w + x]);
-    ctx.strokeStyle = 'rgba(255,176,46,.35)'; ctx.lineWidth = 2; ctx.strokeRect(0, 0, f.w * cs, f.h * cs);
+    ctx.strokeStyle = '#4c7520'; ctx.lineWidth = 1; ctx.strokeRect(-0.5, -0.5, f.w * cs + 1, f.h * cs + 1);
     const flow = f.beltFlow || {};
     for (const id in f.b) { const b = f.b[id]; if (b.type === 'belt') drawBelt(ctx, b, cs, t, flow[F.idx(f, b.x, b.y)]); }
     for (const id in f.b) { const b = f.b[id]; if (b.type !== 'belt') drawBuilding(ctx, s, b, cs, t); }
     // 選択・ゴースト
-    if (FUI.sel && f.b[FUI.sel]) { const b = f.b[FUI.sel]; ctx.strokeStyle = '#39d0ff'; ctx.lineWidth = 3; ctx.strokeRect(b.x * cs + 1.5, b.y * cs + 1.5, cs - 3, cs - 3); }
+    if (FUI.sel && f.b[FUI.sel]) { const b = f.b[FUI.sel]; brackets(ctx, b.x * cs, b.y * cs, cs, '#dcff9a'); }
     if (FUI.hover && FUI.tool === 'build') {
       const { x, y } = FUI.hover;
       const ok = F.canPlace(s, FUI.type, x, y).ok;
-      ctx.globalAlpha = 0.55;
-      ctx.fillStyle = ok ? '#52d273' : '#ff5d5d';
-      ctx.fillRect(x * cs + 2, y * cs + 2, cs - 4, cs - 4);
-      ctx.globalAlpha = 1;
-      ctx.save(); ctx.translate(x * cs + cs / 2, y * cs + cs / 2); ctx.rotate(FUI.dir * Math.PI / 2);
-      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(-cs * 0.15, cs * 0.05); ctx.lineTo(0, -cs * 0.25); ctx.lineTo(cs * 0.15, cs * 0.05); ctx.fill(); ctx.restore();
+      const u = cs / 16;
+      ctx.globalAlpha = 0.35; ctx.fillStyle = ok ? GREEN : '#ff5a3c'; dot(ctx, x * cs, y * cs, u, 1, 1, 14, 14); ctx.globalAlpha = 1;
+      brackets(ctx, x * cs, y * cs, cs, ok ? GREEN : '#ff5a3c');
+      ctx.save(); ctx.translate(x * cs + cs / 2, y * cs + cs / 2); ctx.rotate(FUI.dir * Math.PI / 2); arrowUp(ctx, u, '#ffffff'); ctx.restore();
     }
     if (FUI.drawExtra) FUI.drawExtra(ctx, s, cs);
     ctx.restore();

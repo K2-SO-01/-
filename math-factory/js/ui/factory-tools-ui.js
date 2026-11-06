@@ -29,8 +29,8 @@
   // レベルの点
   FUI.overlayDraw.push((ctx, s, b, x, y, cs) => {
     if (b.lvl <= 1) return;
-    ctx.fillStyle = '#ffb02e';
-    for (let i = 0; i < b.lvl - 1; i++) { ctx.beginPath(); ctx.arc(x + cs * 0.2 + i * cs * 0.13, y + cs * 0.2, cs * 0.05, 0, 7); ctx.fill(); }
+    ctx.fillStyle = '#ffd23b';
+    for (let i = 0; i < b.lvl - 1; i++) FUI.dot(ctx, x, y, cs / 16, 3 + i * 2, 3, 1, 1);
   });
 
   // 設計図ツール
@@ -53,18 +53,18 @@
     if (BP.mode === 'copy' && BP.a) {
       const b = FUI.hover || BP.a;
       const x = Math.min(BP.a.x, b.x), y = Math.min(BP.a.y, b.y), w = Math.abs(BP.a.x - b.x) + 1, hh = Math.abs(BP.a.y - b.y) + 1;
-      ctx.fillStyle = 'rgba(57,208,255,.18)'; ctx.fillRect(x * cs, y * cs, w * cs, hh * cs);
-      ctx.strokeStyle = '#39d0ff'; ctx.setLineDash([6, 4]); ctx.lineWidth = 2; ctx.strokeRect(x * cs, y * cs, w * cs, hh * cs); ctx.setLineDash([]);
+      ctx.fillStyle = 'rgba(227,255,176,.14)'; ctx.fillRect(x * cs, y * cs, w * cs, hh * cs);
+      ctx.strokeStyle = '#e3ffb0'; ctx.setLineDash([cs / 8, cs / 8]); ctx.lineWidth = 1; ctx.strokeRect(x * cs + 0.5, y * cs + 0.5, w * cs - 1, hh * cs - 1); ctx.setLineDash([]);
     }
     const anc = BP.anchor || (BP.mode === 'paste' ? FUI.hover : null);
     if (BP.mode === 'paste' && BP.cur && anc) {
       for (const it of BP.cur.items) {
         const x = anc.x + it.dx, y = anc.y + it.dy;
         const ok = F.canPlace(s, it.type, x, y).ok;
-        ctx.globalAlpha = 0.5; ctx.fillStyle = ok ? '#52d273' : '#ff5d5d';
-        ctx.fillRect(x * cs + 3, y * cs + 3, cs - 6, cs - 6); ctx.globalAlpha = 1;
-        ctx.save(); ctx.translate(x * cs + cs / 2, y * cs + cs / 2); ctx.rotate(it.dir * Math.PI / 2);
-        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(-cs * 0.12, cs * 0.06); ctx.lineTo(0, -cs * 0.2); ctx.lineTo(cs * 0.12, cs * 0.06); ctx.fill(); ctx.restore();
+        ctx.globalAlpha = 0.4; ctx.fillStyle = ok ? '#b6ff3b' : '#ff5a3c';
+        FUI.dot(ctx, x * cs, y * cs, cs / 16, 2, 2, 12, 12); ctx.globalAlpha = 1;
+        const ic = MF.Px && MF.Px.EMOJI[(F.BUILDINGS[it.type].icon || '').replace(/\uFE0F/g, '')];
+        if (ic) MF.Px.draw(ctx, ic, x * cs + cs / 4, y * cs + cs / 4, cs / 2, '#000');
       }
     }
   };

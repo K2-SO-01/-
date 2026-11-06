@@ -142,8 +142,12 @@
   MF.FactoryUI.overlayDraw.unshift((ctx, s, b, x, y, cs) => {
     const th = s.meta.theme && M.skinById[s.meta.theme];
     if (!th || !th.glow || b.type === 'belt' || b.type === 'core') return;
-    ctx.save(); ctx.shadowColor = th.glow; ctx.shadowBlur = cs * 0.25; ctx.strokeStyle = th.glow; ctx.lineWidth = 1.5;
-    MF.FactoryUI.rr(ctx, x + cs * 0.1, y + cs * 0.1, cs * 0.8, cs * 0.8, cs * 0.16); ctx.stroke(); ctx.restore();
+    // 光る枠（ドット絵なので、ぼかさずに点の枠を2重に）
+    const u = cs / 16, D = MF.FactoryUI.dot;
+    ctx.save(); ctx.fillStyle = th.glow;
+    D(ctx, x, y, u, 0, 0, 16, 1); D(ctx, x, y, u, 0, 15, 16, 1); D(ctx, x, y, u, 0, 0, 1, 16); D(ctx, x, y, u, 15, 0, 1, 16);
+    ctx.globalAlpha = 0.4; D(ctx, x, y, u, 2, 2, 12, 1); D(ctx, x, y, u, 2, 13, 12, 1); D(ctx, x, y, u, 2, 2, 1, 12); D(ctx, x, y, u, 13, 2, 1, 12);
+    ctx.restore();
   });
 
   // ---------- 実績画面 ----------

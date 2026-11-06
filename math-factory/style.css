@@ -830,3 +830,14 @@ body::before { background: var(--bg); }
 .fx-combo span { color: var(--accent); }
 .fx-launch { background: rgba(0,0,0,.6); }
 .vol { accent-color: var(--accent); }
+
+/* ドット絵のキャラクター・マップ */
+.pal-svg, .egg-svg, .enemy-svg, .spr { image-rendering: pixelated; }
+.enemy-pic { animation: float 1.2s steps(2) infinite; }
+@keyframes float { 50% { transform: translateY(-4px); } }
+.egg-card.ready .egg-pic, .hatch-egg { animation-timing-function: steps(2); }
+.gx-map { shape-rendering: crispEdges; }
+.gx-map .lane { stroke: #3a5a1c; stroke-width: .45; stroke-dasharray: 1 .9; }
+.gx-map .sys-name { fill: #9bd04a; font-size: 2.4px; font-family: var(--font); text-shadow: none; }
+.gx-map .sys:hover .gx-planet { filter: brightness(1.35); }
+.legend i { width: 10px; height: 10px; }

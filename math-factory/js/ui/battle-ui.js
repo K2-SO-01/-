@@ -9,18 +9,9 @@
 
   // ---------- 敵の絵（赤い異星生物） ----------
   BUI.enemySvg = function (type, size) {
-    const d = Bt.ENEMIES[type], L = d.look;
-    const red = d.boss ? '#e0263f' : d.elite ? '#c22a4a' : '#d6404f', dk = '#7a1426', lt = '#ff7a86';
-    const p = [];
-    const eyes = (pts) => pts.map(([x, y, r]) => '<circle cx="' + x + '" cy="' + y + '" r="' + r + '" fill="#ffe14a"/><circle cx="' + x + '" cy="' + (y + r * 0.15) + '" r="' + r * 0.45 + '" fill="#2a0008"/>').join('');
-    if (L.body === 'grub') p.push('<circle cx="74" cy="66" r="14" fill="' + dk + '"/><circle cx="56" cy="62" r="18" fill="' + red + '"/><circle cx="34" cy="56" r="22" fill="' + red + '"/><path d="M16 60 l-8 6 M18 66 l-6 10" stroke="' + dk + '" stroke-width="4" stroke-linecap="round"/>' + eyes([[28, 50, 5], [40, 48, 5]]) + '<path d="M26 64 q8 6 16 0" stroke="#2a0008" stroke-width="3" fill="none"/>');
-    if (L.body === 'wing') p.push('<path d="M50 50 L8 24 L18 52 L4 66 L40 60 Z" fill="' + dk + '"/><path d="M50 50 L92 24 L82 52 L96 66 L60 60 Z" fill="' + dk + '"/><ellipse cx="50" cy="56" rx="18" ry="22" fill="' + red + '"/>' + eyes([[42, 50, 4.5], [58, 50, 4.5], [50, 40, 4]]) + '<path d="M44 66 l3 5 l3 -5 l3 5 l3 -5" stroke="#fff" stroke-width="2" fill="none"/>');
-    if (L.body === 'frog') p.push('<ellipse cx="50" cy="64" rx="38" ry="26" fill="' + red + '"/><ellipse cx="50" cy="74" rx="26" ry="12" fill="' + lt + '"/><circle cx="30" cy="40" r="12" fill="' + red + '"/><circle cx="70" cy="40" r="12" fill="' + red + '"/>' + eyes([[30, 40, 8], [70, 40, 8]]) + '<path d="M26 64 q24 14 48 0" stroke="#2a0008" stroke-width="4" fill="none"/><circle cx="20" cy="58" r="3" fill="' + dk + '"/><circle cx="80" cy="60" r="3" fill="' + dk + '"/>');
-    if (L.body === 'beast') p.push('<path d="M14 70 L22 42 L32 56 L40 34 L50 52 L60 32 L68 54 L78 40 L86 70 Z" fill="' + dk + '"/><ellipse cx="50" cy="66" rx="36" ry="24" fill="' + red + '"/><rect x="22" y="80" width="10" height="12" rx="4" fill="' + dk + '"/><rect x="68" y="80" width="10" height="12" rx="4" fill="' + dk + '"/>' + eyes([[38, 58, 5], [50, 56, 6], [62, 58, 5], [50, 46, 3.5]]) + '<path d="M36 74 l4 6 l4 -6 l4 6 l4 -6 l4 6 l4 -6" stroke="#fff" stroke-width="2.5" fill="none"/>');
-    if (L.body === 'shell') p.push('<path d="M10 56 q-6 -18 10 -22 q6 8 -2 16 Z" fill="' + dk + '"/><path d="M90 56 q6 -18 -10 -22 q-6 8 2 16 Z" fill="' + dk + '"/><path d="M14 70 Q50 10 86 70 Z" fill="' + red + '" stroke="' + dk + '" stroke-width="3"/><path d="M30 60 Q50 30 70 60 M40 66 Q50 46 60 66" stroke="' + dk + '" stroke-width="3" fill="none"/><rect x="18" y="68" width="64" height="16" rx="8" fill="' + dk + '"/>' + eyes([[40, 76, 4.5], [60, 76, 4.5]]));
-    if (L.body === 'spore') p.push('<circle cx="34" cy="64" r="20" fill="' + red + '"/><circle cx="66" cy="62" r="22" fill="' + red + '"/><circle cx="50" cy="40" r="20" fill="' + red + '"/><circle cx="24" cy="40" r="6" fill="' + lt + '"/><circle cx="80" cy="36" r="7" fill="' + lt + '"/><circle cx="50" cy="16" r="5" fill="' + lt + '"/>' + eyes([[30, 62, 5], [40, 70, 4], [62, 58, 5], [72, 66, 4], [50, 40, 6]]));
-    if (L.body === 'queen') p.push('<path d="M20 30 L28 6 L38 24 L50 2 L62 24 L72 6 L80 30 Z" fill="#ffd23d" stroke="' + dk + '" stroke-width="2"/>' + [18, 32, 68, 82].map((x) => '<path d="M' + x + ' 76 q' + (x < 50 ? -8 : 8) + ' 10 ' + (x < 50 ? -2 : 2) + ' 20" stroke="' + dk + '" stroke-width="6" fill="none" stroke-linecap="round"/>').join('') + '<ellipse cx="50" cy="56" rx="38" ry="30" fill="' + red + '"/><ellipse cx="50" cy="70" rx="24" ry="12" fill="' + lt + '"/>' + eyes([[34, 46, 5], [50, 42, 7], [66, 46, 5], [40, 58, 4], [60, 58, 4], [50, 30, 3.5]]) + '<path d="M36 72 q14 8 28 0" stroke="#2a0008" stroke-width="4" fill="none"/>');
-    return '<svg class="enemy-svg" viewBox="0 0 100 100" width="' + (size || 90) + '" height="' + (size || 90) + '" role="img" aria-label="' + d.name + '">' + p.join('') + '</svg>';
+    const d = Bt.ENEMIES[type];
+    const e = MF.Sprite.enemy(d.look.body, { boss: d.boss, elite: d.elite });
+    return MF.Sprite.svg(e.rows, e.pal, size || 90, 'enemy-svg', d.name);
   };
 
   // ---------- 防衛画面 ----------
@@ -368,8 +359,8 @@
   });
   FUI.overlayDraw.push((ctx, s, b, x, y, cs) => {
     if (!b.disabled) return;
-    ctx.fillStyle = 'rgba(255,40,40,.35)'; ctx.fillRect(x + 2, y + 2, cs - 4, cs - 4);
-    ctx.font = Math.floor(cs * 0.4) + 'px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('💥', x + cs / 2, y + cs / 2);
+    ctx.fillStyle = 'rgba(255,90,60,.35)'; FUI.dot(ctx, x, y, cs / 16, 1, 1, 14, 14);
+    MF.Px.draw(ctx, 'boom', x + cs * 0.2, y + cs * 0.2, cs * 0.6, '#ffd23b');
   });
   UI.headerExtras.push((s) => {
     if (!s.battle.raid.pending && !(s.battle.active)) return null;
