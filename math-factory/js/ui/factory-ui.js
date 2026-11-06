@@ -41,16 +41,17 @@
   function arrowUp(ctx, u, color) { ctx.fillStyle = color; dot(ctx, -8 * u, -8 * u, u, 7, 0, 2, 1); dot(ctx, -8 * u, -8 * u, u, 6, 1, 4, 1); dot(ctx, -8 * u, -8 * u, u, 5, 2, 6, 1); }
   function drawTile(ctx, x, y, cs, ore) {
     const u = cs / 16, X = x * cs, Y = y * cs;
-    ctx.fillStyle = '#020302'; ctx.fillRect(X, Y, cs, cs);
-    ctx.fillStyle = DIM; dot(ctx, X, Y, u, 0, 0, 1, 1); // マス目の点
+    ctx.fillStyle = (x + y) % 2 ? '#040703' : '#070b05'; ctx.fillRect(X, Y, cs, cs); // うすい市松模様
+    ctx.fillStyle = '#3a5a1c'; dot(ctx, X, Y, u, 0, 0, 1, 1); // マス目の点
     if (ore) {
       const c = G.ITEMS[ore].color;
-      ctx.fillStyle = c + '1c'; ctx.fillRect(X + u, Y + u, cs - 2 * u, cs - 2 * u);
+      ctx.fillStyle = c + '3a'; ctx.fillRect(X + u, Y + u, cs - 2 * u, cs - 2 * u);
       const r = U.rng((x * 73856093) ^ (y * 19349663));
-      ctx.fillStyle = c;
-      for (let i = 0; i < 6; i++) { const px = 2 + Math.floor(r.next() * 11), py = 2 + Math.floor(r.next() * 11); dot(ctx, X, Y, u, px, py, 2, 2); }
-      ctx.fillStyle = c + '90';
-      for (let i = 0; i < 5; i++) dot(ctx, X, Y, u, 1 + Math.floor(r.next() * 14), 1 + Math.floor(r.next() * 14), 1, 1);
+      for (let i = 0; i < 5; i++) {
+        const px = 2 + Math.floor(r.next() * 10), py = 2 + Math.floor(r.next() * 10);
+        ctx.fillStyle = c; dot(ctx, X, Y, u, px, py, 3, 3);
+        ctx.fillStyle = MF.Sprite ? MF.Sprite.shade(c, 0.3) : c; dot(ctx, X, Y, u, px, py, 1, 1);
+      }
     }
   }
   function rr(ctx, x, y, w, hh) { ctx.beginPath(); ctx.rect(x, y, w, hh); }
@@ -61,10 +62,10 @@
     ctx.translate(b.x * cs + cs / 2, b.y * cs + cs / 2);
     ctx.rotate(b.dir * Math.PI / 2);
     const o = -cs / 2;
-    ctx.fillStyle = '#0b1207'; dot(ctx, o, o, u, 2, 0, 12, 16);
-    ctx.fillStyle = '#3a5a1c'; dot(ctx, o, o, u, 2, 0, 1, 16); dot(ctx, o, o, u, 13, 0, 1, 16);
+    ctx.fillStyle = '#13200a'; dot(ctx, o, o, u, 2, 0, 12, 16);
+    ctx.fillStyle = '#5f8f1d'; dot(ctx, o, o, u, 2, 0, 1, 16); dot(ctx, o, o, u, 13, 0, 1, 16);
     const step = flowItem ? Math.floor(t * 12) % 8 : 0; // 8点ごとに山形が流れる
-    ctx.fillStyle = flowItem ? GREEN : '#2f4a17';
+    ctx.fillStyle = flowItem ? '#dcff9a' : '#4c7520';
     for (let k = -1; k < 2; k++) {
       const py = 3 + k * 8 - step + 8;
       if (py < 0 || py > 13) continue;
@@ -82,19 +83,19 @@
     const u = cs / 16, x = b.x * cs, y = b.y * cs;
     const col = (FUI.skinColor ? FUI.skinColor(s, b) : null) || d.color;
     const MS = MF.Sprite;
-    ctx.fillStyle = MS ? MS.shade(col, -0.18) : col; dot(ctx, x, y, u, 1, 1, 14, 14);
-    ctx.fillStyle = b.disabled ? '#ff5a3c' : (MS ? MS.shade(col, 0.22) : col);
+    ctx.fillStyle = MS ? MS.shade(col, 0.04) : col; dot(ctx, x, y, u, 1, 1, 14, 14);
+    ctx.fillStyle = b.disabled ? '#ff5a3c' : (MS ? MS.shade(col, 0.42) : col);
     dot(ctx, x, y, u, 1, 1, 14, 1); dot(ctx, x, y, u, 1, 14, 14, 1); dot(ctx, x, y, u, 1, 1, 1, 14); dot(ctx, x, y, u, 14, 1, 1, 14);
     // 向き（出口）
     if (F.hasFront(b)) { ctx.save(); ctx.translate(x + cs / 2, y + cs / 2); ctx.rotate(b.dir * Math.PI / 2); arrowUp(ctx, u, b.type === 'port' ? '#e3ffb0' : GREEN); ctx.restore(); }
     const bob = b.state === 'work' && !document.body.classList.contains('reduce-motion') && Math.floor(t * 4 + b.id) % 2 ? -u : 0;
     const ic = iconOf(d);
-    if (ic) MF.Px.draw(ctx, ic, x + 4 * u, y + 4 * u + bob, 8 * u, MS ? MS.shade(col, 0.45) : '#fff');
+    if (ic) { MF.Px.draw(ctx, ic, x + 3 * u + u, y + 3 * u + bob + u, 10 * u, 'rgba(0,0,0,.55)'); MF.Px.draw(ctx, ic, x + 3 * u, y + 3 * u + bob, 10 * u, MS ? MS.shade(col, 0.7) : '#fff'); }
     if (b.type === 'miner' && b.ore) { ctx.fillStyle = G.ITEMS[b.ore].color; dot(ctx, x, y, u, 3, 11, 2, 2); }
     if (b.type === 'assembler' && b.recipe && G.ITEMS[b.recipe]) { ctx.fillStyle = G.ITEMS[b.recipe].color; dot(ctx, x, y, u, 3, 11, 2, 2); }
     // 状態ランプ
     const st = STATE_TXT[b.state] || STATE_TXT.idle;
-    if (b.type !== 'core' && b.type !== 'storage') { ctx.fillStyle = st[1]; dot(ctx, x, y, u, 11, 3, 2, 2); }
+    if (b.type !== 'core' && b.type !== 'storage') { ctx.fillStyle = '#000'; dot(ctx, x, y, u, 11, 2, 4, 4); ctx.fillStyle = st[1]; dot(ctx, x, y, u, 12, 3, 2, 2); }
     // 進み具合（点のゲージ）
     if (b.prog > 0 && b.state === 'work' && b.type !== 'miner') { ctx.fillStyle = '#000'; dot(ctx, x, y, u, 3, 12, 10, 1); ctx.fillStyle = GREEN; const n = Math.round(10 * Math.min(1, b.prog)); for (let i = 0; i < n; i += 2) dot(ctx, x, y, u, 3 + i, 12, 1, 1); }
     for (const fn of FUI.overlayDraw) fn(ctx, s, b, x, y, cs, t);
@@ -145,7 +146,8 @@
     const W = cv.parentNode.clientWidth;
     const narrow = window.innerWidth <= 600;
     const maxH = narrow ? Math.max(240, window.innerHeight * 0.48) : Math.max(260, window.innerHeight * 0.6);
-    FUI.cs = Math.max(20, Math.min(54, Math.floor(Math.min(W / f.w, maxH / f.h))));
+    const fitCs = Math.floor(Math.min(W / f.w, maxH / f.h));
+    FUI.cs = Math.max(20, Math.min(64, fitCs >= 32 ? Math.floor(fitCs / 8) * 8 : fitCs)); // 大きいときは8の倍数にして点をくっきり
     const hgt = Math.min(f.h * FUI.cs, maxH);
     cv.style.height = hgt + 'px';
     FUI.zoom = 1;

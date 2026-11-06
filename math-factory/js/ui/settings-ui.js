@@ -51,6 +51,20 @@
       h('p', { class: 'tiny muted' }, '切りかえても、いま出ている問題はそのまま。次の問題から変わるよ。資源・研究・ストーリーはふつうに進む。'));
   });
 
+  // 船籍（船の名前はゲームを始めたときにランダムで決まる）
+  SettingsUI.sections.push(() => {
+    const s = UI.state, St = MF.Story;
+    const name = h('b', {}, St.shipName(s));
+    return UI.section('船籍',
+      h('div', { class: 'set-row' }, h('span', { class: 'set-lbl' }, '船名', h('span', { class: 'muted small set-desc' }, 'ゲームを始めたときに自動で登録された船名')), name),
+      h('button', { class: 'btn small', onclick: () => {
+        s.story.ship = St.makeShipName((Math.random() * 2147483646 | 0) + 1);
+        name.textContent = St.shipName(s);
+        if (MF.StoryUI && MF.StoryUI.refreshShip) MF.StoryUI.refreshShip();
+        UI.toast('ナビ> 船名を「' + St.shipName(s) + '」で再登録しました。船体の状態は変わりません。', 'info', 4000);
+      } }, '船名を再登録'));
+  });
+
   // セーブ管理
   SettingsUI.sections.push(() => {
     const s = UI.state;

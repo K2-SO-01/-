@@ -15,11 +15,16 @@ const URL = 'file://' + path.join(__dirname, '..', 'index.html');
   const mission = () => page.evaluate(() => (MF.Story.current(MF.UI.state) || {}).id);
   try {
     await page.goto(URL);
+    // はじめての起動画面：1回目のタップで全部の行を出し、2回目で閉じる
+    await page.waitForSelector('.boot', { timeout: 5000 }); await page.click('.boot'); await page.waitForTimeout(150); await page.click('.boot', { timeout: 1500 }).catch(() => {});
     await page.waitForSelector('.opening'); await page.waitForTimeout(2500);
     await page.click('text=目を覚ます');
     await closeTalks();
     // ミッション1：3問正解
     for (let i = 0; i < 3; i++) {
+      // 前の問題が終わっていたら「次の問題」で進む（ナビのひとことがある間は自動で進むのが少し遅い）
+      if (await page.evaluate(() => MF.UI.state.quiz.current.done)) await page.tap('#screen .q-actions .btn.primary');
+      await page.waitForFunction(() => !MF.UI.state.quiz.current.done, null, { timeout: 5000 });
       const ans = await page.evaluate(() => MF.Questions.answerText(MF.Game.Quiz.currentQuestion(MF.UI.state)));
       for (const ch of ans) await page.tap('.keypad .key >> text="' + (ch === '-' ? '−' : ch) + '"');
       await page.tap('.keypad .key-ok');

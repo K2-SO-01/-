@@ -30,7 +30,7 @@
     const box = h('div', {}, body, h('div', { class: 'talk-foot' }, h('span', { class: 'tiny muted talk-count' }), btn));
     const close = UI.modal({ title: opts.title || '📡 通信', body: box, cls: 'talk-modal', buttons: [{ label: 'スキップ', cls: 'ghost small' }], onClose: () => { if (opts.done) opts.done(); } });
     function show() {
-      text.textContent = lines[i];
+      text.textContent = St.fmt(UI.state, lines[i]);
       box.querySelector('.talk-count').textContent = (i + 1) + ' / ' + lines.length;
       btn.textContent = i === lines.length - 1 ? (opts.last || 'わかった！') : '次へ ▶';
       text.classList.remove('typing'); void text.offsetWidth; text.classList.add('typing');
@@ -99,15 +99,48 @@
     if (m) SUI.showIntro(m, () => UI.rerender());
   });
 
-  // ---------- オープニング ----------
+  // ---------- 起動画面（はじめての1回だけ）とオープニング ----------
+  SUI.bootLines = (s) => [
+    'NAVI-OS v3.0.1 ── 緊急起動シーケンス',
+    '> 船籍照会 ........ ' + St.shipName(s),
+    '> 船体 ............ [損傷 87%]',
+    '> 演算コア ........ [出力 0%]',
+    '> 生命維持 ........ [ぎりぎり]',
+    '> 船長 ............ [生存。たぶん]',
+    '> 案内AI「ナビ」 ... [起動。不本意ながら]',
+  ];
+  /** 端末の起動画面。文字が1行ずつ流れる。タップで飛ばせる */
+  SUI.boot = function (s, done) {
+    const lines = SUI.bootLines(s);
+    const log = h('div', { class: 'boot-log' });
+    const hint = h('div', { class: 'boot-hint' }, 'タップして起動');
+    const el = h('div', { class: 'boot', role: 'dialog', 'aria-label': '起動画面' }, h('div', { class: 'boot-in' }, log, hint));
+    let i = 0, timer = null, finished = false;
+    const calm = document.body.classList.contains('reduce-motion');
+    const add = () => { if (i >= lines.length) { hint.classList.add('on'); return; } log.appendChild(h('div', { class: 'boot-line' + (i === 0 ? ' head' : '') }, lines[i++])); sfx('tick'); timer = setTimeout(add, i === 1 ? 500 : 260); };
+    // 小窓と同じ列に入れておく（ほかの小窓は、起動画面が終わるまで待つ）
+    const close = () => { if (finished) return; finished = true; clearTimeout(timer); el.remove(); UI.modalStack = UI.modalStack.filter((x) => x !== close); if (done) done(); };
+    close.noClose = true;
+    UI.modalStack.push(close);
+    const end = () => {
+      if (i < lines.length) { clearTimeout(timer); while (i < lines.length) log.appendChild(h('div', { class: 'boot-line' }, lines[i++])); hint.classList.add('on'); return; }
+      close();
+    };
+    el.addEventListener('click', end);
+    document.addEventListener('keydown', function k(e) { if (!document.body.contains(el)) { document.removeEventListener('keydown', k); return; } if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') { e.preventDefault(); end(); } });
+    document.body.appendChild(el);
+    if (calm) { while (i < lines.length) log.appendChild(h('div', { class: 'boot-line' }, lines[i++])); hint.classList.add('on'); } else add();
+  };
+  SUI.opening = function (s) {
+    const body = h('div', { class: 'opening' }, h('div', { class: 'op-stars' }), h('div', { class: 'op-ship' }, '🛸'),
+      h('p', { class: 'op-text' }, 'これは調査船「' + St.shipName(s) + '」の航海記録である。本船は未知の星系で、謎の赤い嵐に巻きこまれた——'),
+      h('p', { class: 'op-text d2' }, '気がつくと、そこは名前もない星の上だった。'));
+    UI.modal({ title: '数学ファクトリー', body, cls: 'opening-modal', noClose: true, buttons: [{ label: '目を覚ます', cls: 'primary', action: () => { setTimeout(() => SUI.chapterCard(1, () => SUI.showIntro(St.current(s), () => UI.rerender())), 200); } }] });
+  };
   MF.App.bootHooks.push((s, info) => {
     if (s.story.introSeen || SUI.quiet) return;
     s.story.introSeen = true;
-    setTimeout(() => {
-      const body = h('div', { class: 'opening' }, h('div', { class: 'op-stars' }), h('div', { class: 'op-ship' }, '🛸'), h('p', { class: 'op-text' }, '西暦2xxx年。調査船ラグランジュ号は、未知の星系で謎の赤い嵐に巻きこまれた——'),
-        h('p', { class: 'op-text d2' }, '気がつくと、そこは名前もない星の上だった。'));
-      UI.modal({ title: '数学ファクトリー', body, cls: 'opening-modal', noClose: true, buttons: [{ label: '目を覚ます', cls: 'primary', action: () => { setTimeout(() => SUI.chapterCard(1, () => SUI.showIntro(St.current(s), () => UI.rerender())), 200); } }] });
-    }, 900);
+    setTimeout(() => SUI.boot(s, () => SUI.opening(s)), 300);
   });
 
   // ---------- エンディング（最初の打ち上げ） ----------
@@ -116,8 +149,8 @@
     if (s.story.endingSeen) return;
     s.story.endingSeen = true;
     St.check(s, Date.now());
-    const lines = ['ロケット、点火！ …上昇中…大気圏を突破しました！', '下に見えるのが、わたしたちが不時着した星です。あの小さな工場から、ここまで来たんですね。',
-      'キャプテンが解いてきた問題のひとつひとつが、この船を空へ押し上げたんです。', 'そして…レーダーに反応。この銀河には、ほかにも文明があるようです。', 'さあ、新しい物語のはじまりです！'];
+    const lines = ['ロケット点火。…上昇中。大気圏を突破しました。計算どおりです。わたしの計算ですが。', '下に見えるのが、わたしたちが不時着した星です。あの小さな工場から、ここまで来ました。',
+      '船長が解いた問題のひとつひとつが、この船を空へ押し上げました。正直に言います。誇らしいです。', 'レーダーに反応。この銀河には、ほかにも文明があるようです。', 'では船長、次の宿題です。銀河ひとつ分。'];
     SUI.talk(lines, { title: '🚀 脱出', mood: 'happy', last: '銀河へ！', done: () => {
       const st = s.stats;
       const body = h('div', { class: 'center ending' }, h('div', { class: 'big-emoji' }, '🌌'), h('h3', {}, 'THE ESCAPE — 星を脱出した！'),
@@ -129,12 +162,22 @@
     } });
   };
 
+  // ---------- ヘッダーの船名 ----------
+  MF.App.bootHooks.push((s) => {
+    const brand = document.querySelector('.brand-name');
+    if (!brand) return;
+    let sub = document.querySelector('.brand-ship');
+    if (!sub) { sub = h('span', { class: 'brand-ship' }); brand.after(sub); }
+    sub.textContent = St.shipName(s);
+  });
+  SUI.refreshShip = () => { const sub = document.querySelector('.brand-ship'); if (sub) sub.textContent = St.shipName(UI.state); };
+
   // ---------- ストーリー画面 ----------
   UI.screen('story', {
     title: 'ストーリー', icon: '📖', nav: 'more', navOrder: 8,
     render(root, s) {
       root.appendChild(h('h2', { class: 'screen-title' }, 'ストーリー'));
-      root.appendChild(h('div', { class: 'row' }, h('span', { html: SUI.navi(56) }), h('p', { class: 'small' }, '遭難した調査船ラグランジュ号。工場を立て直し、ロケットで星を脱出せよ！ ミッションを順番にこなすと、遊び方も自然に覚えられるよ。')));
+      root.appendChild(h('div', { class: 'row' }, h('span', { html: SUI.navi(56) }), h('p', { class: 'small' }, '遭難した調査船「' + St.shipName(s) + '」。工場を立て直し、ロケットで星を脱出せよ。ミッションを順番にこなすと、遊び方も自然に覚えられる。')));
       St.CHAPTERS.forEach((C) => {
         const ms = St.MISSIONS.filter((m) => m.ch === C.id);
         const card = UI.section(C.title + '　' + C.sub);

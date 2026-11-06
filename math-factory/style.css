@@ -841,3 +841,21 @@ body::before { background: var(--bg); }
 .gx-map .sys-name { fill: #9bd04a; font-size: 2.4px; font-family: var(--font); text-shadow: none; }
 .gx-map .sys:hover .gx-planet { filter: brightness(1.35); }
 .legend i { width: 10px; height: 10px; }
+
+/* ③ 端末の言葉づかい */
+.brand-ship { font-size: .72rem; color: var(--muted); font-weight: 400; align-self: flex-end; padding-bottom: 2px; }
+@media (max-width: 600px) { .brand-ship { display: none; } }
+.modal-head h3::before { content: '> '; color: var(--muted); }
+.card-title::before { content: '// '; color: var(--muted); }
+.navi-quip { margin: .25rem 0 .45rem; padding: .3rem .55rem; border-left: 2px solid var(--accent-d); background: var(--bg); color: var(--accent2); font-size: .92rem; line-height: 1.7; }
+.navi-quip .nq-name { color: var(--accent); margin-right: .2rem; }
+/* 起動画面（はじめての1回だけ） */
+.boot { position: fixed; inset: 0; z-index: 250; background: #000; display: grid; place-items: center; cursor: pointer;
+  padding-block: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-bottom, 0px)); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.boot-in { width: min(560px, 100%); }
+.boot-log { display: flex; flex-direction: column; gap: .35rem; min-height: 15em; font-size: .95rem; }
+.boot-line { white-space: pre-wrap; word-break: break-all; animation: bootIn .12s steps(2); }
+.boot-line.head { color: var(--accent-hi); border-bottom: 1px solid var(--line2); padding-bottom: .35rem; margin-bottom: .2rem; }
+@keyframes bootIn { from { opacity: 0; } }
+.boot-hint { margin-top: 1.4rem; color: var(--bg); background: var(--accent); display: inline-block; padding: .2rem .7rem; visibility: hidden; text-shadow: none; }
+.boot-hint.on { visibility: visible; animation: blink 1.1s steps(1) infinite; }

@@ -12,6 +12,8 @@ const URL = 'file://' + path.join(__dirname, '..', 'index.html');
   await page.goto(URL);
   const shot = async (n) => { if (OUT) await page.screenshot({ path: path.join(OUT, n + '.png') }); };
   try {
+    // はじめての起動画面：1回目のタップで全部の行を出し、2回目で閉じる
+    await page.waitForSelector('.boot', { timeout: 5000 }); await page.click('.boot'); await page.waitForTimeout(150); await page.click('.boot', { timeout: 1500 }).catch(() => {});
     await page.waitForSelector('.opening', { timeout: 5000 });
     await page.waitForTimeout(2600);
     await shot('s-opening');
@@ -25,6 +27,9 @@ const URL = 'file://' + path.join(__dirname, '..', 'index.html');
     await page.waitForSelector('.mission');
     await shot('s-mission');
     for (let i = 0; i < 3; i++) {
+      // 前の問題が終わっていたら「次の問題」で進む（ナビのひとことがある間は自動で進むのが少し遅い）
+      if (await page.evaluate(() => MF.UI.state.quiz.current.done)) await page.click('#screen .q-actions .btn.primary');
+      await page.waitForFunction(() => !MF.UI.state.quiz.current.done, null, { timeout: 5000 });
       const ans = await page.evaluate(() => MF.Questions.answerText(MF.Game.Quiz.currentQuestion(MF.UI.state)));
       for (const ch of ans) await page.click('.keypad .key >> text="' + (ch === '-' ? '−' : ch) + '"');
       await page.click('.keypad .key-ok');

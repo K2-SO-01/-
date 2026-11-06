@@ -26,6 +26,7 @@ async function dismiss(page) {
   let empty = 0;
   for (let i = 0; i < 40 && empty < 3; i++) {
     await page.waitForTimeout(350);
+    if (await page.$('.boot')) { empty = 0; await page.click('.boot').catch(() => {}); continue; } // はじめての起動画面はタップで進む
     if (await page.$('.modal')) { empty = 0; const b = await page.$('.modal-foot .btn >> nth=-1'); if (b) await b.click().catch(() => {}); }
     else empty++;
   }

@@ -27,6 +27,7 @@
     const P = { q: null, value: '', busy: false, timer: null, destroyed: false };
     const keypad = QuizUI.useKeypad();
     const el = h('div', { class: 'qpanel' + (opts.compact ? ' compact' : '') });
+    const talky = !opts.compact && !opts.oneShot; // 模試・チャレンジ・バトルの問題では、ナビは静かにしている
     const head = h('div', { class: 'q-head' });
     const text = h('div', { class: 'q-text' });
     const input = h('input', { class: 'q-input', type: 'text', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', 'aria-label': '答えを入力', placeholder: '答え（例: -3/4）', enterkeyhint: 'done' });
@@ -139,14 +140,16 @@
       const c = cur();
       sfx('hint');
       const wrong = el.classList.contains('ng');
-      fb.innerHTML = (wrong ? '<div class="verdict ng">✕ ちがうよ。もう一度！</div>' : '') + hintsHTML(P.q, c.hints);
-      if (c.done) { el.classList.add('done'); fb.insertAdjacentHTML('afterbegin', '<div class="verdict info">解説を読んだら次へ進もう</div>'); finish({ ok: false, done: true, viaHint: true }); }
+      const hq = !wrong && c.hints === 1 && talky ? QuizUI.quip('hint') : null;
+      fb.innerHTML = (wrong ? '<div class="verdict ng">[NG] 不一致。再入力</div>' : '') + quipHTML(hq) + hintsHTML(P.q, c.hints);
+      if (c.done) { el.classList.add('done'); fb.insertAdjacentHTML('afterbegin', '<div class="verdict info">[INFO] 解説を読んだら次へ</div>'); finish({ ok: false, done: true, viaHint: true }); }
       renderActions();
     }
     function skip() {
       const c = cur();
       if (!c || c.done) return;
       G.Quiz.skip(s, Date.now());
+      if (talky) UI.toast('ナビ> ' + QuizUI.quip('skip'), 'info', 3200);
       finish({ ok: false, skipped: true, done: true });
       goNext();
     }
@@ -155,9 +158,9 @@
       const c = cur();
       if (!c || c.done) return;
       const val = keypad ? P.value : input.value;
-      if (!U.normalizeInput(val)) { shake(); UI.toast('答えを入力してね', 'warn', 1400); return; }
+      if (!U.normalizeInput(val)) { shake(); UI.toast('答えを入力してください', 'warn', 1400); return; }
       const res = G.Quiz.answer(s, val, Date.now());
-      if (res.invalid) { shake(); UI.toast('数字・分数（3/4）・負の数（-2）で入力してね', 'warn', 2000); return; }
+      if (res.invalid) { shake(); UI.toast('入力形式エラー：数字・分数（3/4）・負の数（-2）で入力', 'warn', 2200); return; }
       if (opts.onResult) opts.onResult(res, P.q);
       if (res.ok) onCorrect(res); else onWrong(res);
       UI.renderHeader();
@@ -167,11 +170,13 @@
       el.classList.remove('ng'); el.classList.add('ok', 'done');
       const rw = res.reward;
       const combo = res.combo;
-      let msg = '<div class="verdict ok">◎ 正解！' + (res.attempt > 1 ? '（' + res.attempt + '回目）' : '') + '</div>';
+      let msg = '<div class="verdict ok">[OK] 正解' + (res.attempt > 1 ? '（' + res.attempt + '回目）' : '') + '</div>';
       if (opts.showReward !== false && rw) {
         msg += '<div class="reward-line">+' + rw.amount + ' ' + G.ITEMS[rw.item].name + (rw.rp ? '　+' + rw.rp + ' 研究P' : '') +
           (rw.combo > 1 ? '　<span class="combo-x">×' + rw.combo.toFixed(1) + '</span>' : '') + (rw.speed ? '　<span class="speedy">⚡速答</span>' : '') + '</div>';
       }
+      const cq = !talky ? null : QuizUI.COMBO_AT.indexOf(combo) >= 0 ? QuizUI.quip('combo', combo) : res.attempt > 1 ? (Math.random() < 0.7 ? QuizUI.quip('retry') : null) : (Math.random() < 0.3 ? QuizUI.quip('ok') : null);
+      msg += quipHTML(cq);
       fb.innerHTML = msg;
       const r = submitBtn.getBoundingClientRect();
       fx('burst', { x: r.left + r.width / 2, y: r.top, color: rw ? G.ITEMS[rw.item].color : '#4cd964', n: 14 + Math.min(combo, 20) * 2 });
@@ -180,7 +185,7 @@
       if (combo >= 3 && combo % 5 === 0) fx('comboBanner', combo);
       finish(res);
       renderActions();
-      const delay = opts.autoNext !== undefined ? opts.autoNext : (s.settings.autoNext === false ? 0 : 1300);
+      const delay = opts.autoNext !== undefined ? opts.autoNext : (s.settings.autoNext === false ? 0 : cq ? 2600 : 1300); // ひとことがあるときは少し長く
       if (delay > 0) P.timer = setTimeout(() => { if (!P.destroyed && cur() && cur().done && document.body.contains(el)) goNext(); }, delay);
     }
     function onWrong(res) {
@@ -193,10 +198,10 @@
       P.value = ''; input.value = '';
       if (c.done) {
         el.classList.add('done');
-        fb.innerHTML = '<div class="verdict ng">✕ 残念…正解は ' + U.fh(P.q.answer) + '</div>' + hintsHTML(P.q, 3);
+        fb.innerHTML = '<div class="verdict ng">[NG] 正解は ' + U.fh(P.q.answer) + '</div>' + quipHTML(talky ? QuizUI.quip('fail') : null) + hintsHTML(P.q, 3);
         finish(res);
       } else {
-        fb.innerHTML = '<div class="verdict ng">✕ ちがうよ。' + (c.hints === 1 ? 'ヒントを見てもう一度！' : 'もう一息！') + '</div>' + hintsHTML(P.q, c.hints);
+        fb.innerHTML = '<div class="verdict ng">[NG] 不一致。' + (c.hints === 1 ? 'ヒントを見て再入力' : 'もう一息') + '</div>' + quipHTML(talky && c.hints === 1 ? QuizUI.quip('ng') : null) + hintsHTML(P.q, c.hints);
       }
       renderActions();
     }
@@ -306,6 +311,26 @@
     leave() { if (QuizUI.panel) { QuizUI.panel.destroy(); QuizUI.panel = null; } },
     update(s) { if (QuizUI.session && QuizUI.session.tick) QuizUI.session.tick(s); },
   });
+  // ---------- ナビのひとこと（辛口：正直さ90%・ユーモア60%。でも見捨てない） ----------
+  QuizUI.QUIPS = {
+    ok: ['正解。驚きました。いえ、想定内です。', '正解です。今日の船長は冴えていますね。明日も冴えていることを期待します。', '正解。記録しました。まぐれの可能性は検討中です。',
+      '正解。演算コアの出力が上がりました。船長の評価も少し上がりました。', '正解。褒めて伸ばす設定ではありませんが、今のは褒めておきます。'],
+    retry: ['正解。一度まちがえてから正解するのは、いちばん記憶に残る覚え方です。理論上は。', '修正を確認。まちがいを直せる船長は、まちがえない船長より貴重です。たぶん。', '正解。最初からそうしてくれれば、と言いたいところですが、言いません。言いましたが。'],
+    ng: ['計算上、船長の答えが合う確率は先ほどゼロになりました。記録しておきます。', '不一致です。ヒントを表示しました。読むのは無料です。', 'その答えだと、本船はもう一度墜落します。ヒントをどうぞ。', 'ちがいます。ですが、どこでまちがえたか分かれば前進です。'],
+    fail: ['答えを表示しました。弱点リストに保存したので、あとで解き直してください。逃げても記録は消えません。', '解説を出しました。読み飛ばすと、また同じところで墜落します。', 'この問題は弱点リスト行きです。卒業させるまで、わたしは覚えています。'],
+    skip: ['スキップを確認。問題は逃げませんが、船長は逃げましたね。弱点リストに入れておきます。', 'スキップ。勇気ある撤退と呼んでおきます。記録上は撤退です。', 'スキップしました。この問題とは、弱点リストでまた会えます。'],
+    hint: ['ヒントです。答えまでは言いません。言ったら船長の脳が省電力モードに入るので。', 'ヒントを出しました。自力で解いた気分は、まだ残っています。'],
+    combo: { 3: '3連続正解。船長の調子がいい日は、観測史上まれです。', 5: '5連続正解。認めましょう、実力です。', 10: '10連続正解。…故障ではありません。船長が本当に解いています。',
+      20: '20連続正解。航海日誌に太字で記録します。', 30: '30連続正解。わたしの皮肉の在庫が尽きそうです。', 50: '50連続正解。もう何も言うことはありません。いえ、ひとつだけ。すごいです。' },
+  };
+  QuizUI.COMBO_AT = [3, 5, 10, 20, 30, 50];
+  QuizUI.quip = function (kind, n) {
+    const q = QuizUI.QUIPS[kind];
+    if (!q) return null;
+    if (kind === 'combo') return q[n] || null;
+    return q[Math.floor(Math.random() * q.length)];
+  };
+  function quipHTML(t) { return t ? '<div class="navi-quip"><span class="nq-name">ナビ&gt;</span> ' + U.esc(t) + '</div>' : ''; }
   QuizUI.extraBelow = [];
   QuizUI.extraRow = []; // コンボ表示と同じ行に並べる部品
   /** 分野・難易度を変えても、いま出ている問題は変わらない（問題の引き直しを防ぐ）。次の問題から切りかわることを知らせる */

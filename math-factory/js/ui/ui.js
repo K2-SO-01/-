@@ -250,7 +250,7 @@
     const root = UI.$('#toast-root');
     if (!root) return;
     const text = String(msg);
-    if (UI.toastQueue.some((x) => x.text === text) || Array.from(root.children).some((c) => c.textContent === text)) return;
+    if (UI.toastQueue.some((x) => x.text === text) || Array.from(root.children).some((c) => (c.dataset.raw || c.textContent) === text)) return;
     UI.toastQueue.push({ text, kind, ms });
     if (UI.toastQueue.length > 12) UI.toastQueue.splice(0, UI.toastQueue.length - 12);
     pumpToasts();
@@ -260,7 +260,10 @@
     const max = window.matchMedia && window.matchMedia('(max-width: 600px)').matches ? 2 : 3;
     while (root.querySelectorAll('.toast:not(.out)').length < max && UI.toastQueue.length) {
       const it = UI.toastQueue.shift();
-      const t = h('div', { class: 'toast ' + (it.kind || '') }, it.text);
+      // 端末ふうの頭（[OK] [!] [ERR] など）。もう頭がついている文はそのまま
+      const pre = /^[\[>]|^ナビ>/.test(it.text) ? '' : ({ good: '[OK] ', warn: '[!] ', bad: '[ERR] ', level: '[LV] ' }[it.kind] || '> ');
+      const t = h('div', { class: 'toast ' + (it.kind || '') }, pre + it.text);
+      t.dataset.raw = it.text;
       t.addEventListener('click', () => done());
       root.appendChild(t);
       const dur = Math.max(1400, (it.ms || 2600) - UI.toastQueue.length * 350);
