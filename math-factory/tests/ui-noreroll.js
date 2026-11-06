@@ -33,14 +33,16 @@ const URL = 'file://' + path.join(__dirname, '..', 'index.html');
       await tap('.seg-btn >> text="' + l + '"');
       ok(await qtext() === t0, '難易度「' + l + '」を押したら問題が変わった');
     }
-    for (const c of chips) {
-      await tap('.tchip >> text="' + c + '"');
+    for (let ci = 0; ci < chips.length; ci++) {
+      const c = chips[ci];
+      await tap('.tchip >> nth=' + ci);
       ok(await qtext() === t0, '分野「' + c + '」を押したら問題が変わった');
     }
   }
   // 次の問題から切りかわる予告が出て、答えたら新しい設定の問題になる
-  const want = chips.find((c) => !/おまかせ/.test(c));
-  await tap('.tchip >> text="' + want + '"');
+  const wi = chips.findIndex((c) => !/おまかせ/.test(c));
+  const want = chips[wi];
+  await tap('.tchip >> nth=' + wi);
   await tap('.seg-btn >> text="難"');
   await page.waitForTimeout(400);
   const note = await page.evaluate(() => { const n = document.querySelector('.next-note'); return n ? n.textContent : ''; });

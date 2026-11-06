@@ -11,7 +11,7 @@ const markup = body.replace(/<!--[\s\S]*?-->\s*/g, '').replace(/<script src="[^"
 const out = [
   '<title>数学ファクトリー</title>',
   '<meta name="claude:viewport-fit-sides" content="cover">',
-  '<meta name="theme-color" content="#111316">',
+  '<meta name="theme-color" content="#050704">',
   '<meta name="description" content="高校数学の問題を解いて工場を動かす、自動化×カードバトル×宇宙進出の受験勉強ゲーム">',
   '<link rel="stylesheet" href="style.css">',
   '<!-- このファイルは tools/make-artifact.js が index.html から作ったもの。直接は編集しない -->',
