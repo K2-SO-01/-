@@ -1,5 +1,5 @@
-# main に push されるたびに、テスト（1000人シミュレーション）を実行し、
-# 合格したらサイトを gh-pages ブランチに書き出して GitHub Pages で公開する。
+# main に push されるたびに、数学ファクトリーのテストを実行し、
+# 合格したらゲームを gh-pages ブランチに書き出して GitHub Pages で公開する。
 name: テストして公開
 
 on:
@@ -24,18 +24,28 @@ jobs:
         with:
           node-version: 22
 
-      - name: テスト（統計との一致を確認）
-        run: npm test
-
-      - name: テスト（数学ファクトリー）
-        run: node math-factory/tests/run.js
+      - name: テスト（ゲームのロジック）
+        run: node tests/run.js
 
       - name: 公開するファイルをまとめる
         run: |
-          mkdir -p _site
-          cp -r index.html stats.html about.html 404.html assets data _site/
           mkdir -p _site/math-factory
-          cp -r math-factory/index.html math-factory/style.css math-factory/js _site/math-factory/
+          cp -r index.html style.css js _site/
+          # 以前の URL（/math-factory/）で開いた人を、新しい URL（サイトのトップ）へ案内する
+          cat > _site/math-factory/index.html <<'HTML'
+          <!doctype html>
+          <html lang="ja">
+          <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>数学ファクトリー</title>
+          <meta http-equiv="refresh" content="0; url=../">
+          <script>location.replace('../' + location.search + location.hash);</script>
+          <style>body{margin:0;padding:2rem 16px;background:#050704;color:#b6ff3b;font-family:monospace}a{color:#e3ffb0}</style>
+          </head>
+          <body><p>数学ファクトリーは <a href="../">新しい場所</a> に移りました。</p></body>
+          </html>
+          HTML
           touch _site/.nojekyll
 
       - name: gh-pages ブランチに公開

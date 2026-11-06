@@ -3,108 +3,64 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>47分の1 · 日本のどこかに生まれる人生シミュレーション</title>
-<meta name="description" content="今日、日本で生まれる赤ちゃんのひとりになって、一度きりの人生を最後まで生きる。生まれる都道府県は選べません。47都道府県の公的統計にもとづく無料の人生シミュレーション。">
-<meta name="theme-color" content="#f6f3ec" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#11141a" media="(prefers-color-scheme: dark)">
-<meta property="og:title" content="47分の1 · 日本のどこかに生まれる人生シミュレーション">
-<meta property="og:description" content="生まれる県は選べない。統計どおりに流れる、一度きりの人生。">
-<meta property="og:type" content="website">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232f4d84'/%3E%3Ccircle cx='32' cy='32' r='9' fill='%23c8553d'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/css/app.css">
-<script type="module" src="assets/js/app.js"></script>
+<meta name="theme-color" content="#050704">
+<meta name="description" content="高校数学（数I・A・II・B・C）の問題を解いて工場を動かす、自動化×カードバトル×宇宙進出の受験勉強ゲーム">
+<title>数学ファクトリー</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Crect width='16' height='16' fill='%23050704'/%3E%3Cpath fill='%23b6ff3b' d='M2 2h12v2h-1v-1H5l4 5-4 5h8v-1h1v2H2v-1l4-5-4-5z'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-<a class="sr-only" href="#main">本文へ移動</a>
-<main id="main">
+<div id="app">
+  <header id="topbar">
+    <div class="brand"><span class="logo">∑</span><span class="brand-name">数学ファクトリー</span></div>
+    <div id="top-extras" class="top-extras"></div>
+    <div id="res-strip" class="res-strip" title="持ち物を見る"></div>
+  </header>
+  <nav id="nav" aria-label="画面の切り替え"></nav>
+  <main id="screen" class="screen" tabindex="-1"></main>
+</div>
+<div id="modal-root"></div>
+<div id="toast-root" aria-live="polite"></div>
+<canvas id="fx-canvas" aria-hidden="true"></canvas>
+<noscript><p style="padding:2em;color:#fff">このゲームを遊ぶには JavaScript を有効にしてください。</p></noscript>
 
-<section id="screen-top" aria-labelledby="t-title">
-  <div class="wrap">
-    <div class="hero">
-      <div class="kicker">無料の人生シミュレーション · 47都道府県の公的統計にもとづく · 15歳以上</div>
-      <h1 id="t-title">47分の1</h1>
-      <p class="lead" id="t-lead">日本では、およそ数十秒にひとり、赤ちゃんが生まれています。そのひとりになって、一度きりの人生を最後まで生きてみます。どの県で、どんな家に生まれるかは選べません。あなたも、そうだったように。</p>
-    </div>
+<!-- ゲームのロジック（画面と無関係。tests/ からも読み込む） -->
+<script src="js/logic/util.js"></script>
+<script src="js/logic/balance.js"></script>
+<script src="js/logic/questions.js"></script>
+<script src="js/logic/game.js"></script>
+<script src="js/logic/factory.js"></script>
+<script src="js/logic/research.js"></script>
+<script src="js/logic/pals.js"></script>
+<script src="js/logic/battle.js"></script>
+<script src="js/logic/meta.js"></script>
+<script src="js/logic/study.js"></script>
+<script src="js/logic/wellbeing.js"></script>
+<script src="js/logic/galaxy.js"></script>
+<script src="js/logic/story.js"></script>
 
-    <div class="counters" aria-live="off">
-      <div class="counter"><b id="c-born">0</b><small>このページを開いてから<br>日本で生まれた赤ちゃん</small></div>
-      <div class="counter"><b id="c-died">0</b><small>同じ時間に<br>亡くなった人</small></div>
-    </div>
-
-    <div class="mapbox" id="top-map" aria-hidden="true"></div>
-    <p class="maplegend" id="top-maplegend">色の濃い県ほど、いま生まれる赤ちゃんが多い県です。</p>
-
-    <div id="resume-box" class="card hidden" style="margin:18px 0">
-      <p style="margin-top:0"><b>続きから</b> <span id="resume-who" class="muted"></span></p>
-      <button class="btn primary big" id="btn-resume" type="button">続きから生きる</button>
-    </div>
-
-    <form id="setup" class="card" style="margin:18px 0" onsubmit="return false">
-      <div class="field">
-        <span class="label" id="lb-mode">生まれる場所の決め方</span>
-        <div class="seg" role="radiogroup" aria-labelledby="lb-mode">
-          <label><input type="radio" name="mode" value="births" checked><span>いま生まれる赤ちゃん</span></label>
-          <label><input type="radio" name="mode" value="population"><span>いま日本に住む人</span></label>
-        </div>
-        <small>「いま生まれる赤ちゃん」は県ごとの年間出生数の割合で、「いま日本に住む人」は県ごとの人口の割合で生まれる県が決まります。どちらでも人生は0歳から始まります。</small>
-      </div>
-      <div class="field">
-        <span class="label" id="lb-pace">ひとつの人生の長さ</span>
-        <div class="seg" role="radiogroup" aria-labelledby="lb-pace">
-          <label><input type="radio" name="pace" value="30"><span>約30分</span></label>
-          <label><input type="radio" name="pace" value="60" checked><span>約1時間</span></label>
-          <label><input type="radio" name="pace" value="90"><span>約1時間30分</span></label>
-        </div>
-        <small>生まれた県の平均寿命まで生きるのにかかる目安の時間です。1時間なら、1年が40〜60秒ほどで過ぎていきます。途中で一時停止や倍速もできます。</small>
-      </div>
-      <div class="field">
-        <label class="label" for="real-pref">あなたが実際に生まれた都道府県（任意）</label>
-        <select id="real-pref" class="sel"><option value="">選ばない</option></select>
-        <small>選ぶと、この人生とあなたの生まれた県の統計を並べてお見せします。この端末にだけ保存されます。</small>
-      </div>
-      <label class="check"><input type="checkbox" id="opt-gentle"> 怖い場面を除く</label>
-      <label class="check"><input type="checkbox" id="opt-music"> ♪ 穏やかな音楽を流す</label>
-      <div style="margin-top:14px">
-        <button class="btn primary big" id="btn-born" type="button">生まれる</button>
-        <p class="small" style="text-align:center;margin:.6em 0 0">設定はそのままで、すぐに生まれてもかまいません。</p>
-      </div>
-    </form>
-
-    <p class="note">死や病気、事故、災害、貧困、依存症、家庭の中の暴力や性暴力、自殺のような重い出来事も、実際の統計どおりに起こります。場面や方法は描かず、事実だけを短く伝え、相談できる場所を一緒にお知らせします。15歳以上を対象にしています。このシミュレーションは占いや予言ではなく、あなた自身の将来を表すものでもありません。</p>
-
-    <section id="past-box" class="hidden" aria-labelledby="past-h">
-      <h2 id="past-h">前世の記録</h2>
-      <p class="small">直近10回の人生です。記録はこのブラウザにだけ残ります。</p>
-      <ul class="list-past" id="past-list"></ul>
-      <button class="linkbtn" id="btn-clear-past" type="button">記録をすべて消す</button>
-    </section>
-
-    <section aria-labelledby="how-h">
-      <h2 id="how-h">どんなしくみ？</h2>
-      <p>生まれる県は、47都道府県の年間出生数（または人口）の割合にしたがって抽選され、県の中のどの市区町村に生まれるかも、住民基本台帳の子どもの数（または人口）の割合で決まります。どんな家に、どんな名前で生まれるかも統計にもとづいて決まり、その後の人生は、生まれた県の平均寿命、所得、進学率、結婚と出生、病気や事故の起こりやすさなどの統計に沿って流れていきます。</p>
-      <p>毎年「今年の重点」を選び、進学・就職・転職・恋愛・結婚・他県への移住・治療といった決断の場面が来たら選びます。選択で人生は変わりますが、それは可能性を動かすだけで、生まれた県の統計から完全に抜け出すことはできません。ほとんどの人生は、静かに過ぎていきます。決断が面倒なら、人生を始めたあとで上のバー（スマートフォンでは ⋯ メニュー）から「おまかせ」をオンにして、見守ることもできます。</p>
-      <p>趣味は3つまで持てて、続けるほど腕前が上がり、まれにプロ野球選手や棋士、力士、騎手、宝塚の舞台、声優、漫画家、芸人といった道が開けることもあります。お金は「お金を使う · 投資」から、旅行や推し活、親への仕送り、ジムや資格講座、NISA・iDeCo・ふるさと納税などに自分で使い道を決められます（選んでいるあいだ時間は止まります）。お金の預け先・冠婚葬祭のお金・食生活・保険といった暮らし方も選べます。記録の出来事は、よい出来事（＋）・つらい出来事（－）・重い出来事（！）がひと目でわかるように色分けしています。</p>
-      <p>暮らす県によって、祭りや名物、雪や台風、県民の日といったご当地の出来事が起こります。幼なじみや親友、部活の仲間、職場の同期や上司、ご近所といった名前のある人たちとも出会い、親しさは年月とともに移り変わります。画面の上の絵は、年齢や季節、暮らす町、仕事や家族に合わせて変わっていきます。</p>
-      <p>亡くなる時期は、男女別・県別の生命表にしたがって毎年決まり、死因は年齢・性別ごとの死因の構成にしたがいます。赤ちゃんのうちに終わる人生も、100歳を超える人生もあります。</p>
-      <h3>同じ日に生まれた人たち</h3>
-      <p>あなたが生まれるその日にも、日本のどこかで <span id="t-perday">約1,800</span>人の赤ちゃんが生まれています。そのうち4人も同じ抽選で生まれる県が決まり、同じ統計の中で最後まで生きて、あなたの人生のそばに表示されます。どこに生まれるかを選んだ人は、ひとりもいません。</p>
-      <h3>ひと息</h3>
-      <p>5歳・15歳・30歳・50歳・70歳で時間が止まり、ひとつの問いが置かれます。この人の人生と、あなた自身の人生を重ねて考えてみてください。よければ一行だけ書き残せます。最後には、この人にひとこと声をかけることができます。</p>
-      <h3>何が実際のデータなのか</h3>
-      <p>都道府県別の出生数・人口・平均寿命と年齢別の死亡率、1人当たり県民所得と課税対象所得、県別の賃金、市区町村別の人口と子どもの数、大学等進学率と県外進学、産業別の就業者の割合、合計特殊出生率・婚姻率・離婚率、自殺死亡率、犯罪・交通事故、医師数・病床数、失業率、地震の確率など。県別の値がないもの（死因の年齢別構成、賃金の年齢カーブ、喫煙率、暴力の被害経験など）は全国値で補い、取れなかった値には「推計」と明記しています。金額は円で表示します。</p>
-      <p><a href="stats.html">47都道府県の統計を見る</a>　<a href="about.html">しくみと出典をくわしく</a></p>
-    </section>
-
-    <footer class="footer" id="footer"></footer>
-  </div>
-</section>
-
-<section id="screen-birth" class="hidden" aria-live="polite"></section>
-<section id="screen-play" class="hidden play"></section>
-<section id="screen-end" class="hidden end"></section>
-
-</main>
-<div id="overlay"></div>
-<noscript><div class="wrap"><p>このシミュレーションは JavaScript を使っています。ブラウザの設定で JavaScript を有効にしてください。</p></div></noscript>
+<!-- 画面 -->
+<script src="js/ui/ui.js"></script>
+<script src="js/ui/pixel-icons.js"></script>
+<script src="js/ui/pixel-sprites.js"></script>
+<script src="js/ui/audio.js"></script>
+<script src="js/ui/fx.js"></script>
+<script src="js/ui/quiz-ui.js"></script>
+<script src="js/ui/factory-ui.js"></script>
+<script src="js/ui/factory-tools-ui.js"></script>
+<script src="js/ui/research-ui.js"></script>
+<script src="js/ui/pal-art.js"></script>
+<script src="js/ui/pals-ui.js"></script>
+<script src="js/ui/battle-ui.js"></script>
+<script src="js/ui/study-ui.js"></script>
+<script src="js/ui/meta-ui.js"></script>
+<script src="js/ui/settings-ui.js"></script>
+<script src="js/ui/well-ui.js"></script>
+<script src="js/ui/galaxy-ui.js"></script>
+<script src="js/ui/story-ui.js"></script>
+<script src="js/ui/tutorial-ui.js"></script>
+<script src="js/main.js"></script>
 </body>
 </html>
