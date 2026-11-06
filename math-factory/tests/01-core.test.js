@@ -93,7 +93,7 @@ test('難易度・分野を切りかえても、いまの問題は変わらな�
   }
   // 次の問題の予告
   s.quiz.topic = 'seq'; s.quiz.levelMode = 2;
-  assert.deepStrictEqual(G.Quiz.pendingSetting(s), { topic: 'seq', level: 2 });
+  assert.deepStrictEqual(G.Quiz.pendingSetting(s), { topic: 'seq', level: 2, easy: null });
   s.quiz.topic = 'quad'; s.quiz.levelMode = 0;
   assert.strictEqual(G.Quiz.pendingSetting(s), null);
   // 終わったら新しい設定で出る

@@ -8,14 +8,17 @@
   S.GRADUATE_AT = 3;
   S.WEAK_MAX = 300;
 
-  S.weakKey = (w) => w.topic + ':' + w.level + ':' + w.seed;
-  S.addWeak = function (s, topic, level, seed, now) {
+  // easy：ぬるま湯モードの算数で間違えた問題（復習でも同じ算数の問題が出る）
+  const keyOf = (topic, level, seed, easy) => topic + ':' + level + ':' + seed + (easy ? ':easy' : '');
+  S.weakKey = (w) => keyOf(w.topic, w.level, w.seed, w.easy);
+  S.addWeak = function (s, topic, level, seed, now, easy) {
     const list = s.study.weak;
-    const key = topic + ':' + level + ':' + seed;
+    const key = keyOf(topic, level, seed, easy);
     const ex = list.find((w) => S.weakKey(w) === key);
     if (ex) { ex.stage = 0; ex.due = now; ex.miss++; return ex; }
-    const q = Qs.generate(topic, level, seed);
+    const q = Qs.generate(topic, level, seed, easy);
     const w = { topic, level, seed, kind: q.kind, added: now, due: now, stage: 0, miss: 1, tries: 0 };
+    if (easy) w.easy = true;
     list.push(w);
     if (list.length > S.WEAK_MAX) list.splice(0, list.length - S.WEAK_MAX);
     return w;
@@ -37,10 +40,10 @@
   };
   /** 復習の1問を出題する（同じ問題を同じシードで再生成） */
   S.startReview = function (s, now, w) {
-    return G.Quiz.next(s, now, { topic: w.topic, level: w.level, seed: w.seed, mode: 'review', source: 'weak' });
+    return G.Quiz.next(s, now, { topic: w.topic, level: w.level, seed: w.seed, mode: 'review', source: 'weak', easy: !!w.easy });
   };
   function onReviewResult(s, d) {
-    const key = d.topic + ':' + d.level + ':' + d.seed;
+    const key = keyOf(d.topic, d.level, d.seed, d.easy);
     const idx = s.study.weak.findIndex((w) => S.weakKey(w) === key);
     if (idx < 0) return;
     const w = s.study.weak[idx];
@@ -64,7 +67,7 @@
     if (d.source === 'weak' || d.mode === 'review') { if (d.first) onReviewResult(s, d); return; }
     if (!d.first) return;
     if (!d.ok || !d.pure) {
-      if (d.mode !== 'exam' || d.ok === false) S.addWeak(s, d.topic, d.level, d.seed, d.now);
+      if (d.mode !== 'exam' || d.ok === false) S.addWeak(s, d.topic, d.level, d.seed, d.now, d.easy);
     }
   });
   // 弱点が多い分野は、おまかせ出題で少し出やすくする
@@ -107,14 +110,16 @@
       const level = U.rand(s) < 0.6 ? 1 : 2;
       items.push({ topic, level, seed: U.newSeed(s), ok: null, ms: 0 });
     }
-    s.study.exam = { kind, name: K.name, n: K.n, seconds: K.seconds, items, idx: 0, startedAt: now, deadline: now + K.seconds * 1000 };
+    const easy = G.Quiz.easyOn(s); // ぬるま湯モード中は、模試も算数
+    s.study.exam = { kind, name: K.name + (easy ? '（' + Qs.EASY_MODE.icon + Qs.EASY_MODE.subject + '）' : ''), n: K.n, seconds: K.seconds, items, idx: 0, startedAt: now, deadline: now + K.seconds * 1000 };
+    if (easy) s.study.exam.easy = true;
     return s.study.exam;
   };
   S.examNext = function (s, now) {
     const ex = s.study.exam;
     if (!ex || ex.idx >= ex.items.length || now > ex.deadline) return null;
     const it = ex.items[ex.idx];
-    return G.Quiz.next(s, now, { topic: it.topic, level: it.level, seed: it.seed, mode: 'exam', source: 'exam' });
+    return G.Quiz.next(s, now, { topic: it.topic, level: it.level, seed: it.seed, mode: 'exam', source: 'exam', easy: !!ex.easy });
   };
   S.examRecord = function (s, ok, ms) {
     const ex = s.study.exam;
@@ -148,6 +153,7 @@
     for (let i = ex.idx; i < ex.items.length; i++) ex.items[i].ok = false;
     const r = S.examScore(ex.items, ex.n);
     const res = Object.assign({ date: U.dateStr(now), at: now, kind: ex.kind, name: ex.name, answered: ex.idx, n: ex.n, timeSec: Math.round((Math.min(now, ex.deadline) - ex.startedAt) / 1000) }, r);
+    if (ex.easy) res.easy = true;
     s.study.exams.push(res);
     if (s.study.exams.length > 50) s.study.exams.shift();
     s.study.exam = null;
@@ -220,7 +226,7 @@
   };
 
   G.on('answer', (s, d) => {
-    if (!d.first) return;
+    if (!d.first || d.easy) return; // 算数（ぬるま湯）では、分野の「忘れかけ」の記録を動かさない
     if (d.mode === 'battle' && !d.ok) { S.srsUpdate(s, d.topic, false, d.now); return; }
     S.srsUpdate(s, d.topic, d.ok && d.pure !== false, d.now || Date.now());
   });

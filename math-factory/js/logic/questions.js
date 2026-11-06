@@ -942,17 +942,110 @@
 
   const GEN = { quad, prob, diff, seq, vec: vecG, integ, trig, explog, comb, cplx, coord };
 
-  /** 問題を生成する。同じ (topic, level, seed) なら同じ問題 */
-  function generate(topic, level, seed) {
+  // =====================================================================
+  //  ぬるま湯モード：高校数学のかわりに、小学校の算数だけが出る
+  //  （分野は「どの資源がもらえるか」にだけ使う。答えはすべて整数）
+  const EASY_MODE = {
+    name: 'ぬるま湯モード',
+    icon: '🛁',
+    subject: '算数',
+    desc: '高校数学はちょっと…という繊細なあなたへ。問題がぜんぶ小学生の算数になります。正解するたびに「自分、天才かも」と思えますが、受験には1問も出ません。分野別の成績や難易度の自動調整には記録されません（記録するほどのものでもないので）。',
+    onText: '🛁 ぬるま湯モード ON。…いい湯だな。次の問題から算数だよ',
+    offText: '🔥 おかえり。次の問題から高校数学にもどるよ',
+  };
+  const EASY = [[], [], []];
+  const ans = (v) => '答え <b>' + v + '</b>';
+  // ----- 易 -----
+  EASY[0].push(function add(r) {
+    const a = r.int(1, 20), b = r.int(1, 20);
+    return Q(a + ' + ' + b + ' を計算せよ。', a + b, ['たし算だよ。大きいほうの数から数えると楽。', a + ' から ' + b + ' 個先へ進もう。'], [a + ' + ' + b + ' = ' + (a + b), ans(a + b)]);
+  });
+  EASY[0].push(function sub(r) {
+    const a = r.int(5, 30), b = r.int(1, a - 1);
+    return Q(a + ' ' + MINUS + ' ' + b + ' を計算せよ。', a - b, ['ひき算だよ。', b + ' に何をたすと ' + a + ' になるか考えてもいい。'], [a + ' ' + MINUS + ' ' + b + ' = ' + (a - b), ans(a - b)]);
+  });
+  EASY[0].push(function kuku(r) {
+    const a = r.int(2, 9), b = r.int(2, 9);
+    return Q(a + ' × ' + b + ' を計算せよ。', a * b, ['九九だよ。', a + ' の段を ' + b + ' つ目まで言ってみよう。'], [a + ' × ' + b + ' = ' + (a * b), ans(a * b)]);
+  });
+  EASY[0].push(function fruits(r) {
+    const a = r.int(2, 15), b = r.int(2, 15);
+    return Q('りんごが ' + a + ' 個、みかんが ' + b + ' 個あります。<b>あわせて</b>何個？', a + b, ['「あわせて」はたし算。', a + ' + ' + b + ' を計算しよう。'], [a + ' + ' + b + ' = ' + (a + b), ans(a + b)]);
+  });
+  EASY[0].push(function candy(r) {
+    const a = r.int(6, 20), b = r.int(1, a - 1);
+    return Q('あめが ' + a + ' 個あります。' + b + ' 個食べると、<b>のこり</b>は何個？', a - b, ['「のこり」はひき算。', a + ' ' + MINUS + ' ' + b + ' を計算しよう。'], [a + ' ' + MINUS + ' ' + b + ' = ' + (a - b), ans(a - b)]);
+  });
+  // ----- 普 -----
+  EASY[1].push(function add2(r) {
+    const a = r.int(10, 99), b = r.int(10, 99);
+    return Q(a + ' + ' + b + ' を計算せよ。', a + b, ['一の位から順にたそう。くり上がりに注意。', '一の位：' + (a % 10) + ' + ' + (b % 10) + ' = ' + (a % 10 + b % 10)], [a + ' + ' + b + ' = ' + (a + b), ans(a + b)]);
+  });
+  EASY[1].push(function sub2(r) {
+    const a = r.int(30, 99), b = r.int(10, a - 1);
+    return Q(a + ' ' + MINUS + ' ' + b + ' を計算せよ。', a - b, ['一の位から順にひこう。くり下がりに注意。', b + ' + □ = ' + a + ' と考えてもいい。'], [a + ' ' + MINUS + ' ' + b + ' = ' + (a - b), ans(a - b)]);
+  });
+  EASY[1].push(function mul21(r) {
+    const a = r.int(11, 30), b = r.int(2, 9);
+    const t = Math.floor(a / 10) * 10, o = a % 10;
+    return Q(a + ' × ' + b + ' を計算せよ。', a * b, ['十の位と一の位に分けよう：' + a + ' = ' + t + ' + ' + o, t + ' × ' + b + ' = ' + (t * b) + '、' + o + ' × ' + b + ' = ' + (o * b)], [t + ' × ' + b + ' + ' + o + ' × ' + b + ' = ' + (t * b) + ' + ' + (o * b) + ' = ' + (a * b), ans(a * b)]);
+  });
+  EASY[1].push(function div(r) {
+    const b = r.int(2, 9), q = r.int(2, 12), a = b * q;
+    return Q(a + ' ÷ ' + b + ' を計算せよ。', q, ['わり算は「' + b + ' × □ = ' + a + '」の □ をさがすこと。', b + ' の段の九九を思い出そう。'], [b + ' × ' + q + ' = ' + a + ' だから', a + ' ÷ ' + b + ' = ' + q, ans(q)]);
+  });
+  EASY[1].push(function pencils(r) {
+    const p = r.pick([30, 40, 50, 60, 80, 90, 110, 120]), n = r.int(2, 9);
+    return Q('1本 ' + p + ' 円のえんぴつを ' + n + ' 本買います。代金は何円？', p * n, ['1本の値段 × 本数。', p + ' × ' + n + ' を計算しよう。'], [p + ' × ' + n + ' = ' + (p * n), ans(p * n)]);
+  });
+  EASY[1].push(function blankAdd(r) {
+    const a = r.int(3, 40), x = r.int(2, 40);
+    return Q('□ + ' + a + ' = ' + (a + x) + ' のとき、□ に入る数は？', x, ['□ = ' + (a + x) + ' ' + MINUS + ' ' + a + ' で求まる。', 'ひき算でたしかめよう。'], ['□ = ' + (a + x) + ' ' + MINUS + ' ' + a + ' = ' + x, ans(x)]);
+  });
+  // ----- 難 -----
+  EASY[2].push(function order(r) {
+    const a = r.int(1, 20), b = r.int(2, 9), c = r.int(2, 9);
+    return Q(a + ' + ' + b + ' × ' + c + ' を計算せよ。', a + b * c, ['かけ算はたし算より<b>先</b>に計算する。', b + ' × ' + c + ' = ' + (b * c)], [b + ' × ' + c + ' = ' + (b * c), a + ' + ' + (b * c) + ' = ' + (a + b * c), ans(a + b * c)]);
+  });
+  EASY[2].push(function paren(r) {
+    const a = r.int(2, 12), b = r.int(2, 12), c = r.int(2, 9);
+    return Q('(' + a + ' + ' + b + ') × ' + c + ' を計算せよ。', (a + b) * c, ['かっこの中を<b>先</b>に計算する。', a + ' + ' + b + ' = ' + (a + b)], [a + ' + ' + b + ' = ' + (a + b), (a + b) + ' × ' + c + ' = ' + ((a + b) * c), ans((a + b) * c)]);
+  });
+  EASY[2].push(function mulSub(r) {
+    const a = r.int(3, 12), b = r.int(3, 9), c = r.int(1, Math.min(30, a * b - 1));
+    return Q(a + ' × ' + b + ' ' + MINUS + ' ' + c + ' を計算せよ。', a * b - c, ['かけ算が先。', a + ' × ' + b + ' = ' + (a * b)], [a + ' × ' + b + ' = ' + (a * b), (a * b) + ' ' + MINUS + ' ' + c + ' = ' + (a * b - c), ans(a * b - c)]);
+  });
+  EASY[2].push(function divAdd(r) {
+    const b = r.int(2, 9), q = r.int(2, 9), c = r.int(1, 20);
+    return Q((b * q) + ' ÷ ' + b + ' + ' + c + ' を計算せよ。', q + c, ['わり算が先。', (b * q) + ' ÷ ' + b + ' = ' + q], [(b * q) + ' ÷ ' + b + ' = ' + q, q + ' + ' + c + ' = ' + (q + c), ans(q + c)]);
+  });
+  EASY[2].push(function change(r) {
+    const p = r.pick([60, 80, 90, 120, 150]), n = r.int(2, 5), m = p * n < 500 ? 500 : 1000;
+    return Q(m + ' 円持っています。1個 ' + p + ' 円のおかしを ' + n + ' 個買うと、<b>おつり</b>は何円？', m - p * n, ['まず代金：' + p + ' × ' + n, '代金は ' + (p * n) + ' 円。持っているお金からひこう。'], [p + ' × ' + n + ' = ' + (p * n), m + ' ' + MINUS + ' ' + (p * n) + ' = ' + (m - p * n), ans(m - p * n)]);
+  });
+  EASY[2].push(function blankMul(r) {
+    const a = r.int(2, 9), x = r.int(2, 12);
+    return Q(a + ' × □ = ' + (a * x) + ' のとき、□ に入る数は？', x, ['□ = ' + (a * x) + ' ÷ ' + a + ' で求まる。', a + ' の段の九九で ' + (a * x) + ' になるのは？'], ['□ = ' + (a * x) + ' ÷ ' + a + ' = ' + x, ans(x)]);
+  });
+
+  /** 問題を生成する。同じ (topic, level, seed, easy) なら同じ問題。easy なら算数（ぬるま湯モード） */
+  function generate(topic, level, seed, easy) {
     const t = GEN[topic];
     if (!t) throw new Error('unknown topic ' + topic);
     level = U.clamp(level | 0, 0, 2);
     const r = U.rng(seed);
-    const list = t[level];
+    const list = easy ? EASY[level] : t[level];
     const gi = Math.floor(r.next() * list.length);
     const q = list[gi](r);
-    q.topic = topic; q.level = level; q.seed = seed; q.kind = topic + '.' + list[gi].name;
+    q.topic = topic; q.level = level; q.seed = seed; q.kind = (easy ? 'easy' : topic) + '.' + list[gi].name;
+    if (easy) q.easy = true;
     return q;
+  }
+  /** 問題の見出し（「数I・二次関数」、ぬるま湯なら「🛁 算数」） */
+  function topicLabel(topic, easy) {
+    if (easy) return EASY_MODE.icon + ' ' + EASY_MODE.subject;
+    const T = TOPICS[topic];
+    return T.subject + '・' + T.name;
   }
   function check(q, input) {
     const v = U.parseAnswer(input);
@@ -962,5 +1055,5 @@
   function answerText(q) { return U.fstr(q.answer); }
   function kinds(topic) { return GEN[topic].map((lv) => lv.map((f) => f.name)); }
 
-  MF.Questions = { TOPICS, HOME_TOPICS, ALL_TOPICS, LEVEL_NAMES, generate, check, answerText, kinds, GEN };
+  MF.Questions = { TOPICS, HOME_TOPICS, ALL_TOPICS, LEVEL_NAMES, generate, check, answerText, kinds, GEN, EASY, EASY_MODE, topicLabel };
 })(globalThis.MF = globalThis.MF || {});

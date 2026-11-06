@@ -43,6 +43,14 @@
     toggle('動きを減らす', 'reduceMotion', 'アニメーションや画面のゆれを止める'),
     toggle('ハイコントラスト', 'highContrast', '文字と背景の差を大きくする')));
 
+  // ぬるま湯モード（算数だけ）
+  SettingsUI.sections.push(() => {
+    const E = MF.Questions.EASY_MODE;
+    return UI.section('問題のレベル',
+      toggle(E.icon + ' ' + E.name, 'easyMode', E.desc, (on) => { UI.toast(on ? E.onText : E.offText, on ? 'info' : 'good', 3500); }),
+      h('p', { class: 'tiny muted' }, '切りかえても、いま出ている問題はそのまま。次の問題から変わるよ。資源・研究・ストーリーはふつうに進む。'));
+  });
+
   // セーブ管理
   SettingsUI.sections.push(() => {
     const s = UI.state;

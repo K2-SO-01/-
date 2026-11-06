@@ -75,7 +75,7 @@
         current: null, parked: null, lastTopics: [], served: 0,
       },
       stats: { answered: 0, correct: 0, solved: 0, byTopic: {}, days: {}, log: [], timeMs: 0 },
-      settings: { sound: true, bgm: true, fontScale: 1, reduceMotion: false, highContrast: false, keypad: 'auto', autoNext: true, volume: 0.6, pomoFocus: 25, pomoBreak: 5 },
+      settings: { sound: true, bgm: true, fontScale: 1, reduceMotion: false, highContrast: false, keypad: 'auto', autoNext: true, volume: 0.6, pomoFocus: 25, pomoBreak: 5, easyMode: false },
       flags: {},
       runtime: { notices: [], events: [] },
     };
@@ -143,11 +143,14 @@
   const Quiz = {};
   G.Quiz = Quiz;
   Quiz.comboMult = function (combo) { return 1 + B.quiz.comboStep * Math.min(combo, B.quiz.comboCap); };
-  Quiz.levelFor = function (s, topic) {
+  /** 出題の難易度。easy（ぬるま湯モードの算数）は分野に関係なく、算数だけの自動調整を使う */
+  Quiz.levelFor = function (s, topic, easy) {
     const m = s.quiz.levelMode;
-    if (m === 'auto') return s.quiz.levels[topic] || 0;
+    if (m === 'auto') return easy ? (s.quiz.easyLevel || 0) : (s.quiz.levels[topic] || 0);
     return U.clamp(m | 0, 0, 2);
   };
+  /** ぬるま湯モード（算数だけ）がオンか */
+  Quiz.easyOn = function (s) { return !!(s.settings && s.settings.easyMode); };
   Quiz.pickTopic = function (s, now) {
     const avail = G.availableTopics(s);
     const sel = s.quiz.topic;
@@ -163,7 +166,7 @@
   };
   /** ふつうの出題か（バトル・模試・復習などではない） */
   Quiz.isFree = function (c) { return !!(c && c.mode === 'normal'); };
-  /** 分野・難易度の設定と、いま出ている問題がちがうとき、次の問題の設定 {topic, level}（同じなら null）。
+  /** 分野・難易度・ぬるま湯の設定と、いま出ている問題がちがうとき、次の問題の設定 {topic, level, easy}（同じなら null）。
    *  設定を変えても、いま出ている問題は変えない（問題を引き直せないように）。新しい設定は次の問題から。 */
   Quiz.pendingSetting = function (s) {
     const c = s.quiz.current;
@@ -172,10 +175,12 @@
     const topic = sel !== 'auto' && G.availableTopics(s).indexOf(sel) >= 0 ? sel : null;
     const m = s.quiz.levelMode;
     const level = m === 'auto' ? null : U.clamp(m | 0, 0, 2);
-    const out = { topic: topic !== null && topic !== c.topic ? topic : null, level: level !== null && level !== c.level ? level : null };
-    return out.topic !== null || out.level !== null ? out : null;
+    const easy = Quiz.easyOn(s);
+    const out = { topic: topic !== null && topic !== c.topic ? topic : null, level: level !== null && level !== c.level ? level : null, easy: easy !== !!c.easy ? easy : null };
+    return out.topic !== null || out.level !== null || out.easy !== null ? out : null;
   };
-  /** 次の問題を出す。opts: {topic, level, seed, mode, source} */
+  /** 次の問題を出す。opts: {topic, level, seed, mode, source, easy}
+   *  easy を省くと設定（ぬるま湯モード）にしたがう。弱点の復習・模試などは、出したときの easy をそのまま使う */
   Quiz.next = function (s, now, opts) {
     opts = opts || {};
     const mode = opts.mode || 'normal';
@@ -190,16 +195,18 @@
     } else if (Quiz.isFree(cur) && !cur.done && !s.quiz.parked) {
       s.quiz.parked = cur;
     }
+    const easy = opts.easy !== undefined ? !!opts.easy : Quiz.easyOn(s);
     const topic = opts.topic || Quiz.pickTopic(s, now);
-    const level = opts.level !== undefined ? opts.level : Quiz.levelFor(s, topic);
+    const level = opts.level !== undefined ? opts.level : Quiz.levelFor(s, topic, easy);
     const seed = opts.seed || U.newSeed(s);
     s.quiz.current = { topic, level, seed, attempts: 0, hints: 0, startedAt: now, mode, source: opts.source || null, done: false, firstOk: null };
+    if (easy) s.quiz.current.easy = true; // この問題は算数（設定を切りかえても、この問題は変わらない）
     s.quiz.served++;
-    return Qs.generate(topic, level, seed);
+    return Qs.generate(topic, level, seed, easy);
   };
   Quiz.currentQuestion = function (s) {
     const c = s.quiz.current;
-    return c ? Qs.generate(c.topic, c.level, c.seed) : null;
+    return c ? Qs.generate(c.topic, c.level, c.seed, c.easy) : null;
   };
   /** ヒントを1段階開ける（0→1:ヒント1、→2:ヒント2、→3:完全解説） */
   Quiz.revealHint = function (s, now) {
@@ -207,9 +214,9 @@
     if (!c || c.done) return 0;
     c.hints = Math.min(3, c.hints + 1);
     if (c.hints >= 3) { // 解説を見たら、この問題は終了（未正解なら不正解あつかい）
-      if (c.attempts === 0) { c.attempts = 1; recordFirst(s, c, false, now - c.startedAt, now); s.quiz.combo = 0; G.emit(s, 'answer', { topic: c.topic, level: c.level, ok: false, first: true, ms: now - c.startedAt, combo: 0, mode: c.mode, source: c.source, seed: c.seed, now }); }
+      if (c.attempts === 0) { c.attempts = 1; recordFirst(s, c, false, now - c.startedAt, now); s.quiz.combo = 0; G.emit(s, 'answer', { topic: c.topic, level: c.level, ok: false, first: true, ms: now - c.startedAt, combo: 0, mode: c.mode, source: c.source, seed: c.seed, easy: !!c.easy, now }); }
       c.done = true;
-      G.emit(s, 'questionEnd', { topic: c.topic, level: c.level, ok: false, mode: c.mode, source: c.source, seed: c.seed });
+      G.emit(s, 'questionEnd', { topic: c.topic, level: c.level, ok: false, mode: c.mode, source: c.source, seed: c.seed, easy: !!c.easy });
     }
     return c.hints;
   };
@@ -217,27 +224,41 @@
     c.firstOk = ok;
     const st = s.stats;
     st.answered++; if (ok) st.correct++;
-    const bt = st.byTopic[c.topic] || (st.byTopic[c.topic] = { a: 0, c: 0, ms: 0 });
-    bt.a++; if (ok) bt.c++; bt.ms += Math.min(ms, 600000);
     const day = U.dateStr(now);
     const d = st.days[day] || (st.days[day] = { a: 0, c: 0, t: {} });
     d.a++; if (ok) d.c++;
-    const dt = d.t[c.topic] || (d.t[c.topic] = [0, 0]);
-    dt[0]++; if (ok) dt[1]++;
-    st.log.push({ t: now, topic: c.topic, lv: c.level, ok: ok ? 1 : 0, ms: Math.round(ms), mode: c.mode });
+    const entry = { t: now, topic: c.topic, lv: c.level, ok: ok ? 1 : 0, ms: Math.round(ms), mode: c.mode };
+    if (c.easy) entry.easy = 1;
+    st.log.push(entry);
     if (st.log.length > 600) st.log.splice(0, st.log.length - 600);
-    // 難易度の自動調整
-    const rec = s.quiz.recent[c.topic] || (s.quiz.recent[c.topic] = []);
-    rec.push(ok ? 1 : 0);
-    if (rec.length > B.quiz.autoWindow) rec.shift();
-    if (rec.length >= B.quiz.autoMin && c.mode !== 'exam') {
-      const acc = rec.reduce((a, b) => a + b, 0) / rec.length;
-      const lv = s.quiz.levels[c.topic] || 0;
-      if (acc >= B.quiz.autoUp && lv < 2) { s.quiz.levels[c.topic] = lv + 1; s.quiz.recent[c.topic] = []; G.notice(s, { type: 'level', text: Qs.TOPICS[c.topic].name + ' の難易度が「' + Qs.LEVEL_NAMES[lv + 1] + '」に上がった！' }); }
-      else if (acc <= B.quiz.autoDown && lv > 0) { s.quiz.levels[c.topic] = lv - 1; s.quiz.recent[c.topic] = []; G.notice(s, { type: 'level', text: Qs.TOPICS[c.topic].name + ' の難易度を「' + Qs.LEVEL_NAMES[lv - 1] + '」に下げたよ。基礎から固めよう' }); }
+    if (c.easy) {
+      // ぬるま湯モードの算数は、分野別の成績・分野ごとの難易度には入れない（受験用の記録を算数でうめないように）
+      const e = st.easy || (st.easy = { a: 0, c: 0, ms: 0 });
+      e.a++; if (ok) e.c++; e.ms += Math.min(ms, 600000);
+      autoLevel(s, s.quiz, 'easyRecent', 'easyLevel', ok, c, Qs.EASY_MODE.subject);
+    } else {
+      const bt = st.byTopic[c.topic] || (st.byTopic[c.topic] = { a: 0, c: 0, ms: 0 });
+      bt.a++; if (ok) bt.c++; bt.ms += Math.min(ms, 600000);
+      const dt = d.t[c.topic] || (d.t[c.topic] = [0, 0]);
+      dt[0]++; if (ok) dt[1]++;
+      autoLevel(s, s.quiz.recent, c.topic, null, ok, c, Qs.TOPICS[c.topic].name);
     }
     s.quiz.lastTopics.push(c.topic);
     if (s.quiz.lastTopics.length > 4) s.quiz.lastTopics.shift();
+  }
+  /** 難易度の自動調整。recentBox[recentKey] に最近の正誤をためる。
+   *  levelKey があれば s.quiz[levelKey]（算数用）、なければ s.quiz.levels[分野] を上げ下げする */
+  function autoLevel(s, recentBox, recentKey, levelKey, ok, c, label) {
+    const rec = recentBox[recentKey] || (recentBox[recentKey] = []);
+    rec.push(ok ? 1 : 0);
+    if (rec.length > B.quiz.autoWindow) rec.shift();
+    if (rec.length < B.quiz.autoMin || c.mode === 'exam') return;
+    const acc = rec.reduce((a, b) => a + b, 0) / rec.length;
+    const get = () => (levelKey ? s.quiz[levelKey] : s.quiz.levels[c.topic]) || 0;
+    const set = (v) => { if (levelKey) s.quiz[levelKey] = v; else s.quiz.levels[c.topic] = v; recentBox[recentKey] = []; };
+    const lv = get();
+    if (acc >= B.quiz.autoUp && lv < 2) { set(lv + 1); G.notice(s, { type: 'level', text: label + ' の難易度が「' + Qs.LEVEL_NAMES[lv + 1] + '」に上がった！' }); }
+    else if (acc <= B.quiz.autoDown && lv > 0) { set(lv - 1); G.notice(s, { type: 'level', text: label + ' の難易度を「' + Qs.LEVEL_NAMES[lv - 1] + '」に下げたよ。基礎から固めよう' }); }
   }
   Quiz.rewardFor = function (s, c, ms) {
     const lvl = c.level;
@@ -255,7 +276,7 @@
   Quiz.answer = function (s, input, now) {
     const c = s.quiz.current;
     if (!c || c.done) return { ok: false, invalid: true, reason: 'no-question' };
-    const q = Qs.generate(c.topic, c.level, c.seed);
+    const q = Qs.generate(c.topic, c.level, c.seed, c.easy);
     const res = Qs.check(q, input);
     if (res.invalid) return { ok: false, invalid: true, reason: 'parse' };
     c.attempts++;
@@ -274,18 +295,18 @@
       c.done = true;
       out.done = true;
       out.combo = s.quiz.combo;
-      G.emit(s, 'answer', { topic: c.topic, level: c.level, ok: true, first, pure, ms, combo: s.quiz.combo, mode: c.mode, source: c.source, seed: c.seed, now, reward: rw });
-      G.emit(s, 'questionEnd', { topic: c.topic, level: c.level, ok: true, first, pure, mode: c.mode, source: c.source, seed: c.seed, now });
+      G.emit(s, 'answer', { topic: c.topic, level: c.level, ok: true, first, pure, ms, combo: s.quiz.combo, mode: c.mode, source: c.source, seed: c.seed, easy: !!c.easy, now, reward: rw });
+      G.emit(s, 'questionEnd', { topic: c.topic, level: c.level, ok: true, first, pure, mode: c.mode, source: c.source, seed: c.seed, easy: !!c.easy, now });
     } else {
       if (first) s.quiz.combo = 0;
       out.combo = s.quiz.combo;
       // 段階的なヒント：1回目の不正解でヒント1、2回目でヒント2、3回目で完全解説
       c.hints = Math.max(c.hints, Math.min(3, c.attempts));
       out.hintLevel = c.hints;
-      G.emit(s, 'answer', { topic: c.topic, level: c.level, ok: false, first, ms, combo: 0, mode: c.mode, source: c.source, seed: c.seed, now });
+      G.emit(s, 'answer', { topic: c.topic, level: c.level, ok: false, first, ms, combo: 0, mode: c.mode, source: c.source, seed: c.seed, easy: !!c.easy, now });
       if (c.hints >= 3) {
         c.done = true; out.done = true;
-        G.emit(s, 'questionEnd', { topic: c.topic, level: c.level, ok: false, first, mode: c.mode, source: c.source, seed: c.seed, now });
+        G.emit(s, 'questionEnd', { topic: c.topic, level: c.level, ok: false, first, mode: c.mode, source: c.source, seed: c.seed, easy: !!c.easy, now });
       }
     }
     return out;
@@ -298,10 +319,10 @@
       c.attempts = 1;
       recordFirst(s, c, false, now - c.startedAt, now);
       s.quiz.combo = 0;
-      G.emit(s, 'answer', { topic: c.topic, level: c.level, ok: false, first: true, skipped: true, ms: now - c.startedAt, combo: 0, mode: c.mode, source: c.source, seed: c.seed, now });
+      G.emit(s, 'answer', { topic: c.topic, level: c.level, ok: false, first: true, skipped: true, ms: now - c.startedAt, combo: 0, mode: c.mode, source: c.source, seed: c.seed, easy: !!c.easy, now });
     }
     c.done = true;
-    G.emit(s, 'questionEnd', { topic: c.topic, level: c.level, ok: false, mode: c.mode, source: c.source, seed: c.seed, now });
+    G.emit(s, 'questionEnd', { topic: c.topic, level: c.level, ok: false, mode: c.mode, source: c.source, seed: c.seed, easy: !!c.easy, now });
   };
   Quiz.accuracy = function (s, topic) {
     const b = topic ? s.stats.byTopic[topic] : { a: s.stats.answered, c: s.stats.correct };

@@ -51,11 +51,11 @@
             h('button', { class: 'btn small', onclick: () => StudyUI.startReview(t) }, 'この分野だけ復習')));
         const ul = h('div', { class: 'weak-list' });
         list.slice(0, 12).forEach((w) => {
-          const q = Qs.generate(w.topic, w.level, w.seed);
+          const q = Qs.generate(w.topic, w.level, w.seed, w.easy);
           const dueTxt = w.due <= now ? '<span class="warn">復習どき</span>' : 'あと ' + U.fmtTime((w.due - now) / 1000);
           ul.appendChild(h('div', { class: 'weak-item' },
             h('div', { class: 'weak-q', html: q.text }),
-            h('div', { class: 'weak-meta small muted', html: Qs.LEVEL_NAMES[w.level] + '・ミス ' + w.miss + ' 回・段階 ' + '●'.repeat(w.stage) + '○'.repeat(S.GRADUATE_AT - w.stage) + '・' + dueTxt })));
+            h('div', { class: 'weak-meta small muted', html: (w.easy ? U.esc(Qs.topicLabel(w.topic, true)) + '・' : '') + Qs.LEVEL_NAMES[w.level] + '・ミス ' + w.miss + ' 回・段階 ' + '●'.repeat(w.stage) + '○'.repeat(S.GRADUATE_AT - w.stage) + '・' + dueTxt })));
         });
         if (list.length > 12) ul.appendChild(h('div', { class: 'muted small' }, 'ほか ' + (list.length - 12) + ' 問'));
         card.appendChild(ul);

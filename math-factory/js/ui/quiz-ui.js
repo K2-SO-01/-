@@ -79,7 +79,7 @@
       const t = Qs.TOPICS[c.topic];
       head.innerHTML = '';
       [
-        h('span', { class: 'q-topic', style: { borderColor: t.color } }, t.subject + '・' + t.name),
+        h('span', { class: 'q-topic' + (c.easy ? ' easy' : ''), style: { borderColor: t.color }, title: c.easy ? Qs.EASY_MODE.name + '：正解すると「' + t.name + '」の資源がもらえる' : null }, Qs.topicLabel(c.topic, c.easy)),
         h('span', { class: 'q-level lv' + c.level }, Qs.LEVEL_NAMES[c.level]),
         opts.label ? h('span', { class: 'q-label' }, opts.label) : null,
         opts.showReward !== false ? h('span', { class: 'q-reward' }, '正解で ', UI.itemChip(t.resource, null, { noName: false })) : null,
@@ -270,8 +270,10 @@
             UI.rerender(); // いま出ている問題はそのまま。次の問題からこの難易度
           } }, l));
         });
-        const lvInfo = h('span', { class: 'muted small hide-sm' }, s.quiz.levelMode === 'auto' ? '正答率に合わせて分野ごとに自動で調整' : '固定');
-        root.appendChild(h('div', { class: 'level-row' }, h('span', { class: 'small' }, '難易度'), seg, lvInfo));
+        const lvInfo = h('span', { class: 'muted small hide-sm' }, s.quiz.levelMode !== 'auto' ? '固定' : G.Quiz.easyOn(s) ? '算数の正答率に合わせて自動で調整' : '正答率に合わせて分野ごとに自動で調整');
+        const E = Qs.EASY_MODE;
+        const easyBadge = G.Quiz.easyOn(s) ? h('button', { class: 'easy-badge', title: E.desc, onclick: () => UI.go('settings') }, E.icon + ' ' + E.name + '中') : null;
+        root.appendChild(h('div', { class: 'level-row' }, h('span', { class: 'small' }, '難易度'), seg, lvInfo, easyBadge));
         root.appendChild(UI.live((st) => QuizUI.nextNote(st)));
       }
       const holder = h('div', { class: 'quiz-holder' });
@@ -311,6 +313,7 @@
     const p = G.Quiz.pendingSetting(s);
     if (!p) return null;
     const parts = [];
+    if (p.easy !== null) parts.push(p.easy ? Qs.EASY_MODE.icon + Qs.EASY_MODE.subject : '高校数学');
     if (p.topic) parts.push('「' + Qs.TOPICS[p.topic].name + '」');
     if (p.level !== null) parts.push('難易度「' + Qs.LEVEL_NAMES[p.level] + '」');
     return h('div', { class: 'next-note small' }, '⏭️ いまの問題が終わったら、' + parts.join('・') + 'の問題になるよ');

@@ -255,9 +255,10 @@
   Bt.questionOpts = function (s, bt, c) {
     const avail = G.availableTopics(s);
     const topic = U.randPick(s, avail);
-    let level = G.Quiz.levelFor(s, topic);
+    const easy = G.Quiz.easyOn(s);
+    let level = G.Quiz.levelFor(s, topic, easy);
     if ((bt.elite || bt.boss) && level < 2 && U.rand(s) < 0.5) level++;
-    return { topic, level, seed: U.newSeed(s), mode: 'battle', source: 'card' };
+    return { topic, level, seed: U.newSeed(s), mode: 'battle', source: 'card', easy };
   };
   Bt.cancelPlay = function (s) { const bt = s.battle.active; if (bt) bt.pending = null; };
   /** 解答結果を反映。ok: 正解か, ms: かかった時間 */
@@ -560,7 +561,8 @@
     if (!run || !run.pendingEvent) return null;
     if (!run.eventQ) {
       const topic = U.randPick(s, G.availableTopics(s));
-      run.eventQ = { topic, level: G.Quiz.levelFor(s, topic), seed: U.newSeed(s), mode: 'battle', source: 'event' };
+      const easy = G.Quiz.easyOn(s);
+      run.eventQ = { topic, level: G.Quiz.levelFor(s, topic, easy), seed: U.newSeed(s), mode: 'battle', source: 'event', easy };
     }
     return run.eventQ;
   };

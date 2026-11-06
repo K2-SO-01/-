@@ -341,7 +341,8 @@
     if (!ch || !ch.quiz) return null;
     if (pe.quiz) return pe.quiz.choice === idx ? pe.quiz : null;
     const topic = U.randPick(s, G.availableTopics(s));
-    pe.quiz = { choice: idx, topic, level: ch.hard ? 2 : G.Quiz.levelFor(s, topic), seed: U.newSeed(s), mode: 'event', source: 'event' };
+    const easy = G.Quiz.easyOn(s);
+    pe.quiz = { choice: idx, topic, level: ch.hard ? 2 : G.Quiz.levelFor(s, topic, easy), seed: U.newSeed(s), mode: 'event', source: 'event', easy };
     return pe.quiz;
   };
   GX.chooseEvent = function (s, idx, quizOk, now) {

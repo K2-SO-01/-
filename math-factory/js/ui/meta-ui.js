@@ -58,9 +58,11 @@
     id: 'stats', label: '統計', render(box, s) {
       const st = s.stats;
       const accAll = st.answered ? st.correct / st.answered : 0;
-      const totalMs = Object.values(st.byTopic).reduce((a, b) => a + (b.ms || 0), 0);
+      const totalMs = Object.values(st.byTopic).reduce((a, b) => a + (b.ms || 0), 0) + ((st.easy && st.easy.ms) || 0);
       box.appendChild(h('div', { class: 'tiles' },
         tile('解いた問題', st.answered + ' 問'), tile('正答率', Math.round(accAll * 100) + '%'), tile('最大コンボ', s.quiz.maxCombo), tile('考えた時間', U.fmtTime(totalMs / 1000)), tile('連続ログイン', s.meta.login.streak + ' 日')));
+      const E = Qs.EASY_MODE, ez = st.easy;
+      if (ez && ez.a) box.appendChild(h('p', { class: 'small muted easy-stat' }, E.icon + ' うち ' + E.name + 'の' + E.subject + '：' + ez.a + ' 問（正解 ' + ez.c + '）。受験の成績には入れていないよ。入れたら泣くのは本番のあなただから。'));
       const topics = G.availableTopics(s);
       box.appendChild(UI.section('分野別の正答率', h('p', { class: 'tiny muted' }, '1回目で正解した割合。バーにふれると詳しく見られる。'),
         Charts.hbars(topics.map((t) => {
@@ -92,7 +94,7 @@
         if (ch.kind === 'time') { if (!deadline) deadline = Date.now() + ch.seconds * 1000; if (Date.now() > deadline) return null; }
         else if (served >= ch.n || failed) return null;
         served++;
-        return G.Quiz.next(st, Date.now(), { topic: ch.topic, level: ch.level !== null ? ch.level : G.Quiz.levelFor(st, ch.topic), mode: 'challenge', source: 'challenge' });
+        return G.Quiz.next(st, Date.now(), { topic: ch.topic, level: ch.level !== null ? ch.level : G.Quiz.levelFor(st, ch.topic, G.Quiz.easyOn(st)), mode: 'challenge', source: 'challenge' });
       },
       onDone: (st, res) => { if (res.ok && res.attempt === 1) score++; else if (ch.kind === 'nomiss') failed = true; },
       tick: () => {

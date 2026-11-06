@@ -68,6 +68,8 @@ const URL = 'file://' + path.join(__dirname, '..', 'index.html');
     await page.goto(URL);
     await wait(1200);
     await ev(() => { MF.StoryUI.quiet = true; while (MF.UI.modalStack.length) MF.UI.closeTopModal(); });
+    // EASY=1 node tests/ui-progress.js で、ぬるま湯モード（算数だけ）でも最後まで進めるか点検
+    if (process.env.EASY) await ev(() => { const s = MF.UI.state; s.settings.easyMode = true; s.quiz.current = null; MF.UI.rerender(); });
     await check('はじめ');
 
     // ① 3問正解：1問目はまちがえてから正解（やり直しの正解も数える）
@@ -106,6 +108,14 @@ const URL = 'file://' + path.join(__dirname, '..', 'index.html');
     await page.click('.req-row >> text=解く');
     await wait(300);
     await check('研究を始めた');
+    // いま出ている問題はそのまま（引き直し防止）。別の分野なら予告が出て、次の問題から研究の分野になる
+    const first = await ev(() => MF.UI.state.quiz.current.topic);
+    if (first !== 'quad') {
+      const note = await ev(() => { const n = document.querySelector('.next-note'); return n ? n.textContent : ''; });
+      if (note.indexOf('二次関数') < 0) problems.push('⑥：「次の問題から二次関数」の予告が出ない：' + note);
+      await answer(true); await nextQ();
+      if (await ev(() => MF.UI.state.quiz.current.topic) !== 'quad') problems.push('⑥：研究の「解く」のあと、次の問題が二次関数にならない');
+    }
     for (let i = 0; i < 3; i++) { await answer(true); await nextQ(); await check('研究の問題 ' + (i + 1)); }
     const auto = await ev(() => MF.Research.has(MF.UI.state, 'automation'));
     if (!auto) problems.push('⑥：研究「自動化の基礎」が完了しない');
@@ -204,6 +214,7 @@ const URL = 'file://' + path.join(__dirname, '..', 'index.html');
     await shot('end');
   } catch (e) { problems.push('テストが止まった：' + e.message.split('\n')[0]); await shot('error'); }
   await browser.close();
-  console.log(problems.length ? '✗ 進行の点検\n  ' + problems.join('\n  ') : '✓ 進行の点検（ストーリー全17ミッション）');
+  const tag = process.env.EASY ? '・ぬるま湯モード' : '';
+  console.log(problems.length ? '✗ 進行の点検' + tag + '\n  ' + problems.join('\n  ') : '✓ 進行の点検（ストーリー全17ミッション' + tag + '）');
   process.exit(problems.length ? 1 : 0);
 })();
