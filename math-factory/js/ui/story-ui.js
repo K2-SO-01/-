@@ -64,7 +64,7 @@
       h('div', { class: 'ms-head' }, h('span', { class: 'ms-ch' }, C.title), h('b', {}, '🎯 ' + m.title), h('span', { class: 'ms-prog' }, p.have + ' / ' + p.need)),
       h('div', { class: 'small' }, m.desc),
       h('div', { class: 'row ms-btns' },
-        h('button', { class: 'btn small ghost', onclick: () => { UI.modal({ title: '💡 ' + m.title, body: h('div', {}, h('div', { class: 'talk-face-s', html: SUI.navi(48) }), h('p', {}, m.how)), buttons: [{ label: 'わかった', cls: 'primary' }] }); } }, '💡 やり方'),
+        h('button', { class: 'btn small ghost', onclick: () => { if (SUI.howTo && SUI.howTo(m)) return; UI.modal({ title: '💡 ' + m.title, body: h('div', {}, h('div', { class: 'talk-face-s', html: SUI.navi(48) }), h('p', {}, m.how)), buttons: [{ label: 'わかった', cls: 'primary' }] }); } }, '💡 やり方'),
         UI.current !== m.where ? h('button', { class: 'btn small', onclick: () => UI.go(m.where) }, '▶ ' + (UI.screens[m.where] ? UI.screens[m.where].title : '') + 'へ') : null,
         m.intro ? h('button', { class: 'btn small ghost', onclick: () => SUI.talk(m.intro, { title: '📡 ナビ：' + m.title }) }, '📡 会話') : null));
     return el;
@@ -140,7 +140,7 @@
   MF.App.bootHooks.push((s, info) => {
     if (s.story.introSeen || SUI.quiet) return;
     s.story.introSeen = true;
-    setTimeout(() => SUI.boot(s, () => SUI.opening(s)), 300);
+    setTimeout(() => SUI.boot(s, () => (SUI.afterBoot ? SUI.afterBoot(s, () => SUI.opening(s)) : SUI.opening(s))), 300);
   });
 
   // ---------- エンディング（最初の打ち上げ） ----------

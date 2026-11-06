@@ -859,3 +859,30 @@ body::before { background: var(--bg); }
 @keyframes bootIn { from { opacity: 0; } }
 .boot-hint { margin-top: 1.4rem; color: var(--bg); background: var(--accent); display: inline-block; padding: .2rem .7rem; visibility: hidden; text-shadow: none; }
 .boot-hint.on { visibility: visible; animation: blink 1.1s steps(1) infinite; }
+
+/* チュートリアル：光らせて指す案内 */
+.tut { position: fixed; inset: 0; z-index: 200; pointer-events: none; }
+.tut-shade { position: fixed; background: rgba(0,0,0,.74); pointer-events: auto; }
+.tut-frame { position: fixed; pointer-events: none; outline: 1px dashed rgba(220,255,154,.45);
+  background:
+    linear-gradient(var(--accent-hi), var(--accent-hi)) left top / 14px 3px no-repeat, linear-gradient(var(--accent-hi), var(--accent-hi)) left top / 3px 14px no-repeat,
+    linear-gradient(var(--accent-hi), var(--accent-hi)) right top / 14px 3px no-repeat, linear-gradient(var(--accent-hi), var(--accent-hi)) right top / 3px 14px no-repeat,
+    linear-gradient(var(--accent-hi), var(--accent-hi)) left bottom / 14px 3px no-repeat, linear-gradient(var(--accent-hi), var(--accent-hi)) left bottom / 3px 14px no-repeat,
+    linear-gradient(var(--accent-hi), var(--accent-hi)) right bottom / 14px 3px no-repeat, linear-gradient(var(--accent-hi), var(--accent-hi)) right bottom / 3px 14px no-repeat;
+  animation: tutPulse 1s steps(2) infinite; }
+@keyframes tutPulse { 50% { outline-color: transparent; opacity: .55; } }
+.tut-bubble { position: fixed; pointer-events: auto; background: var(--bg2); border: 1px solid var(--accent); padding: .6rem .75rem; display: flex; flex-direction: column; gap: .4rem; }
+.tut-bubble.pop { animation: bootIn .15s steps(2); }
+.tut-head { display: flex; align-items: center; gap: .45rem; color: var(--accent); }
+.tut-head .tut-count { margin-left: auto; color: var(--muted); }
+.tut-face svg { display: block; }
+.tut-text { line-height: 1.75; color: var(--accent2); }
+.tut-do { color: var(--warn); }
+.tut-do:empty { display: none; }
+.tut-btns { display: flex; justify-content: flex-end; gap: .4rem; }
+.help-chip { background: var(--bg); border: 1px solid var(--line2); color: var(--accent); min-width: 30px; min-height: 30px; cursor: pointer; padding: 0 .4rem; }
+.help-chip:hover { border-color: var(--accent); }
+.tut-ask ul { padding-left: 1.2rem; line-height: 1.9; }
+.manual-list { padding-left: 1.2rem; line-height: 1.9; margin: .2rem 0 .6rem; }
+.manual-toc { margin: .4rem 0; }
+.manual-hit { border-color: var(--accent); outline: 1px solid var(--accent); }

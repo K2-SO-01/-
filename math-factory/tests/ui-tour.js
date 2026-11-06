@@ -11,6 +11,7 @@ const URL = 'file://' + path.join(__dirname, '..', 'index.html');
     page.on('pageerror', (e) => issues.push(label + ' pageerror: ' + e.message));
     page.on('console', (m) => { if (m.type() === 'error') issues.push(label + ' console: ' + m.text()); });
     await page.goto(URL);
+    await page.waitForFunction(() => window.MF && MF.UI && MF.UI.state && MF.StoryUI, null, { timeout: 10000 }); // ゲームの起動を待つ
     await page.waitForTimeout(800);
     await page.evaluate(() => {
       MF.StoryUI.quiet = true; while (MF.UI.modalStack.length) MF.UI.closeTopModal();

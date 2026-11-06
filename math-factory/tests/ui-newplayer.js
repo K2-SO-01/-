@@ -17,6 +17,7 @@ const URL = 'file://' + path.join(__dirname, '..', 'index.html');
     await page.goto(URL);
     // はじめての起動画面：1回目のタップで全部の行を出し、2回目で閉じる
     await page.waitForSelector('.boot', { timeout: 5000 }); await page.click('.boot'); await page.waitForTimeout(150); await page.click('.boot', { timeout: 1500 }).catch(() => {});
+    await page.click('text=慣れてる（最小限）', { timeout: 5000 }); // 案内は最小限（ていねいな案内は ui-tutorial.js で点検）
     await page.waitForSelector('.opening'); await page.waitForTimeout(2500);
     await page.click('text=目を覚ます');
     await closeTalks();

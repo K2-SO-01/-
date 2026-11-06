@@ -31,5 +31,6 @@
  "js/ui/well-ui.js",
  "js/ui/galaxy-ui.js",
  "js/ui/story-ui.js",
+ "js/ui/tutorial-ui.js",
  "js/main.js"
 ]
